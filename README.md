@@ -193,7 +193,6 @@ Discord-Forge/
 │   ├── setup_cogs/
 │   ├── templates/                  # JSON server templates
 │   └── utils/
-├── dev/                            # Internal dev files (gitignored from public repo)
 ├── data/                           # Runtime user data (gitignored)
 ├── Dockerfile
 └── docker-compose.yml

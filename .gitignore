@@ -17,9 +17,8 @@ __pycache__/
 # Logs
 *.log
 
-# Dev / internal docs (not for public repo)
-dev/AUDIT.md
-dev/checklist.html
+# Dev / internal files (not for public repo)
+dev/
 
 # Generated / build output
 graphify-out/
