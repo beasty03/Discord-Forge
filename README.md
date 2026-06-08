@@ -14,7 +14,7 @@ You run it on your own machine or server. Users register on your instance and ma
 - **Script library** — browse and apply community cog scripts to your bots
 - **Theme engine** — 20+ UI themes including animated overlays (all free)
 - **Discord OAuth** — link your Discord account for avatar and identity
-- **Email verification & password reset** via SMTP
+- **Password reset** via SMTP (optional)
 - **hCaptcha** support on register/login
 - **Admin portal** for instance management
 
@@ -126,7 +126,7 @@ Copy `app/.env.example` to `app/.env` and fill in:
 | `DISCORD_REDIRECT_URI` | For OAuth | `http://<your-host>:5000/auth/discord/callback` |
 | `DISCORD_REDIRECT_URI_LOCAL` | For OAuth | `http://127.0.0.1:5000/auth/discord/callback` |
 | `HCAPTCHA_SITE_KEY` / `HCAPTCHA_SECRET_KEY` | Optional | Skipped if blank |
-| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Optional | Enables email verification and password reset |
+| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Optional | Enables password reset via email |
 | `SESSION_COOKIE_SECURE` | Production | Set to `true` when running behind HTTPS |
 
 ---
