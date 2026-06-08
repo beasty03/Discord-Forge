@@ -980,8 +980,6 @@ def login():
         users = load_users()
 
         if username in users and check_password_hash(users[username]['password'], password):
-            if not users[username].get('email_verified', True) and _smtp_configured():
-                return redirect('/app/?auth=login&error=unverified')
             nonce = secrets.token_hex(16)
             users[username]['session_nonce'] = nonce
             save_users(users)
@@ -1027,29 +1025,20 @@ def register():
                 'email': email,
                 'password': generate_password_hash(password),
                 'servers': [],
-                'email_verified': False,
                 'created_at': datetime.now().isoformat(),
             }
             save_users(users)
-            if _smtp_configured():
-                try:
-                    _send_verification_email(username, email)
-                    flash('Account created! Please check your email to verify your address, then log in.', 'success')
-                except Exception:
-                    flash('Account created successfully! Please log in.', 'success')
-            else:
-                flash('Account created successfully! Please log in.', 'success')
+            flash('Account created successfully! Please log in.', 'success')
             return redirect(url_for('login'))
 
     return redirect('/app/?auth=register')  # React RegisterPage
 
 
 # ============================================
-# EMAIL — SMTP helper + password reset + email verification
+# EMAIL — SMTP helper + password reset
 # ============================================
 
 _PENDING_RESETS_FILE = os.path.join(DATA_DIR, 'pending_resets.json')
-_PENDING_VERIFY_FILE = os.path.join(DATA_DIR, 'pending_verify.json')
 
 def _smtp_configured():
     return bool(os.environ.get('SMTP_HOST') and os.environ.get('SMTP_USER'))
@@ -1149,84 +1138,6 @@ def reset_password(token):
         reset_token=token)
 
 
-# ── Email verification ────────────────────────────────────────────────────────
-_UNVERIFIED_FLAG = 'email_verified'
-
-def _send_verification_email(username: str, email_addr: str):
-    token = secrets.token_urlsafe(32)
-    pending = load_json(_PENDING_VERIFY_FILE, {})
-    pending[token] = {'username': username, 'email': email_addr, 'created_at': datetime.now().isoformat()}
-    save_json(_PENDING_VERIFY_FILE, pending)
-    verify_url = request.host_url.rstrip('/') + url_for('verify_email', token=token)
-    _send_email(email_addr, 'DiscordForge — Verify your email',
-        f'<p>Welcome to DiscordForge! Please verify your email address:</p>'
-        f'<p><a href="{verify_url}">{verify_url}</a></p>'
-        f'<p>This link expires in 24 hours.</p>')
-
-
-@app.route('/verify-email/<token>')
-def verify_email(token):
-    pending = load_json(_PENDING_VERIFY_FILE, {})
-    entry   = pending.get(token)
-    if not entry:
-        flash('Invalid or expired verification link.', 'error')
-        return redirect(url_for('dashboard'))
-    try:
-        age = (datetime.now() - datetime.fromisoformat(entry['created_at'])).total_seconds()
-        if age > 86400:
-            pending.pop(token, None)
-            save_json(_PENDING_VERIFY_FILE, pending)
-            flash('Verification link expired. Please request a new one from your account page.', 'error')
-            return redirect(url_for('account'))
-    except (ValueError, TypeError):
-        pass
-    users = load_users()
-    uname = entry['username']
-    if uname in users:
-        users[uname][_UNVERIFIED_FLAG] = True
-        save_users(users)
-    pending.pop(token, None)
-    save_json(_PENDING_VERIFY_FILE, pending)
-    flash('Email verified successfully! You can now log in.', 'success')
-    return redirect(url_for('login') if 'user_id' not in session else url_for('dashboard'))
-
-
-@app.route('/resend-verification', methods=['POST'])
-def public_resend_verification():
-    """Public endpoint — lets unverified users request a new link without being logged in."""
-    if not _rl_check(f'resend:{request.remote_addr}', 3, 3600.0):
-        abort(429)
-    username = request.form.get('username', '').strip()
-    users = load_users()
-    udata = users.get(username, {})
-    if udata and not udata.get('email_verified', True) and _smtp_configured():
-        try:
-            _send_verification_email(username, udata.get('email', ''))
-        except Exception:
-            pass
-    flash('If that account is unverified, a new link has been sent to your email.', 'success')
-    return redirect(url_for('login'))
-
-
-@app.route('/api/account/resend-verification', methods=['POST'])
-@login_required
-def resend_verification():
-    username = session['user_id']
-    users    = load_users()
-    udata    = users.get(username, {})
-    if not _rl_check(f'resend_api:{request.remote_addr}', 3, 3600.0):
-        return jsonify({'error': 'Too many requests.'}), 429
-    if udata.get(_UNVERIFIED_FLAG):
-        return jsonify({'error': 'Email already verified.'}), 400
-    if not _smtp_configured():
-        return jsonify({'error': 'Email sending not configured on this server.'}), 503
-    try:
-        _send_verification_email(username, udata.get('email', ''))
-        return jsonify({'ok': True})
-    except Exception as _e:
-        return jsonify({'error': f'Failed to send email: {_e}'}), 500
-
-
 # ============================================
 # OAUTH2 — DISCORD & GOOGLE
 # ============================================
@@ -1285,7 +1196,6 @@ def _get_or_create_oauth_user(provider, provider_id, email, display_name, avatar
         'email':          email,
         'password':       '',    # no password — OAuth only
         'servers':        [],
-        'email_verified': True,  # OAuth provider already verified the email
         id_field:         provider_id,
     }
     if provider == 'discord':
@@ -1619,7 +1529,6 @@ def account_profile():
         'discord_avatar_url':       discord_avatar_url,
         'discord_linked':           bool(user.get('discord_id')),
         'discord_username':         user.get('discord_username', ''),
-        'email_verified':           user.get('email_verified', False),
         'server_count':             len(user.get('servers', [])),
         'session_timeout_minutes':  user.get('session_timeout_minutes', 1),
         'csrf_token':               _csrf_token(),
@@ -1649,8 +1558,6 @@ def api_login():
     user     = users.get(username)
     if not user or not check_password_hash(user.get('password', ''), password):
         return jsonify({'error': 'Invalid username or password'}), 401
-    if not user.get('email_verified', True) and _smtp_configured():
-        return jsonify({'error': 'Email not verified. Check your inbox.', 'unverified': True}), 403
     nonce = secrets.token_hex(16)
     users[username]['session_nonce'] = nonce
     save_users(users)
@@ -1683,15 +1590,10 @@ def api_register():
         return jsonify({'error': 'Username already taken.'}), 409
     users[username] = {
         'email': email, 'password': generate_password_hash(password),
-        'servers': [],
-        'email_verified': False, 'created_at': datetime.now().isoformat(),
+        'servers': [], 'created_at': datetime.now().isoformat(),
     }
     save_users(users)
-    if _smtp_configured():
-        try: _send_verification_email(username, email)
-        except Exception: pass
-        return jsonify({'ok': True, 'verify_email': True})
-    return jsonify({'ok': True, 'verify_email': False})
+    return jsonify({'ok': True})
 
 
 @app.route('/api/auth/forgot-password', methods=['POST'])

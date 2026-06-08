@@ -147,16 +147,6 @@
         </form>
         <div class="link"><a href="{{ url_for('login') }}">Back to login</a></div>
 
-        {% elif unverified_username %}
-        <!-- ── Email not verified ── -->
-        <h1>📧 Verify your email</h1>
-        <p class="subtitle">Your email address is not yet verified. Please check your inbox.</p>
-        <form method="POST" action="{{ url_for('public_resend_verification') }}">
-            <input type="hidden" name="username" value="{{ unverified_username }}">
-            <button type="submit" class="btn-primary">Resend verification email</button>
-        </form>
-        <div class="link"><a href="{{ url_for('login') }}">Back to login</a></div>
-
         {% else %}
         <!-- ── Normal login ── -->
         <h1>🎮 Welcome Back</h1>

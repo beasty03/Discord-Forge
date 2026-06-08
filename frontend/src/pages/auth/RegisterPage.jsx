@@ -39,9 +39,7 @@ export default function RegisterPage({ onDone, goLogin }) {
       const r = await api.register(form.username, form.email, form.password, form.confirm_password);
       if (!r) { setErr("Registration failed."); }
       else if (r.ok) {
-        setOk(r.verify_email
-          ? "Account created! Check your inbox to verify your email before logging in."
-          : "Account created! You can now sign in.");
+        setOk("Account created! You can now sign in.");
       } else { setErr(r.error || "Registration failed."); }
     } catch(e) { setErr(e.message || "Network error."); }
     setBusy(false);

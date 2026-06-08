@@ -1488,7 +1488,6 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
                 <div style={{fontSize:12,color:"var(--t2)",fontFamily:"var(--mono)"}}>{profile?.email||'…'}</div>
                 <div className="df-flex df-gap6" style={{marginTop:6,flexWrap:'wrap'}}>
                   {profile?.discord_linked&&<span className="df-badge df-bc">Discord linked</span>}
-                  {profile?.email_verified===false&&<span className="df-badge df-by">Email unverified</span>}
                 </div>
                 {profile?.discord_linked&&profile?.discord_avatar_url&&(
                   <button className="df-btn df-btn-sm" style={{marginTop:8,fontSize:10}} onClick={useDiscordAvatar}>
