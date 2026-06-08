@@ -1,0 +1,655 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Members — {{ server.server_name }} - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover, .navbar-links a.active { background: #36393f; color: #fff; }
+        
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .user-menu { position: relative; }
+        .user-btn {
+            background: none; border: none; color: #7289da;
+            font-weight: 700; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 6px; transition: background .2s;
+        }
+        .user-btn:hover { background: #36393f; }
+        .user-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #7289da; display: flex; align-items: center;
+            justify-content: center; font-size: 13px; font-weight: 700; color: #fff;
+        }
+        .user-chevron { font-size: 10px; color: #b9bbbe; transition: transform .2s; }
+        .user-btn.open .user-chevron { transform: rotate(180deg); }
+        .user-dropdown {
+            position: absolute; top: calc(100% + 6px); right: 0;
+            background: #2f3136; border-radius: 8px; min-width: 200px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5); border: 1px solid #40444b;
+            opacity: 0; pointer-events: none;
+            transform: translateY(-6px); transition: opacity .15s, transform .15s; z-index: 200;
+        }
+        .user-dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+        .user-dropdown-info { padding: 14px 16px 10px; border-bottom: 1px solid #40444b; }
+        .user-dropdown-info .ud-name { color: #fff; font-weight: 600; font-size: 14px; }
+        .user-dropdown a, .user-dropdown button {
+            display: block; width: 100%; text-align: left;
+            padding: 10px 16px; color: #b9bbbe; text-decoration: none;
+            font-size: 14px; font-weight: 500; background: none; border: none;
+            cursor: pointer; transition: background .15s, color .15s;
+        }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: #36393f; color: #fff; }
+        .ud-logout { color: #f04747 !important; border-top: 1px solid #40444b; margin-top: 4px; }
+        .ud-logout:hover { background: rgba(240,71,71,.1) !important; color: #f04747 !important; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 36px 24px; }
+
+        .page-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 28px; flex-wrap: wrap; gap: 14px;
+        }
+        .page-title { font-size: 24px; font-weight: 700; color: #fff; }
+        .page-subtitle { color: #72767d; font-size: 13px; margin-top: 4px; }
+
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #7289da; text-decoration: none; font-size: 14px; font-weight: 600;
+            margin-bottom: 20px; transition: color .15s;
+        }
+        .back-link:hover { color: #5b6eae; }
+
+        .bot-status {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 12px; font-weight: 600; padding: 4px 10px;
+            border-radius: 20px;
+        }
+        .bot-status.online { background: rgba(67,181,129,.15); color: #43b581; }
+        .bot-status.offline { background: rgba(240,71,71,.15); color: #f04747; }
+        .bot-status-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .bot-status.online .bot-status-dot { background: #43b581; }
+        .bot-status.offline .bot-status-dot { background: #f04747; }
+
+        .stats-row {
+            display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #2f3136; border-radius: 8px; padding: 16px 22px;
+            min-width: 120px; text-align: center;
+        }
+        .stat-num { font-size: 26px; font-weight: 700; color: #7289da; }
+        .stat-label { font-size: 12px; color: #72767d; margin-top: 2px; }
+
+        .controls-row {
+            display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
+        }
+        .search-wrap { position: relative; flex: 1; min-width: 200px; }
+        .search-wrap input {
+            width: 100%; background: #2f3136; border: 1px solid #40444b; border-radius: 5px;
+            padding: 9px 12px 9px 36px; color: #dcddde; font-size: 13px; outline: none;
+        }
+        .search-wrap input:focus { border-color: #7289da; }
+        .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; pointer-events: none; }
+        .filter-select {
+            background: #2f3136; border: 1px solid #40444b; border-radius: 5px;
+            color: #dcddde; padding: 9px 12px; font-size: 13px; outline: none; cursor: pointer;
+        }
+
+        .member-cb { accent-color: #7289da; width: 14px; height: 14px; cursor: pointer; }
+        .bulk-bar {
+            display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+            background: #5865f2; border-radius: 8px; padding: 10px 16px; margin-bottom: 12px;
+        }
+        .bulk-bar.visible { display: flex; }
+        .bulk-count { font-weight: 700; font-size: 14px; color: #fff; white-space: nowrap; }
+        .bulk-select { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: #fff; padding: 6px 11px; border-radius: 5px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .bulk-select option { color: #000; background: #fff; }
+        .bulk-role-row { display: none; align-items: center; gap: 8px; }
+        .bulk-role-row.visible { display: flex; }
+        .bulk-role-sel { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: #fff; padding: 6px 11px; border-radius: 5px; font-size: 13px; cursor: pointer; }
+        .bulk-role-sel option { color: #000; background: #fff; }
+        .bulk-btn { background: #fff; color: #5865f2; border: none; padding: 7px 15px; border-radius: 5px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .bulk-btn:hover { background: #e8e9f0; }
+        .bulk-cancel { background: transparent; color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.4); padding: 6px 12px; border-radius: 5px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+        .bulk-cancel:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+        .members-table { width: 100%; border-collapse: collapse; }
+        .members-table th {
+            text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600;
+            color: #72767d; text-transform: uppercase; letter-spacing: .05em;
+            border-bottom: 1px solid #40444b; background: #2f3136;
+        }
+        .members-table td {
+            padding: 12px 14px; border-bottom: 1px solid #2f3136;
+            font-size: 13px; color: #dcddde;
+        }
+        .members-table tr:hover td { background: #2f3136; }
+
+        .member-avatar {
+            width: 34px; height: 34px; border-radius: 50%; background: #7289da;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0;
+        }
+        .member-name-cell { display: flex; align-items: center; gap: 10px; }
+        .member-username { color: #fff; font-weight: 600; }
+        .member-display { color: #72767d; font-size: 12px; }
+        .member-id { font-family: monospace; font-size: 12px; color: #72767d; }
+
+        .role-tag {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: 600; background: rgba(114,137,218,.2);
+            color: #7289da; margin: 2px;
+        }
+        .bot-badge {
+            display: inline-block; padding: 1px 6px; border-radius: 10px;
+            font-size: 10px; font-weight: 700; background: #5865f2; color: #fff; margin-left: 4px;
+        }
+
+        .action-btn {
+            background: #36393f; border: 1px solid #40444b; color: #b9bbbe;
+            border-radius: 5px; padding: 5px 10px; font-size: 12px; cursor: pointer;
+            transition: background .15s, color .15s;
+        }
+        .action-btn:hover { background: #40444b; color: #fff; }
+        .action-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+        .empty-state {
+            text-align: center; padding: 60px 20px; color: #72767d;
+        }
+        .empty-state h3 { font-size: 18px; margin-bottom: 8px; color: #b9bbbe; }
+        .empty-state p { font-size: 13px; line-height: 1.6; }
+
+        .no-sync-banner {
+            background: #2f3136; border: 1px solid #40444b; border-radius: 8px;
+            padding: 20px 24px; margin-bottom: 24px; display: flex; gap: 16px; align-items: flex-start;
+        }
+        .no-sync-icon { font-size: 28px; flex-shrink: 0; }
+        .no-sync-body h3 { color: #fff; font-size: 15px; margin-bottom: 6px; }
+        .no-sync-body p { color: #b9bbbe; font-size: 13px; line-height: 1.6; }
+        .no-sync-body code {
+            background: #202225; border-radius: 4px; padding: 2px 6px;
+            font-family: monospace; font-size: 12px; color: #43b581;
+        }
+
+        /* Action modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.7); z-index: 500;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #2f3136; border-radius: 10px; padding: 28px 28px 24px;
+            min-width: 360px; max-width: 460px; width: 100%;
+            box-shadow: 0 12px 40px rgba(0,0,0,.6); border: 1px solid #40444b;
+        }
+        .modal h3 { color: #fff; font-size: 17px; margin-bottom: 4px; }
+        .modal .modal-sub { color: #72767d; font-size: 12px; margin-bottom: 20px; }
+        .modal label { display: block; color: #b9bbbe; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+        .modal select, .modal input[type=text] {
+            width: 100%; background: #202225; border: 1px solid #40444b; border-radius: 5px;
+            color: #dcddde; padding: 9px 12px; font-size: 13px; outline: none; margin-bottom: 14px;
+        }
+        .modal select:focus, .modal input:focus { border-color: #7289da; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+        .btn { padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+        .btn-cancel { background: #40444b; color: #b9bbbe; }
+        .btn-cancel:hover { background: #4f545c; color: #fff; }
+        .btn-primary { background: #7289da; color: #fff; }
+        .btn-primary:hover { background: #5b6eae; }
+        .btn-danger { background: #f04747; color: #fff; }
+        .btn-danger:hover { background: #d44040; }
+        .role-row { display: none; }
+        .role-row.visible { display: block; }
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+            background: #2f3136; border: 1px solid #40444b; border-radius: 8px;
+            padding: 12px 18px; font-size: 13px; color: #dcddde;
+            box-shadow: 0 6px 24px rgba(0,0,0,.5);
+            transform: translateY(20px); opacity: 0;
+            transition: opacity .2s, transform .2s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-color: #43b581; color: #43b581; }
+        .toast.error   { border-color: #f04747; color: #f04747; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-left">
+        <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+        <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+        <div class="navbar-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('servers_page') }}" class="active">Servers</a>
+            <a href="{{ url_for('bots_page') }}">Bots</a>
+            <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+        </div>
+    </div>
+    <div class="user-menu">
+        <button class="user-btn" id="userNavBtn">
+            <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+            {{ username }}
+            <span class="user-chevron">▼</span>
+        </button>
+        <div class="user-dropdown" id="userNavDropdown">
+            <div class="user-dropdown-info">
+                <div class="ud-name">{{ username }}</div>
+            </div>
+            <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+            <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+            <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+
+    <a class="back-link" href="{{ url_for('servers_page') }}">← Back to Servers</a>
+
+    <div class="page-header">
+        <div>
+            <div class="page-title">👥 Members — {{ server.server_name }}</div>
+            <div class="page-subtitle">Guild ID: {{ server.guild_id }}</div>
+        </div>
+        <div>
+            {% if local_bot_online %}
+            <span class="bot-status online"><span class="bot-status-dot"></span> Bot online</span>
+            {% else %}
+            <span class="bot-status offline"><span class="bot-status-dot"></span> Bot offline</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not members %}
+    <div class="no-sync-banner">
+        <div class="no-sync-icon">🔌</div>
+        <div class="no-sync-body">
+            <h3>No member data yet</h3>
+            <p>
+                Member data is synced automatically by the local bot's <code>member_sync</code> cog.
+                Download the bot package from the <a href="{{ url_for('bots_page') }}" style="color:#7289da;">Bots page</a>,
+                start it, and member data will appear here within a minute.
+            </p>
+        </div>
+    </div>
+    {% else %}
+
+    {% set human_members = members | selectattr('bot', 'equalto', false) | list %}
+    {% set bot_members   = members | selectattr('bot', 'equalto', true)  | list %}
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-num">{{ members | length }}</div>
+            <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ human_members | length }}</div>
+            <div class="stat-label">Humans</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ bot_members | length }}</div>
+            <div class="stat-label">Bots</div>
+        </div>
+    </div>
+
+    <div class="controls-row">
+        <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search by name or ID…" oninput="filterMembers()">
+        </div>
+        <select class="filter-select" id="roleFilter" onchange="filterMembers()">
+            <option value="">All roles</option>
+            {% set all_roles = [] %}
+            {% for m in members %}
+                {% for r in m.roles %}
+                    {% if r not in all_roles %}{% set _ = all_roles.append(r) %}{% endif %}
+                {% endfor %}
+            {% endfor %}
+            {% for r in all_roles | sort %}
+            <option value="{{ r }}">{{ r }}</option>
+            {% endfor %}
+        </select>
+        <select class="filter-select" id="typeFilter" onchange="filterMembers()">
+            <option value="">Humans &amp; Bots</option>
+            <option value="human">Humans only</option>
+            <option value="bot">Bots only</option>
+        </select>
+    </div>
+
+    <!-- Bulk action bar -->
+    <div class="bulk-bar" id="bulkBar">
+        <span class="bulk-count" id="bulkCount">0 selected</span>
+        <select class="bulk-select" id="bulkAction" onchange="onBulkActionChange()">
+            <option value="">— Action —</option>
+            <option value="assign_role">Assign Role</option>
+            <option value="remove_role">Remove Role</option>
+            <option value="kick">Kick</option>
+            <option value="ban">Ban</option>
+        </select>
+        <div class="bulk-role-row" id="bulkRoleRow">
+            <select class="bulk-role-sel" id="bulkRole">
+                <option value="">— Role —</option>
+                {% for r in role_names %}
+                <option value="{{ r }}">{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="bulk-btn" onclick="executeBulkAction()">Queue All</button>
+        <button class="bulk-cancel" onclick="clearBulkSelection()">✕ Clear</button>
+    </div>
+
+    <div id="memberCount" style="font-size:12px;color:#72767d;margin-bottom:10px;">
+        {{ members | length }} member{{ 's' if members | length != 1 else '' }}
+    </div>
+
+    <table class="members-table" id="membersTable">
+        <thead>
+            <tr>
+                <th style="width:36px;"><input type="checkbox" class="member-cb" id="selectAll" onchange="toggleSelectAll(this)"></th>
+                <th>Member</th>
+                <th>ID</th>
+                <th>Roles</th>
+                <th>Joined</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="membersBody">
+            {% for m in members %}
+            <tr data-username="{{ m.username | lower }}" data-id="{{ m.discord_id }}"
+                data-display="{{ (m.display_name or '') | lower }}"
+                data-roles="{{ m.roles | join(' ') | lower }}" data-bot="{{ 'true' if m.bot else 'false' }}">
+                <td><input type="checkbox" class="member-cb row-cb" data-uid="{{ m.discord_id }}" onchange="updateBulkBar()"></td>
+                <td>
+                    <div class="member-name-cell">
+                        <div class="member-avatar">{{ m.display_name[0] | upper if m.display_name else '?' }}</div>
+                        <div>
+                            <div class="member-username">
+                                {{ m.username }}
+                                {% if m.bot %}<span class="bot-badge">BOT</span>{% endif %}
+                            </div>
+                            {% if m.display_name and m.display_name != m.username %}
+                            <div class="member-display">{{ m.display_name }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td><span class="member-id">{{ m.discord_id }}</span></td>
+                <td>
+                    {% for r in m.roles %}
+                    <span class="role-tag">{{ r }}</span>
+                    {% endfor %}
+                </td>
+                <td>{{ m.joined_at[:10] if m.joined_at else '—' }}</td>
+                <td>
+                    <button class="action-btn" {% if not local_bot_online %}disabled title="Local bot is offline"{% endif %}
+                        onclick="openActionModal('{{ m.discord_id }}', '{{ m.username | replace("'", "\\'") }}')">
+                        ⚙ Actions
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% endif %}
+</div>
+
+<!-- Action modal -->
+<div class="modal-overlay" id="actionModal">
+    <div class="modal">
+        <h3>Member Actions</h3>
+        <div class="modal-sub" id="actionModalSub"></div>
+
+        <label for="actionType">Action</label>
+        <select id="actionType" onchange="onActionTypeChange()">
+            <option value="">— Select action —</option>
+            <option value="assign_role">Assign Role</option>
+            <option value="remove_role">Remove Role</option>
+            <option value="kick">Kick</option>
+            <option value="ban">Ban</option>
+        </select>
+
+        <div class="role-row" id="roleRow">
+            <label for="actionRole">Role</label>
+            <select id="actionRole">
+                <option value="">— Select role —</option>
+                {% for r in role_names %}
+                <option value="{{ r }}">{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <label for="actionReason">Reason (optional)</label>
+        <input type="text" id="actionReason" placeholder="e.g. Violating server rules">
+
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeActionModal()">Cancel</button>
+            <button class="btn btn-primary" id="actionSubmitBtn" onclick="submitAction()">Queue Action</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const SERVER_ID       = {{ server.server_id | tojson }};
+    const local_bot_online = {{ 'true' if local_bot_online else 'false' }};
+    let _actionUserId = '';
+
+    function toggleSelectAll(cb) {
+        document.querySelectorAll('#membersBody .row-cb').forEach(c => {
+            if (c.closest('tr').style.display !== 'none') c.checked = cb.checked;
+        });
+        updateBulkBar();
+    }
+
+    function updateBulkBar() {
+        const checked = document.querySelectorAll('#membersBody .row-cb:checked');
+        const bar = document.getElementById('bulkBar');
+        document.getElementById('bulkCount').textContent = `${checked.length} selected`;
+        bar.classList.toggle('visible', checked.length > 0);
+        const all = document.querySelectorAll('#membersBody .row-cb');
+        document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
+    }
+
+    function onBulkActionChange() {
+        const v = document.getElementById('bulkAction').value;
+        document.getElementById('bulkRoleRow').classList.toggle('visible',
+            v === 'assign_role' || v === 'remove_role');
+    }
+
+    function clearBulkSelection() {
+        document.querySelectorAll('#membersBody .row-cb, #selectAll').forEach(c => c.checked = false);
+        updateBulkBar();
+    }
+
+    async function executeBulkAction() {
+        const action = document.getElementById('bulkAction').value;
+        if (!action) { showToast('Select an action.', 'error'); return; }
+        if (!local_bot_online) { showToast('Bot is offline.', 'error'); return; }
+        const role = document.getElementById('bulkRole').value;
+        if ((action === 'assign_role' || action === 'remove_role') && !role) {
+            showToast('Select a role.', 'error'); return;
+        }
+        const uids = [...document.querySelectorAll('#membersBody .row-cb:checked')].map(c => c.dataset.uid);
+        if (!uids.length) return;
+        if (!confirm(`Queue "${action}" for ${uids.length} member${uids.length > 1 ? 's' : ''}?`)) return;
+        let ok = 0, fail = 0;
+        for (const uid of uids) {
+            try {
+                const r = await fetch(`/api/members/${SERVER_ID}/action`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({type: action, user_id: uid, role_name: role, reason: 'Bulk action via dashboard'}),
+                });
+                const d = await r.json();
+                d.ok ? ok++ : fail++;
+            } catch { fail++; }
+        }
+        clearBulkSelection();
+        showToast(`Queued ${ok} command${ok !== 1 ? 's' : ''}${fail ? `, ${fail} failed` : ''}.`, ok ? 'success' : 'error');
+    }
+
+    function filterMembers() {
+        const q     = document.getElementById('searchInput').value.toLowerCase();
+        const role  = document.getElementById('roleFilter').value.toLowerCase();
+        const type  = document.getElementById('typeFilter').value;
+        let shown = 0, total = 0;
+        document.querySelectorAll('#membersBody tr').forEach(row => {
+            total++;
+            const matchQ    = !q    || row.dataset.username.includes(q) ||
+                              row.dataset.id.includes(q) || (row.dataset.display || '').includes(q);
+            const matchRole = !role || row.dataset.roles.includes(role);
+            const matchType = !type ||
+                (type === 'human' && row.dataset.bot === 'false') ||
+                (type === 'bot'   && row.dataset.bot === 'true');
+            const vis = matchQ && matchRole && matchType;
+            row.style.display = vis ? '' : 'none';
+            if (vis) shown++;
+        });
+        const el = document.getElementById('memberCount');
+        if (el) el.textContent = shown === total
+            ? `${total} member${total !== 1 ? 's' : ''}`
+            : `${shown} of ${total} member${total !== 1 ? 's' : ''} shown`;
+    }
+
+    function openActionModal(userId, username) {
+        _actionUserId = userId;
+        document.getElementById('actionModalSub').textContent = username + ' (' + userId + ')';
+        document.getElementById('actionType').value = '';
+        document.getElementById('actionRole').value = '';
+        document.getElementById('actionReason').value = '';
+        document.getElementById('roleRow').classList.remove('visible');
+        const btn = document.getElementById('actionSubmitBtn');
+        btn.className = 'btn btn-primary';
+        btn.textContent = 'Queue Action';
+        document.getElementById('actionModal').classList.add('open');
+    }
+
+    function closeActionModal() {
+        document.getElementById('actionModal').classList.remove('open');
+    }
+
+    function onActionTypeChange() {
+        const v = document.getElementById('actionType').value;
+        const roleRow = document.getElementById('roleRow');
+        roleRow.classList.toggle('visible', v === 'assign_role' || v === 'remove_role');
+        const btn = document.getElementById('actionSubmitBtn');
+        if (v === 'kick' || v === 'ban') {
+            btn.className = 'btn btn-danger';
+            btn.textContent = v === 'kick' ? 'Queue Kick' : 'Queue Ban';
+        } else {
+            btn.className = 'btn btn-primary';
+            btn.textContent = 'Queue Action';
+        }
+    }
+
+    async function submitAction() {
+        const type   = document.getElementById('actionType').value;
+        const role   = document.getElementById('actionRole').value;
+        const reason = document.getElementById('actionReason').value.trim();
+        if (!type) { showToast('Select an action first.', 'error'); return; }
+        if ((type === 'assign_role' || type === 'remove_role') && !role) {
+            showToast('Select a role.', 'error'); return;
+        }
+        const btn = document.getElementById('actionSubmitBtn');
+        btn.disabled = true;
+        try {
+            const resp = await fetch('/api/members/' + SERVER_ID + '/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, user_id: _actionUserId, role_name: role, reason }),
+            });
+            const data = await resp.json();
+            if (resp.ok && data.ok) {
+                showToast('Action queued — bot will execute it within 30 s.', 'success');
+                closeActionModal();
+            } else {
+                showToast(data.error || 'Error queuing action.', 'error');
+            }
+        } catch (e) {
+            showToast('Network error.', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast ' + (type || '');
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    document.getElementById('actionModal').addEventListener('click', function(e) {
+        if (e.target === this) closeActionModal();
+    });
+</script>
+<script>
+(function() {
+    var btn = document.getElementById('userNavBtn');
+    var dd  = document.getElementById('userNavDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        btn.classList.toggle('open');
+        dd.classList.toggle('open');
+    });
+    document.addEventListener('click', function() {
+        btn.classList.remove('open');
+        dd.classList.remove('open');
+    });
+    var hb = document.getElementById("navHamburger");
+    var nl = document.querySelector(".navbar-links");
+    if (hb && nl) {
+        hb.addEventListener("click", function(e) { e.stopPropagation(); nl.classList.toggle("mobile-open"); });
+        document.addEventListener("click", function() { nl.classList.remove("mobile-open"); });
+    }
+})();
+</script>
+
+    {% include 'footer.html' %}
+</body>
+</html>

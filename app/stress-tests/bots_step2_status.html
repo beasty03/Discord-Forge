@@ -1,0 +1,274 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bots Step 2 — Instance Status</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:12px;font-size:.95rem}
+  .btn{background:#238636;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#2ea043}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .btn-sm{padding:5px 12px;font-size:.78rem;border-radius:5px}
+  .btn-row{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-next{background:#1f6feb;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-next:hover{background:#388bfd}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  .bot-card{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px;margin-bottom:10px}
+  .bot-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .bot-name{font-weight:600;color:#f0f6fc;font-size:.95rem}
+  .status-pill{font-size:.72rem;font-weight:700;padding:2px 9px;border-radius:10px;text-transform:uppercase}
+  .pill-running{background:#1a3d26;color:#56d364}
+  .pill-stopped{background:#21262d;color:#8b949e}
+  .pill-starting{background:#1f3a5f;color:#58a6ff}
+  .pill-error{background:#3d1f1f;color:#f85149}
+  .pill-unknown{background:#21262d;color:#8b949e}
+  .bot-meta{font-size:.78rem;color:#8b949e;display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+  .log-box{background:#161b22;border:1px solid #21262d;border-radius:6px;padding:8px;font-size:.73rem;font-family:monospace;color:#8b949e;white-space:pre-wrap;max-height:120px;overflow:auto}
+  .refresh-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .auto-badge{font-size:.73rem;padding:2px 8px;border-radius:10px;background:#1f3a5f;color:#58a6ff}
+  .empty-state{text-align:center;padding:32px;color:#484f58;font-size:.9rem}
+  .warn-box{background:#3d2a1f;border:1px solid #e3b341;border-radius:8px;padding:12px 16px;font-size:.82rem;color:#8b949e;margin-bottom:16px}
+  .warn-box strong{color:#e3b341}
+  .summary-bar{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+  .sbox{background:#21262d;border-radius:8px;padding:10px 16px;text-align:center;min-width:80px}
+  .sbox-num{font-size:1.4rem;font-weight:700}
+  .sbox-lbl{font-size:.73rem;color:#8b949e;margin-top:2px}
+  #refresh-timer{font-size:.78rem;color:#8b949e}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><span>Bots</span><span class="nav-sep">/</span><span>Step 2 — Instance Status</span></div>
+<h1>Bots Step 2 &mdash; Bot Instance Status</h1>
+<p class="sub">Fetch all discovered bot instances from the Bot Manager, show their status, config and recent logs.</p>
+
+<div class="warn-box"><strong>Note:</strong> Bots started via the webapp are managed by Flask directly. This page checks <code>/api/bots/list</code> on port 5000 — no separate bot manager needed.</div>
+
+<div class="summary-bar">
+  <div class="sbox"><div class="sbox-num" id="s-total">—</div><div class="sbox-lbl">Total</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-running" style="color:#56d364">0</div><div class="sbox-lbl">Running</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-stopped" style="color:#8b949e">0</div><div class="sbox-lbl">Stopped</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-error" style="color:#f85149">0</div><div class="sbox-lbl">Error</div></div>
+</div>
+
+<div class="btn-row">
+  <button class="btn" id="fetchBtn" onclick="fetchStatus()">Fetch Status</button>
+  <button class="btn" style="background:#21262d;color:#c9d1d9" id="autoBtn" onclick="toggleAuto()">Auto-refresh OFF</button>
+  <span id="refresh-timer"></span>
+</div>
+
+<div id="bot-list">
+  <div class="empty-state">Click "Fetch Status" to load bot instances.</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Per-Bot Log Fetch</div>
+  <div style="font-size:.83rem;color:#8b949e;margin-bottom:10px">Enter a bot name (as shown above). Tries Flask logs first, then bot_manager logs.</div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <input type="text" id="logBotName" placeholder="Bot name e.g. MyBot" style="background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.83rem;outline:none;width:220px">
+    <button class="btn btn-sm" onclick="fetchLogs()">Fetch Logs</button>
+  </div>
+  <div class="log-box" id="log-out" style="max-height:200px">(no logs yet)</div>
+</div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="bots_step1_manager.html">&larr; Back: Manager Health</a>
+  <a class="btn-next" href="bots_step3_load.html">Next: Load Test &rarr;</a>
+</div>
+
+<script>
+// Bots started via webapp → Flask :5000 /api/bots/list
+// Bots started via bot_manager_direct.py → :5001 /api/status
+const FLASK='http://127.0.0.1:5000';
+const BOTMGR='http://127.0.0.1:5001';
+let autoInterval=null;
+
+function autoLogIssue(title, description, code, url, sev) {
+  const issues = JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  if(issues.find(i=>i.title===title&&i.url===url&&(Date.now()-new Date(i.created).getTime())<300000)) return;
+  issues.unshift({id:Date.now()+Math.random(),title,severity:sev||'medium',area:'bots-status',description,steps:'',code:String(code||''),url:url||'',created:new Date().toISOString(),auto:true});
+  localStorage.setItem('stress_test_issues',JSON.stringify(issues));
+}
+
+function pillClass(status){
+  const map={running:'pill-running',stopped:'pill-stopped',starting:'pill-starting',error:'pill-error'};
+  return map[status]||'pill-unknown';
+}
+
+function updSummary(bots){
+  const running=bots.filter(b=>b.running||b.status==='running').length;
+  const stopped=bots.filter(b=>!b.running&&b.status!=='error').length;
+  const error=bots.filter(b=>b.status==='error').length;
+  document.getElementById('s-total').textContent=bots.length;
+  document.getElementById('s-running').textContent=running;
+  document.getElementById('s-stopped').textContent=stopped;
+  document.getElementById('s-error').textContent=error;
+}
+
+async function fetchStatus(){
+  document.getElementById('fetchBtn').disabled=true;
+  const list=document.getElementById('bot-list');
+  list.innerHTML='<div class="empty-state">Fetching…</div>';
+
+  // ── Collect from both sources ──
+  let flaskBots=[], mgrtBots=[], notices=[];
+
+  // Source 1: Flask webapp bots
+  try{
+    const r=await fetch(FLASK+'/api/bots/list',{redirect:'manual',signal:AbortSignal.timeout(5000)});
+    if(r.type==='opaqueredirect'||r.status===302||r.status===303||r.status===401){
+      notices.push(`<div style="font-size:.83rem;color:#e3b341;padding:6px 0">Webapp: Please log in first &nbsp;<a href="${FLASK}/login?next=${encodeURIComponent(window.location.pathname)}" style="background:#238636;color:#fff;border-radius:7px;padding:6px 14px;font-size:.8rem;font-weight:600;text-decoration:none;display:inline-block;">Log in</a> &nbsp;<button onclick="fetchStatus()" style="background:#21262d;color:#c9d1d9;border:none;border-radius:6px;padding:5px 10px;font-size:.8rem;font-weight:600;cursor:pointer;">↻ Refresh</button></div>`);
+    } else if(r.ok){
+      let data; try{ data=await r.json(); }catch(e){ data=null; }
+      if(data){
+        const raw=data.bots||data||[];
+        flaskBots=Array.isArray(raw)?raw:Object.values(raw);
+      }
+    }
+  }catch(e){
+    notices.push(`<div style="font-size:.83rem;color:#f85149;padding:6px 0">Flask (:5000) unreachable: ${escHtml(e.message)}</div>`);
+  }
+
+  // Source 2: bot_manager_direct.py
+  try{
+    const r=await fetch(BOTMGR+'/api/status',{signal:AbortSignal.timeout(3000)});
+    if(r.ok){ const d=await r.json(); mgrtBots=d.bots||[]; }
+  }catch(e){
+    // optional — silent
+  }
+
+  // ── Merge by bot name (case-insensitive) ──
+  // A bot runs either locally (botmgr) OR in the cloud (webapp), never both.
+  // If the same name appears in both, the running one wins; show a warning.
+  const merged=new Map(); // name.lower → entry
+
+  flaskBots.forEach(b=>{
+    const key=(b.name||b.bot_name||'unnamed').toLowerCase();
+    const running=b.running||b.status==='running';
+    merged.set(key,{
+      name:b.name||b.bot_name||'unnamed',
+      status:running?'running':(b.status||'stopped'),
+      source:'webapp',
+      meta:`Server: <code>${escHtml(b.server_id||'—')}</code> &nbsp; Mode: ${escHtml(b.run_mode||'—')}`,
+      conflict:false
+    });
+  });
+
+  mgrtBots.forEach(b=>{
+    const key=(b.name||'unnamed').toLowerCase();
+    const existing=merged.get(key);
+    if(existing){
+      // Same bot in both systems — flag it, keep the running one
+      const mgrtRunning=b.status==='running';
+      const flaskRunning=existing.status==='running';
+      existing.conflict=true;
+      if(mgrtRunning&&!flaskRunning){
+        existing.status=b.status;
+        existing.source='botmgr';
+        existing.meta=`Config: <code>${escHtml(b.config||'—')}</code> &nbsp; Uptime: ${escHtml(b.uptime||'—')}`;
+      }
+      // else keep flask entry but mark conflict
+    } else {
+      merged.set(key,{
+        name:b.name||'unnamed',
+        status:b.status||'unknown',
+        source:'botmgr',
+        meta:`Config: <code>${escHtml(b.config||'—')}</code> &nbsp; Uptime: ${escHtml(b.uptime||'—')}`,
+        conflict:false
+      });
+    }
+  });
+
+  // ── Auto-log error state bots ──
+  merged.forEach(b=>{
+    if(b.status==='error') autoLogIssue(`Bot "${b.name}" — error state`,`Bot in error state (source: ${b.source})`,'BOT_ERROR',b.source==='webapp'?'/api/bots/list':'/api/status','high');
+  });
+
+  // ── Render ──
+  const entries=[...merged.values()];
+  const html=[];
+
+  if(notices.length) html.push(notices.join(''));
+
+  if(entries.length===0){
+    html.push(`<div class="empty-state">No bots found in either system.</div>`);
+  } else {
+    html.push(entries.map(b=>{
+      const sourceLabel=b.source==='webapp'?'cloud / webapp':'local / botmgr';
+      const sourceColor=b.source==='webapp'?'#58a6ff':'#56d364';
+      const conflictBadge=b.conflict
+        ?`<span style="font-size:.7rem;background:#3d2a1f;color:#e3b341;border-radius:10px;padding:2px 8px;margin-left:6px">⚠ registered in both systems</span>`:'';
+      return `<div class="bot-card">
+        <div class="bot-header">
+          <span class="bot-name">${escHtml(b.name)}</span>
+          <span class="status-pill ${pillClass(b.status)}">${b.status}</span>
+          <span style="font-size:.72rem;color:${sourceColor};margin-left:6px">${sourceLabel}</span>
+          ${conflictBadge}
+        </div>
+        <div class="bot-meta">${b.meta}</div>
+      </div>`;
+    }).join(''));
+  }
+
+  list.innerHTML=html.join('');
+  updSummary(entries.map(b=>({status:b.status,running:b.status==='running'})));
+  document.getElementById('fetchBtn').disabled=false;
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function fetchLogs(){
+  const name=document.getElementById('logBotName').value.trim();
+  if(!name){alert('Enter a bot name.');return;}
+  const out=document.getElementById('log-out');
+  out.textContent='Fetching…';
+  // Try flask logs first
+  try{
+    const r=await fetch(`${FLASK}/api/local-bot/logs/${encodeURIComponent(name)}/_`,{signal:AbortSignal.timeout(5000)});
+    if(r.ok){const d=await r.json();out.textContent=(d.logs||[]).slice(-50).join('\n')||'(empty)';return;}
+  }catch(e){}
+  // Fall back to bot manager
+  try{
+    const r=await fetch(`${BOTMGR}/api/bot/${encodeURIComponent(name)}/log`,{signal:AbortSignal.timeout(5000)});
+    if(r.ok){const d=await r.json();out.textContent=(d.logs||[]).slice(-50).join('\n')||'(empty)';return;}
+    out.textContent='Bot not found in either system.';
+  }catch(e){out.textContent='Error: '+e.message;}
+}
+
+let autoOn=false;
+function toggleAuto(){
+  autoOn=!autoOn;
+  const btn=document.getElementById('autoBtn');
+  const timer=document.getElementById('refresh-timer');
+  if(autoOn){
+    btn.textContent='Auto-refresh ON';
+    btn.style.background='#388bfd';
+    let c=5;
+    timer.textContent=`Next refresh in ${c}s`;
+    autoInterval=setInterval(()=>{
+      c--;
+      if(c<=0){fetchStatus();c=5;}
+      timer.textContent=`Next refresh in ${c}s`;
+    },1000);
+    fetchStatus();
+  } else {
+    clearInterval(autoInterval);
+    autoInterval=null;
+    btn.textContent='Auto-refresh OFF';
+    btn.style.background='#21262d';
+    timer.textContent='';
+  }
+}
+</script>
+</body>
+</html>

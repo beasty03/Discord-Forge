@@ -1,0 +1,113 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Invite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: #2f3136; border-radius: 12px; padding: 40px 36px;
+            max-width: 460px; width: 100%; text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5);
+        }
+        .icon { font-size: 56px; margin-bottom: 16px; }
+        h1 { color: #7289da; font-size: 1.5em; margin-bottom: 8px; }
+        .server-name { color: #fff; font-size: 1.2em; font-weight: 700; margin-bottom: 20px; }
+        .invited-by { color: #72767d; font-size: 13px; margin-bottom: 24px; }
+        .perms-box {
+            background: #36393f; border-radius: 8px; padding: 16px;
+            margin-bottom: 28px; text-align: left;
+        }
+        .perms-box h3 { color: #b9bbbe; font-size: 12px; text-transform: uppercase;
+            letter-spacing: .8px; margin-bottom: 12px; }
+        .perm-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 6px 0; font-size: 14px; color: #fff;
+        }
+        .perm-dot { width: 8px; height: 8px; border-radius: 50%; background: #43b581; flex-shrink: 0; }
+        .btn {
+            display: block; width: 100%; padding: 14px;
+            border-radius: 6px; border: none; font-size: 15px; font-weight: 700;
+            cursor: pointer; margin-bottom: 10px; transition: background .2s;
+        }
+        .btn-accept { background: #43b581; color: #fff; }
+        .btn-accept:hover { background: #3ca374; }
+        .btn-decline { background: transparent; color: #72767d; border: 1px solid #40444b; }
+        .btn-decline:hover { background: #40444b; color: #fff; }
+        .user-chip {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #36393f; padding: 6px 12px; border-radius: 20px;
+            font-size: 13px; margin-bottom: 20px;
+        }
+        .user-avatar {
+            width: 24px; height: 24px; border-radius: 50%; background: #7289da;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700;
+        }
+
+        {% set perm_labels = {
+            'view_server': 'View server configuration',
+            'edit_server': 'Edit server configuration',
+            'view_bots':   'View bots',
+            'edit_bots':   'Manage bots (add, remove, start, stop)'
+        } %}
+    /* ── Light theme overrides ── */
+    [data-theme="light"] body{background:#f2f3f5;color:#060607;}
+    [data-theme="light"] .card{background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.1);}
+    [data-theme="light"] h1{color:#5865f2;}
+    [data-theme="light"] .server-name{color:#060607;}
+    [data-theme="light"] .perms-box{background:#f2f3f5;}
+    [data-theme="light"] .perms-box h3{color:#80848e;}
+    [data-theme="light"] .perm-item{color:#060607;}
+    [data-theme="light"] .user-chip{background:#e3e5e8;color:#060607;}
+    [data-theme="light"] .btn-decline{border-color:#c7ccd1;color:#80848e;}
+    [data-theme="light"] .btn-decline:hover{background:#e3e5e8;color:#060607;}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">🎮</div>
+        <h1>You've been invited!</h1>
+        <div class="server-name">{{ invite.server_name }}</div>
+
+        <div class="user-chip">
+            <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+            Joining as <strong>{{ username }}</strong>
+        </div>
+
+        <div class="invited-by">Invited by <strong style="color:#b9bbbe;">{{ invite.created_by }}</strong></div>
+
+        <div class="perms-box">
+            <h3>You will be able to</h3>
+            {% set perm_labels = {
+                'view_server': '👁️ View server configuration',
+                'edit_server': '✏️ Edit server configuration',
+                'view_bots':   '🤖 View bots',
+                'edit_bots':   '⚙️ Manage bots (add, remove, start, stop)'
+            } %}
+            {% for perm in invite.permissions %}
+                <div class="perm-item">
+                    <div class="perm-dot"></div>
+                    {{ perm_labels.get(perm, perm) }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <form method="POST">
+            <button type="submit" class="btn btn-accept">✅ Accept Invite</button>
+        </form>
+        <a href="{{ url_for('dashboard') }}">
+            <button class="btn btn-decline">Decline</button>
+        </a>
+    </div>
+
+    {% include 'footer.html' %}
+</body>
+</html>

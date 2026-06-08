@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moderation Inspector</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:14px;font-size:.95rem}
+  .btn{background:#6e40c9;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#a371f7}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  .server-selector{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  select{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.85rem;outline:none;min-width:200px}
+  select:focus{border-color:#a371f7}
+  .empty-state{text-align:center;padding:32px;color:#484f58;font-size:.9rem}
+  .ok{color:#56d364;font-weight:700}
+  .warn{color:#e3b341;font-weight:700}
+  .fail{color:#f85149;font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:.83rem}
+  th{text-align:left;padding:7px 10px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d;font-size:.75rem;text-transform:uppercase}
+  td{padding:7px 10px;border-bottom:1px solid #21262d;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .summary-bar{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .sbox{background:#21262d;border-radius:8px;padding:10px 16px;text-align:center;min-width:80px}
+  .sbox-num{font-size:1.4rem;font-weight:700}
+  .sbox-lbl{font-size:.73rem;color:#8b949e;margin-top:2px}
+  .pill{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:8px;margin:2px}
+  .pill-green{background:#1a3d26;color:#56d364}
+  .pill-blue{background:#1f3a5f;color:#58a6ff}
+  .pill-yellow{background:#3d2a0e;color:#e3b341}
+  .pill-red{background:#3d1f1f;color:#f85149}
+  .pill-gray{background:#21262d;color:#8b949e}
+  .section-label{font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8b949e;margin-bottom:8px}
+  .kv-row{display:flex;gap:12px;align-items:baseline;margin-bottom:6px;font-size:.85rem}
+  .kv-key{color:#8b949e;min-width:180px;flex-shrink:0}
+  .kv-val{color:#f0f6fc}
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span>
+  <a href="func_index.html">Function Tests</a><span class="nav-sep">/</span>
+  <span>Moderation</span>
+</div>
+<h1>Moderation Inspector</h1>
+<p class="sub">Check AutoMod rules, verification level, content filter, and other moderation settings for a live Discord server.</p>
+
+<div class="server-selector">
+  <label style="font-size:.85rem;color:#8b949e">Server:</label>
+  <select id="serverSelect" onchange="saveServer()"><option value="">— select —</option></select>
+  <button class="btn" id="runBtn" onclick="runCheck()">Inspect</button>
+</div>
+
+<div id="output"><div class="empty-state">Select a server and click "Inspect".</div></div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="func_step8_roles.html">&larr; Back: Roles</a>
+</div>
+
+<script>
+const F = 'http://127.0.0.1:5000';
+
+async function loadServers() {
+  const sel = document.getElementById('serverSelect');
+  try {
+    const r = await fetch(F + '/api/servers/list', { redirect: 'manual', signal: AbortSignal.timeout(5000) });
+    if (r.type === 'opaqueredirect' || [302, 303, 401].includes(r.status)) {
+      sel.innerHTML = '<option value="">— Please log in first —</option>';
+      if (!document.getElementById('_loginBtn')) {
+        const a = document.createElement('a');
+        a.id = '_loginBtn'; a.href = F + '/login?next=' + encodeURIComponent(window.location.pathname); a.textContent = 'Log in';
+        a.style.cssText = 'margin-left:8px;background:#238636;color:#fff;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;text-decoration:none;display:inline-block;';
+        sel.parentNode.insertBefore(a, sel.nextSibling);
+        const b = document.createElement('button');
+        b.id = '_refreshBtn'; b.textContent = '↻ Refresh'; b.onclick = loadServers;
+        b.style.cssText = 'margin-left:8px;background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 14px;font-size:.875rem;font-weight:600;cursor:pointer;';
+        a.parentNode.insertBefore(b, a.nextSibling);
+      }
+      return;
+    }
+    const data = await r.json();
+    const servers = data.servers || data || [];
+    sel.innerHTML = '<option value="">— select —</option>';
+    servers.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.server_id || s.id || s.name;
+      opt.textContent = s.server_name || s.name || (s.server_id || s.id);
+      sel.appendChild(opt);
+    });
+    const saved = localStorage.getItem('func_test_server_id');
+    if (saved) for (let i = 0; i < sel.options.length; i++) if (sel.options[i].value === saved) { sel.selectedIndex = i; break; }
+  } catch (e) { sel.innerHTML = '<option value="">— Flask unreachable —</option>'; }
+}
+
+function saveServer() {
+  const v = document.getElementById('serverSelect').value;
+  if (v) localStorage.setItem('func_test_server_id', v);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function verLabel(v) {
+  const m = { none: 'None', low: 'Low — verified email', medium: 'Medium — 5 min', high: 'High — 10 min', highest: 'Highest — phone' };
+  return m[v] || v || '—';
+}
+function filterLabel(f) {
+  const m = { disabled: 'Disabled', members_without_roles: 'Members without roles', all_members: 'All members' };
+  return m[f] || f || '—';
+}
+function notifLabel(n) {
+  const m = { all_messages: 'All messages', only_mentions: 'Only @mentions' };
+  return m[n] || n || '—';
+}
+function amTriggerLabel(t) {
+  const m = { 1: 'Keyword', 3: 'Spam', 4: 'Keyword Preset', 5: 'Mention Spam', 6: 'Member Profile' };
+  return m[t] || 'Type ' + t;
+}
+function amActionLabel(a) {
+  const m = { 1: 'Block message', 2: 'Send alert', 3: 'Timeout member' };
+  return m[a] || 'Action ' + a;
+}
+
+// ── Main check ────────────────────────────────────────────────────────────────
+async function runCheck() {
+  const sid = document.getElementById('serverSelect').value;
+  if (!sid) { alert('Select a server first.'); return; }
+  const btn = document.getElementById('runBtn');
+  const out = document.getElementById('output');
+  btn.disabled = true;
+  out.innerHTML = '<div class="empty-state">Fetching moderation data…</div>';
+
+  try {
+    // Fetch guild info + automod in parallel
+    const [guildRes, automodRes] = await Promise.all([
+      fetch(`${F}/api/func-test/guild/${encodeURIComponent(sid)}`, { redirect: 'manual', signal: AbortSignal.timeout(12000) }),
+      fetch(`${F}/api/func-test/automod/${encodeURIComponent(sid)}`, { redirect: 'manual', signal: AbortSignal.timeout(12000) })
+    ]);
+
+    if (guildRes.type === 'opaqueredirect' || [302, 303, 401].includes(guildRes.status)) {
+      out.innerHTML = '<div class="empty-state">Login required.</div>'; btn.disabled = false; return;
+    }
+
+    let guild = null, automod = [];
+
+    if (guildRes.ok) {
+      try { const gd = await guildRes.json(); guild = gd.guild || gd; } catch {}
+    }
+
+    if (automodRes && automodRes.ok) {
+      try { const ad = await automodRes.json(); automod = ad.rules || ad || []; } catch {}
+    }
+
+    renderResults(sid, guild, automod);
+  } catch (e) {
+    out.innerHTML = `<div class="empty-state" style="color:#f85149">Error: ${escHtml(e.message)}</div>`;
+  }
+  btn.disabled = false;
+}
+
+function renderResults(sid, guild, automod) {
+  let html = '';
+
+  // ── Summary bar ──
+  const ruleCount = automod.length;
+  const enabledCount = automod.filter(r => r.enabled !== false).length;
+  const verLevel = guild?.verification_level ?? '—';
+  const contentFilter = guild?.explicit_content_filter ?? '—';
+
+  html += `<div class="summary-bar">
+    <div class="sbox"><div class="sbox-num">${ruleCount}</div><div class="sbox-lbl">AutoMod Rules</div></div>
+    <div class="sbox"><div class="sbox-num" style="color:#56d364">${enabledCount}</div><div class="sbox-lbl">Enabled</div></div>
+    <div class="sbox"><div class="sbox-num" style="color:${ruleCount-enabledCount>0?'#e3b341':'#8b949e'}">${ruleCount - enabledCount}</div><div class="sbox-lbl">Disabled</div></div>
+  </div>`;
+
+  // ── Server settings card ──
+  if (guild) {
+    const verOk = verLevel !== 'none' && verLevel !== 0;
+    const filterOk = contentFilter === 'all_members' || contentFilter === 2;
+    html += `<div class="card">
+      <div class="card-title">Server Moderation Settings</div>
+      <div class="kv-row"><span class="kv-key">Verification Level</span><span class="kv-val ${verOk ? 'ok' : 'warn'}">${escHtml(verLabel(verLevel))}</span></div>
+      <div class="kv-row"><span class="kv-key">Explicit Content Filter</span><span class="kv-val ${filterOk ? 'ok' : 'warn'}">${escHtml(filterLabel(contentFilter))}</span></div>
+      <div class="kv-row"><span class="kv-key">Default Notifications</span><span class="kv-val">${escHtml(notifLabel(guild.default_message_notifications))}</span></div>
+      <div class="kv-row"><span class="kv-key">2FA Required for Moderators</span><span class="kv-val ${guild.mfa_level ? 'ok' : 'warn'}">${guild.mfa_level ? '✓ Required' : '✗ Not required'}</span></div>
+      <div class="kv-row"><span class="kv-key">System Channel</span><span class="kv-val">${guild.system_channel_id ? `<code>${escHtml(String(guild.system_channel_id))}</code>` : '<span style="color:#484f58">None</span>'}</span></div>
+      <div class="kv-row"><span class="kv-key">AFK Channel</span><span class="kv-val">${guild.afk_channel_id ? `<code>${escHtml(String(guild.afk_channel_id))}</code>` : '<span style="color:#484f58">None</span>'}</span></div>
+      <div class="kv-row"><span class="kv-key">Member Count</span><span class="kv-val">${guild.approximate_member_count ?? guild.member_count ?? '—'}</span></div>
+    </div>`;
+  } else {
+    html += `<div class="card"><div class="empty-state" style="padding:16px">Could not fetch guild settings — endpoint may not be implemented yet.</div></div>`;
+  }
+
+  // ── AutoMod rules card ──
+  html += `<div class="card"><div class="card-title">AutoMod Rules</div>`;
+  if (automod.length === 0) {
+    html += `<div style="color:#484f58;font-size:.88rem;">No AutoMod rules found. Consider enabling spam and keyword filters.</div>`;
+    autoLogIssue('No AutoMod rules', 'Server has no AutoMod rules configured.', 'AUTOMOD_EMPTY', `/api/func-test/automod/${sid}`, 'medium');
+  } else {
+    html += `<table>
+      <thead><tr><th>Name</th><th>Trigger</th><th>Actions</th><th>Status</th><th>Exempt Roles</th></tr></thead>
+      <tbody>${automod.map(rule => {
+        const enabled = rule.enabled !== false;
+        const triggerType = rule.trigger_type ?? rule.event_type;
+        const actions = (rule.actions || []).map(a => `<span class="pill pill-blue">${amActionLabel(a.type)}</span>`).join('');
+        const exemptRoles = (rule.exempt_roles || []).map(r => `<span class="pill pill-gray">role:${escHtml(String(r))}</span>`).join('') || '<span style="color:#484f58">—</span>';
+        const keywords = rule.trigger_metadata?.keyword_filter || [];
+        const presets  = rule.trigger_metadata?.presets || [];
+        const kwLabel = keywords.length ? `<div style="margin-top:4px;font-size:.75rem;color:#8b949e">${keywords.slice(0,8).map(k=>`<code>${escHtml(k)}</code>`).join(' ')}${keywords.length>8?` +${keywords.length-8} more`:''}</div>` : '';
+        const presetLabel = presets.length ? `<div style="font-size:.75rem;color:#8b949e;margin-top:2px">${presets.map(p=>['','Profanity','Sexual Content','Slurs'][p]||'Preset '+p).join(', ')}</div>` : '';
+        return `<tr>
+          <td style="font-weight:600;color:#f0f6fc;">${escHtml(rule.name || '—')}</td>
+          <td>${escHtml(amTriggerLabel(triggerType))}${kwLabel}${presetLabel}</td>
+          <td>${actions || '<span style="color:#484f58">—</span>'}</td>
+          <td><span class="${enabled ? 'ok' : 'fail'}">${enabled ? '✓ On' : '✗ Off'}</span></td>
+          <td>${exemptRoles}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  }
+  html += `</div>`;
+
+  // ── Automod coverage summary ──
+  const triggerTypes = new Set(automod.map(r => r.trigger_type ?? r.event_type));
+  const missing = [];
+  if (!triggerTypes.has(1)) missing.push('Keyword filter');
+  if (!triggerTypes.has(3)) missing.push('Spam filter');
+  if (!triggerTypes.has(4)) missing.push('Built-in keyword presets');
+  if (!triggerTypes.has(5)) missing.push('Mention spam');
+
+  if (missing.length > 0) {
+    html += `<div class="card" style="border-color:#e3b341;">
+      <div class="card-title" style="color:#e3b341;">⚠ Missing AutoMod Coverage</div>
+      <p style="font-size:.85rem;color:#8b949e;margin-bottom:10px;">The following rule types are not configured:</p>
+      <div>${missing.map(m => `<span class="pill pill-yellow">${escHtml(m)}</span>`).join('')}</div>
+    </div>`;
+    autoLogIssue(`AutoMod gaps: ${missing.join(', ')}`,
+      `Missing AutoMod rule types: ${missing.join(', ')}`, 'AUTOMOD_GAPS',
+      `/api/func-test/automod/${document.getElementById('serverSelect').value}`, 'medium');
+  }
+
+  document.getElementById('output').innerHTML = html;
+}
+
+function autoLogIssue(title, description, code, url, sev) {
+  const issues = JSON.parse(localStorage.getItem('stress_test_issues') || '[]');
+  if (issues.find(i => i.title === title && i.url === url && (Date.now() - new Date(i.created).getTime()) < 300000)) return;
+  issues.unshift({ id: Date.now() + Math.random(), title, severity: sev, area: 'moderation', description, steps: '', code: String(code || ''), url, created: new Date().toISOString(), auto: true });
+  localStorage.setItem('stress_test_issues', JSON.stringify(issues));
+}
+
+loadServers();
+</script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+        .card-wrap {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: #2f3136; border-radius: 10px; padding: 40px;
+            box-shadow: 0 8px 16px rgba(0,0,0,.3); width: 100%; max-width: 420px;
+        }
+        h1 { color: #7289da; margin-bottom: 8px; font-size: 1.8em; text-align: center; }
+        .subtitle { text-align: center; color: #72767d; margin-bottom: 28px; font-size: 14px; }
+
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; color: #b9bbbe; font-weight: 500; font-size: 14px; }
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 11px 14px; border-radius: 5px;
+            border: 1px solid #202225; background: #40444b;
+            color: #fff; font-size: 14px; transition: border-color .2s;
+        }
+        input:focus { outline: none; border-color: #7289da; }
+
+        .btn-primary {
+            width: 100%; background: #7289da; color: #fff; border: none;
+            padding: 13px; border-radius: 5px; cursor: pointer;
+            font-size: 15px; font-weight: 600; transition: background .2s; margin-top: 4px;
+        }
+        .btn-primary:hover { background: #5b6eae; }
+
+        /* Divider */
+        .divider {
+            display: flex; align-items: center; gap: 12px;
+            margin: 22px 0; color: #72767d; font-size: 13px;
+        }
+        .divider::before, .divider::after {
+            content: ''; flex: 1; height: 1px; background: #40444b;
+        }
+
+        /* OAuth buttons */
+        .oauth-btn {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; padding: 12px; border-radius: 5px; border: none;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            text-decoration: none; transition: opacity .2s; margin-bottom: 10px;
+        }
+        .oauth-btn:hover { opacity: .88; }
+        .btn-discord { background: #5865f2; color: #fff; }
+
+        .oauth-icon { width: 20px; height: 20px; }
+
+        /* Disabled state when not configured */
+        .oauth-btn.disabled {
+            opacity: .4; cursor: not-allowed; pointer-events: none;
+        }
+        .oauth-btn.disabled::after {
+            content: ' (not configured)';
+            font-size: 11px; font-weight: 400; opacity: .7;
+        }
+        .oauth-btn.loading { opacity: .7; pointer-events: none; cursor: default; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .oauth-spinner {
+            width: 18px; height: 18px; border: 2px solid currentColor;
+            border-top-color: transparent; border-radius: 50%;
+            animation: spin .7s linear infinite; flex-shrink: 0;
+        }
+
+        .alert { padding: 12px; border-radius: 5px; margin-bottom: 18px; text-align: center; font-weight: 500; font-size: 14px; }
+        .alert-success { background: #43b581; }
+        .alert-error   { background: #f04747; }
+
+        .link { text-align: center; margin-top: 20px; color: #72767d; font-size: 14px; }
+        .link a { color: #7289da; text-decoration: none; font-weight: 600; }
+        .link a:hover { text-decoration: underline; }
+    /* ── Light theme overrides ── */
+    [data-theme="light"] body{background:#f2f3f5;color:#060607;}
+    [data-theme="light"] .card{background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.1);}
+    [data-theme="light"] h1{color:#5865f2;}
+    [data-theme="light"] .subtitle{color:#80848e;}
+    [data-theme="light"] label{color:#4e5058;}
+    [data-theme="light"] input[type="text"],[data-theme="light"] input[type="password"]{background:#e9eaec;border-color:#d4d7dc;color:#060607;}
+    [data-theme="light"] input:focus{border-color:#5865f2;}
+    [data-theme="light"] .btn-primary{background:#5865f2;}
+    [data-theme="light"] .btn-primary:hover{background:#4752c4;}
+    [data-theme="light"] .divider{color:#80848e;}
+    [data-theme="light"] .divider::before,[data-theme="light"] .divider::after{background:#d4d7dc;}
+    [data-theme="light"] .link{color:#80848e;}
+    [data-theme="light"] .link a{color:#5865f2;}
+    </style>
+</head>
+<body>
+    <div class="card-wrap">
+    <div class="card">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if show_forgot %}
+        <!-- ── Forgot password ── -->
+        <h1>🔑 Forgot Password</h1>
+        <p class="subtitle">Enter your username and email to receive a reset link</p>
+        <form method="POST">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="email">Email address</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <button type="submit" class="btn-primary">Send reset link</button>
+        </form>
+        <div class="link"><a href="{{ url_for('login') }}">Back to login</a></div>
+
+        {% elif reset_token %}
+        <!-- ── Reset password ── -->
+        <h1>🔒 Reset Password</h1>
+        <p class="subtitle">Choose a new password for your account</p>
+        <form method="POST">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="password">New password</label>
+                <input type="password" id="password" name="password" required minlength="6" autofocus>
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">Confirm password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="6">
+            </div>
+            <button type="submit" class="btn-primary">Reset password</button>
+        </form>
+        <div class="link"><a href="{{ url_for('login') }}">Back to login</a></div>
+
+        {% elif unverified_username %}
+        <!-- ── Email not verified ── -->
+        <h1>📧 Verify your email</h1>
+        <p class="subtitle">Your email address is not yet verified. Please check your inbox.</p>
+        <form method="POST" action="{{ url_for('public_resend_verification') }}">
+            <input type="hidden" name="username" value="{{ unverified_username }}">
+            <button type="submit" class="btn-primary">Resend verification email</button>
+        </form>
+        <div class="link"><a href="{{ url_for('login') }}">Back to login</a></div>
+
+        {% else %}
+        <!-- ── Normal login ── -->
+        <h1>🎮 Welcome Back</h1>
+        <p class="subtitle">Login to manage your Discord servers</p>
+        <a href="{{ url_for('auth_discord') }}"
+           class="oauth-btn btn-discord {% if not discord_configured %}disabled{% endif %}"
+           {% if discord_configured %}onclick="oauthLoading(this,'Connecting to Discord…')"{% endif %}
+           {% if not discord_configured %}aria-disabled="true" tabindex="-1"{% endif %}>
+            <svg class="oauth-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.032.053a19.898 19.898 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+            </svg>
+            Continue with Discord
+        </a>
+        <div class="divider">or sign in with username</div>
+        <form method="POST">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required aria-label="Username" autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required aria-label="Password">
+            </div>
+            <button type="submit" class="btn-primary">Login</button>
+        </form>
+        <div class="link">Don't have an account? <a href="{{ url_for('register') }}">Create one</a></div>
+        <div class="link"><a href="{{ url_for('forgot_password') }}">Forgot password?</a></div>
+        {% endif %}
+
+    </div>
+    </div>
+
+    <script>
+    function oauthLoading(el, msg) {
+        el.classList.add('loading');
+        el.innerHTML = '<div class="oauth-spinner"></div> ' + msg;
+    }
+    </script>
+    {% include 'footer.html' %}
+</body>
+</html>

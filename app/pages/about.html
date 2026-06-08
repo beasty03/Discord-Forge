@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover { background: #36393f; color: #fff; }
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .container { max-width: 760px; margin: 48px auto; padding: 0 24px; }
+        .card {
+            background: #2f3136; border-radius: 12px; padding: 32px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.3); margin-bottom: 24px;
+        }
+        h1 { font-size: 1.8em; color: #7289da; margin-bottom: 8px; }
+        h2 { font-size: 1.1em; color: #fff; margin: 24px 0 10px; }
+        p  { color: #b9bbbe; line-height: 1.7; margin-bottom: 12px; }
+        .disclaimer-box {
+            background: #36393f; border-left: 3px solid #faa61a;
+            border-radius: 6px; padding: 16px 18px; margin-top: 24px;
+        }
+        .disclaimer-box p { color: #dcddde; margin: 0; font-size: 13px; }
+        .links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+        .links a {
+            background: #7289da; color: #fff; text-decoration: none;
+            padding: 8px 18px; border-radius: 6px; font-weight: 600; font-size: 13px;
+            transition: background .15s;
+        }
+        .links a:hover { background: #5b6eae; }
+        .links a.secondary {
+            background: transparent; border: 1px solid #40444b; color: #b9bbbe;
+        }
+        .links a.secondary:hover { background: #40444b; color: #fff; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+            <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+            <div class="navbar-links">
+                {% if username %}
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('servers_page') }}">Servers</a>
+                <a href="{{ url_for('bots_page') }}">Bots</a>
+                <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+                {% endif %}
+                <a href="/about" class="active">About</a>
+                <a href="/feedback">Feedback</a>
+            </div>
+        </div>
+        {% if username %}
+        <div style="color:#b9bbbe;font-size:14px;padding:6px 12px;">{{ username }}</div>
+        {% else %}
+        <a href="{{ url_for('login') }}" style="background:#7289da;color:#fff;text-decoration:none;padding:7px 16px;border-radius:6px;font-weight:600;font-size:13px;">Login</a>
+        {% endif %}
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h1>&#127918; DiscordForge</h1>
+            <p>An independent web application that lets you design, deploy, and manage Discord servers through a visual interface — without writing a single line of code.</p>
+
+            <h2>What it does</h2>
+            <p>You design your server structure (channels, categories, roles, permissions) through a step-by-step wizard. The app generates and runs a setup bot that creates everything in your Discord server automatically.</p>
+            <p>You can also manage bots locally on your own machine, set up webhooks for event notifications, track members, export logs, and more.</p>
+
+            <h2>Who made it</h2>
+            <p>Built by <strong style="color:#fff;">beastyboy03</strong>. Source code and bot scripts on GitHub.</p>
+
+            <div class="links">
+                <a href="https://github.com/beasty03/auto-discord-server-deployment" target="_blank" rel="noopener">GitHub</a>
+                <a href="/feedback" class="secondary">Send Feedback</a>
+            </div>
+
+            <div class="disclaimer-box">
+                <p><strong>Disclaimer:</strong> This tool is an independent project and is not affiliated with, endorsed by, sponsored by, or connected to Discord Inc. in any way. Discord and its logo are trademarks of Discord Inc.</p>
+            </div>
+        </div>
+    </div>
+
+    {% include 'footer.html' %}
+
+    <script>
+        document.getElementById('navHamburger').addEventListener('click', function() {
+            document.querySelector('.navbar-links').classList.toggle('mobile-open');
+        });
+    </script>
+</body>
+</html>

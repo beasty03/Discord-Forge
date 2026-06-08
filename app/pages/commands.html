@@ -1,0 +1,337 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Command History — {{ server.server_name }} - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3); position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover, .navbar-links a.active { background: #36393f; color: #fff; }
+
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .user-menu { position: relative; }
+        .user-btn {
+            background: none; border: none; color: #7289da; font-weight: 700; font-size: 14px;
+            cursor: pointer; display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 6px; transition: background .2s;
+        }
+        .user-btn:hover { background: #36393f; }
+        .user-avatar {
+            width: 30px; height: 30px; border-radius: 50%; background: #7289da;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700; color: #fff;
+        }
+        .user-chevron { font-size: 10px; color: #b9bbbe; transition: transform .2s; }
+        .user-btn.open .user-chevron { transform: rotate(180deg); }
+        .user-dropdown {
+            position: absolute; top: calc(100% + 6px); right: 0; background: #2f3136;
+            border-radius: 8px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+            border: 1px solid #40444b; opacity: 0; pointer-events: none;
+            transform: translateY(-6px); transition: opacity .15s, transform .15s; z-index: 200;
+        }
+        .user-dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+        .user-dropdown-info { padding: 14px 16px 10px; border-bottom: 1px solid #40444b; }
+        .user-dropdown-info .ud-name { color: #fff; font-weight: 600; font-size: 14px; }
+        .user-dropdown a, .user-dropdown button {
+            display: block; width: 100%; text-align: left; padding: 10px 16px;
+            color: #b9bbbe; text-decoration: none; font-size: 14px; font-weight: 500;
+            background: none; border: none; cursor: pointer; transition: background .15s, color .15s;
+        }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: #36393f; color: #fff; }
+        .ud-logout { color: #f04747 !important; border-top: 1px solid #40444b; margin-top: 4px; }
+        .ud-logout:hover { background: rgba(240,71,71,.1) !important; color: #f04747 !important; }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 36px 24px; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #7289da; text-decoration: none; font-size: 14px; font-weight: 600;
+            margin-bottom: 20px; transition: color .15s;
+        }
+        .back-link:hover { color: #5b6eae; }
+        .page-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 24px; flex-wrap: wrap; gap: 14px;
+        }
+        .page-title { font-size: 24px; font-weight: 700; }
+        .page-subtitle { color: #72767d; font-size: 13px; margin-top: 4px; }
+
+        .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: background .15s; }
+        .btn-ghost { background: #36393f; color: #b9bbbe; }
+        .btn-ghost:hover { background: #40444b; color: #fff; }
+        .btn-danger { background: rgba(240,71,71,.15); color: #f04747; }
+        .btn-danger:hover { background: rgba(240,71,71,.3); }
+
+        .filter-row {
+            display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center;
+        }
+        .filter-btn {
+            padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+            cursor: pointer; border: 1px solid #40444b; background: #2f3136; color: #b9bbbe;
+            transition: all .15s;
+        }
+        .filter-btn.active, .filter-btn:hover { background: #7289da; border-color: #7289da; color: #fff; }
+        .filter-spacer { flex: 1; }
+
+        .cmd-table { width: 100%; border-collapse: collapse; }
+        .cmd-table th {
+            text-align: left; color: #72767d; font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .06em;
+            padding: 0 12px 10px; border-bottom: 1px solid #40444b;
+        }
+        .cmd-table td {
+            padding: 12px; border-bottom: 1px solid #2c2f33;
+            font-size: 13px; color: #dcddde; vertical-align: middle;
+        }
+        .cmd-table tr:last-child td { border-bottom: none; }
+        .cmd-table tr:hover td { background: rgba(255,255,255,.03); }
+
+        .status-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700;
+            white-space: nowrap;
+        }
+        .status-pending  { background: rgba(250,166,26,.15);  color: #faa61a; }
+        .status-done     { background: rgba(67,181,129,.15);  color: #43b581; }
+        .status-failed   { background: rgba(240,71,71,.15);   color: #f04747; }
+
+        .type-chip {
+            display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px;
+            font-weight: 600; background: #2f3136; border: 1px solid #40444b; color: #b9bbbe;
+        }
+        .ts { color: #72767d; font-size: 11px; white-space: nowrap; }
+        .error-cell { color: #f04747; font-size: 11px; max-width: 200px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .uid-cell { font-family: monospace; font-size: 12px; color: #b9bbbe; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #72767d; }
+        .empty-state h3 { color: #b9bbbe; font-size: 18px; margin-bottom: 8px; }
+
+        .summary-strip {
+            display: flex; gap: 14px; margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .sum-pill {
+            background: #2f3136; border-radius: 20px; padding: 6px 14px;
+            font-size: 12px; color: #b9bbbe; border: 1px solid #40444b;
+        }
+        .sum-pill strong { color: #fff; }
+        .sum-pill.pending-pill strong { color: #faa61a; }
+        .sum-pill.done-pill   strong { color: #43b581; }
+        .sum-pill.failed-pill strong { color: #f04747; }
+
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+            background: #2f3136; border: 1px solid #40444b; border-radius: 8px;
+            padding: 12px 18px; font-size: 13px; color: #dcddde;
+            box-shadow: 0 6px 24px rgba(0,0,0,.5);
+            transform: translateY(20px); opacity: 0;
+            transition: opacity .2s, transform .2s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-color: #43b581; color: #43b581; }
+        .toast.error   { border-color: #f04747; color: #f04747; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-left">
+        <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+        <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+        <div class="navbar-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('servers_page') }}" class="active">Servers</a>
+            <a href="{{ url_for('bots_page') }}">Bots</a>
+            <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+        </div>
+    </div>
+    <div class="user-menu">
+        <button class="user-btn" id="userNavBtn">
+            <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+            {{ username }}
+            <span class="user-chevron">▼</span>
+        </button>
+        <div class="user-dropdown" id="userNavDropdown">
+            <div class="user-dropdown-info">
+                <div class="ud-name">{{ username }}</div>
+            </div>
+            <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+            <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+            <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <a class="back-link" href="{{ url_for('servers_page') }}">← Back to Servers</a>
+
+    <div class="page-header">
+        <div>
+            <div class="page-title">📋 Command History — {{ server.server_name }}</div>
+            <div class="page-subtitle">Bot actions queued from the Members page</div>
+        </div>
+        <button class="btn btn-danger" onclick="clearCompleted()" id="clearBtn">🗑 Clear Completed</button>
+    </div>
+
+    {% set total   = commands | length %}
+    {% set pending = commands | selectattr('status','equalto','pending') | list | length %}
+    {% set done    = commands | selectattr('status','equalto','done')    | list | length %}
+    {% set failed  = commands | selectattr('status','equalto','failed')  | list | length %}
+
+    <div class="summary-strip">
+        <div class="sum-pill"><strong>{{ total }}</strong> total</div>
+        <div class="sum-pill pending-pill"><strong>{{ pending }}</strong> pending</div>
+        <div class="sum-pill done-pill"><strong>{{ done }}</strong> done</div>
+        <div class="sum-pill failed-pill"><strong>{{ failed }}</strong> failed</div>
+    </div>
+
+    <div class="filter-row">
+        <button class="filter-btn active" data-filter="all"     onclick="setFilter('all',this)">All ({{ total }})</button>
+        <button class="filter-btn"        data-filter="pending" onclick="setFilter('pending',this)">🕐 Pending ({{ pending }})</button>
+        <button class="filter-btn"        data-filter="done"    onclick="setFilter('done',this)">✅ Done ({{ done }})</button>
+        <button class="filter-btn"        data-filter="failed"  onclick="setFilter('failed',this)">❌ Failed ({{ failed }})</button>
+        <span class="filter-spacer"></span>
+    </div>
+
+    {% if commands %}
+    <table class="cmd-table" id="cmdTable">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>Action</th>
+                <th>User ID</th>
+                <th>Role</th>
+                <th>Reason</th>
+                <th>Queued</th>
+                <th>Completed</th>
+                <th>Error</th>
+            </tr>
+        </thead>
+        <tbody id="cmdBody">
+        {% for c in commands %}
+        <tr data-status="{{ c.status }}">
+            <td>
+                {% if c.status == 'pending' %}
+                <span class="status-chip status-pending">🕐 Pending</span>
+                {% elif c.status == 'done' %}
+                <span class="status-chip status-done">✅ Done</span>
+                {% else %}
+                <span class="status-chip status-failed">❌ Failed</span>
+                {% endif %}
+            </td>
+            <td><span class="type-chip">{{ c.type | replace('_', ' ') | title }}</span></td>
+            <td class="uid-cell">{{ c.user_id or '—' }}</td>
+            <td>{{ c.role_name or '—' }}</td>
+            <td>{{ c.reason or '—' }}</td>
+            <td class="ts" title="{{ c.created_at }}">{{ c.created_at[:16].replace('T',' ') if c.created_at else '—' }}</td>
+            <td class="ts" title="{{ c.completed_at or '' }}">{{ c.completed_at[:16].replace('T',' ') if c.completed_at else '—' }}</td>
+            <td class="error-cell" title="{{ c.error or '' }}">{{ c.error or '' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" id="emptyState">
+        <h3>No commands yet</h3>
+        <p>Actions queued from the Members page will appear here.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const SERVER_ID = {{ server.server_id | tojson }};
+
+    function setFilter(status, btn) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('#cmdBody tr').forEach(row => {
+            row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+        });
+    }
+
+    async function clearCompleted() {
+        const btn = document.getElementById('clearBtn');
+        btn.disabled = true;
+        const resp = await fetch('/api/commands/' + SERVER_ID + '/clear', { method: 'POST' });
+        const data = await resp.json();
+        btn.disabled = false;
+        if (data.ok) {
+            document.querySelectorAll('#cmdBody tr').forEach(row => {
+                if (row.dataset.status !== 'pending') row.remove();
+            });
+            showToast('Removed ' + data.removed + ' completed command' + (data.removed !== 1 ? 's' : '') + '.', 'success');
+        } else {
+            showToast(data.error || 'Error', 'error');
+        }
+    }
+
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast ' + (type || '');
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3500);
+    }
+</script>
+<script>
+(function() {
+    var btn = document.getElementById('userNavBtn');
+    var dd  = document.getElementById('userNavDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        btn.classList.toggle('open');
+        dd.classList.toggle('open');
+    });
+    document.addEventListener('click', function() {
+        btn.classList.remove('open');
+        dd.classList.remove('open');
+    });
+    var hb = document.getElementById('navHamburger');
+    var nl = document.querySelector('.navbar-links');
+    if (hb && nl) {
+        hb.addEventListener('click', function(e) { e.stopPropagation(); nl.classList.toggle('mobile-open'); });
+        document.addEventListener('click', function() { nl.classList.remove('mobile-open'); });
+    }
+})();
+</script>
+
+    {% include 'footer.html' %}
+</body>
+</html>

@@ -1,0 +1,153 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Func Step 5 — Installed Scripts</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:12px;font-size:.95rem}
+  .btn{background:#6e40c9;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#a371f7}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-next{background:#1f6feb;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-next:hover{background:#388bfd}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  .server-selector{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  select{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.85rem;outline:none;min-width:200px}
+  select:focus{border-color:#a371f7}
+  .empty-state{text-align:center;padding:32px;color:#484f58;font-size:.9rem}
+  .bot-section{margin-bottom:16px}
+  .bot-header{font-weight:600;color:#f0f6fc;font-size:.9rem;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #21262d;display:flex;align-items:center;gap:8px}
+  .cog-tag{display:inline-block;font-size:.73rem;padding:2px 9px;border-radius:8px;background:#1f3a5f;color:#58a6ff;margin:2px}
+  .script-tag{display:inline-block;font-size:.73rem;padding:2px 9px;border-radius:8px;background:#1a3d26;color:#56d364;margin:2px}
+  .type-label{font-size:.72rem;color:#8b949e;margin-bottom:4px;margin-top:8px}
+  .summary-bar{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .sbox{background:#21262d;border-radius:8px;padding:10px 16px;text-align:center;min-width:80px}
+  .sbox-num{font-size:1.4rem;font-weight:700}
+  .sbox-lbl{font-size:.73rem;color:#8b949e;margin-top:2px}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><a href="func_index.html">Function Tests</a><span class="nav-sep">/</span><span>Step 5 — Scripts</span></div>
+<h1>Step 5 &mdash; Installed Scripts</h1>
+<p class="sub">Verify which cogs and scripts are installed per bot.</p>
+
+<div class="server-selector">
+  <label style="font-size:.85rem;color:#8b949e">Server:</label>
+  <select id="serverSelect" onchange="saveServer()"><option value="">— select —</option></select>
+  <button class="btn" id="runBtn" onclick="runCheck()">Load Scripts</button>
+</div>
+
+<div id="output"><div class="empty-state">Select a server and click "Load Scripts".</div></div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="func_step4_permissions.html">&larr; Back: Permissions</a>
+  <a class="btn-next" href="func_step6_commands.html">Next: Slash Commands &rarr;</a>
+</div>
+
+<script>
+const F=window.location.origin;
+
+async function loadServers(){
+  const sel=document.getElementById('serverSelect');
+  try{
+    const r=await fetch(F+'/api/servers/list',{redirect:'manual',signal:AbortSignal.timeout(5000)});
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){sel.innerHTML='<option value="">— Please log in first —</option>';if(!document.getElementById('_loginBtn')){const a=document.createElement('a');a.id='_loginBtn';a.href=F+'/login?next='+encodeURIComponent(window.location.pathname);a.textContent='Log in';a.style.cssText='margin-left:8px;background:#238636;color:#fff;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;text-decoration:none;display:inline-block;';sel.parentNode.insertBefore(a,sel.nextSibling);const b=document.createElement('button');b.id='_refreshBtn';b.textContent='↻ Refresh';b.onclick=loadServers;b.style.cssText='margin-left:8px;background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 14px;font-size:.875rem;font-weight:600;cursor:pointer;';a.parentNode.insertBefore(b,a.nextSibling);}return;}
+    const data=await r.json();
+    const servers=data.servers||data||[];
+    sel.innerHTML='<option value="">— select —</option>';
+    servers.forEach(s=>{
+      const opt=document.createElement('option');
+      opt.value=s.server_id||s.id||s.name;
+      opt.textContent=s.name||(s.server_id||s.id);
+      sel.appendChild(opt);
+    });
+    const saved=localStorage.getItem('func_test_server_id');
+    if(saved) for(let i=0;i<sel.options.length;i++) if(sel.options[i].value===saved){sel.selectedIndex=i;break;}
+  }catch(e){sel.innerHTML='<option value="">— Flask unreachable —</option>';}
+}
+
+function saveServer(){
+  const v=document.getElementById('serverSelect').value;
+  if(v) localStorage.setItem('func_test_server_id',v);
+}
+
+async function runCheck(){
+  const sid=document.getElementById('serverSelect').value;
+  if(!sid){alert('Select a server first.');return;}
+  const btn=document.getElementById('runBtn');
+  const out=document.getElementById('output');
+  btn.disabled=true;
+  out.innerHTML='<div class="empty-state">Loading…</div>';
+
+  try{
+    // Use existing endpoint
+    const r=await fetch(`${F}/api/bots/installed-cogs/${encodeURIComponent(sid)}`,{
+      redirect:'manual',signal:AbortSignal.timeout(8000)
+    });
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){
+      out.innerHTML='<div class="empty-state">Login required.</div>';btn.disabled=false;return;
+    }
+    if(!r.ok){
+      let errText='HTTP '+r.status;
+      try{const e=await r.clone().json();errText=e.error||errText;}catch(x){}
+      out.innerHTML=`<div class="empty-state" style="color:#f85149">${escHtml(errText)}</div>`;
+      btn.disabled=false;return;
+    }
+    const d=await r.json();
+    if(d.error){
+      out.innerHTML=`<div class="empty-state" style="color:#f85149">${escHtml(d.error)}</div>`;
+      btn.disabled=false;return;
+    }
+
+    // d is typically {bots: [{name, cogs:[], scripts:[]}]} or similar
+    const bots=d.bots||Object.entries(d).map(([name,v])=>({name,...v}));
+
+    if(!bots||bots.length===0){
+      out.innerHTML='<div class="empty-state">No bots or scripts found.</div>';
+      btn.disabled=false;return;
+    }
+
+    const totalCogs=bots.reduce((a,b)=>a+(b.cogs?.length||0),0);
+    const totalScripts=bots.reduce((a,b)=>a+(b.scripts?.length||0),0);
+
+    let html=`<div class="summary-bar">
+      <div class="sbox"><div class="sbox-num">${bots.length}</div><div class="sbox-lbl">Bots</div></div>
+      <div class="sbox"><div class="sbox-num" style="color:#58a6ff">${totalCogs}</div><div class="sbox-lbl">Cogs</div></div>
+      <div class="sbox"><div class="sbox-num" style="color:#56d364">${totalScripts}</div><div class="sbox-lbl">Scripts</div></div>
+    </div>`;
+
+    html+=`<div class="card"><div class="card-title">Per-Bot Details</div>`;
+    bots.forEach(bot=>{
+      const cogs=bot.cogs||[];
+      const scripts=bot.scripts||[];
+      html+=`<div class="bot-section">
+        <div class="bot-header">${escHtml(bot.name||'Unknown')}</div>
+        ${cogs.length?`<div class="type-label">Cogs (${cogs.length})</div><div>${cogs.map(c=>`<span class="cog-tag">${escHtml(c)}</span>`).join('')}</div>`:'<div style="font-size:.8rem;color:#484f58">No cogs installed</div>'}
+        ${scripts.length?`<div class="type-label" style="margin-top:8px">Scripts (${scripts.length})</div><div>${scripts.map(s=>`<span class="script-tag">${escHtml(s)}</span>`).join('')}</div>`:''}
+      </div>`;
+    });
+    html+='</div>';
+
+    out.innerHTML=html;
+  }catch(e){
+    out.innerHTML=`<div class="empty-state" style="color:#f85149">Error: ${escHtml(e.message)}</div>`;
+  }
+  btn.disabled=false;
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+loadServers();
+</script>
+</body>
+</html>

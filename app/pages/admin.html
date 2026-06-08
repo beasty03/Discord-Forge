@@ -1,0 +1,212 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover, .navbar-links a.active { background: #36393f; color: #fff; }
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .container { max-width: 1100px; margin: 36px auto; padding: 0 24px; }
+        .page-title {
+            font-size: 1.6em; font-weight: 700; margin-bottom: 28px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .admin-badge {
+            background: rgba(240,71,71,.2); color: #f04747;
+            font-size: 11px; font-weight: 700; padding: 3px 8px;
+            border-radius: 4px; border: 1px solid rgba(240,71,71,.4);
+        }
+
+        /* Stat cards */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px; margin-bottom: 36px;
+        }
+        .stat-card {
+            background: #2f3136; border-radius: 10px; padding: 20px 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.3);
+        }
+        .stat-card .stat-label { color: #72767d; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+        .stat-card .stat-value { font-size: 2.2em; font-weight: 700; color: #7289da; margin-top: 6px; }
+
+        /* Section */
+        .section { margin-bottom: 36px; }
+        .section-title { font-size: 1.1em; font-weight: 700; color: #fff; margin-bottom: 14px; }
+
+        /* Table */
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th {
+            background: #36393f; color: #72767d; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .5px;
+            padding: 10px 14px; text-align: left;
+        }
+        .data-table td {
+            padding: 11px 14px; border-bottom: 1px solid #36393f;
+            font-size: 14px; color: #dcddde;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: #2a2d31; }
+        .table-wrap { background: #2f3136; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+
+        .badge {
+            display: inline-block; padding: 3px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: 700;
+        }
+        .badge-open   { background: rgba(67,181,129,.15); color: #43b581; }
+        .badge-closed { background: rgba(114,137,218,.15); color: #7289da; }
+        .empty-note { color: #72767d; font-size: 13px; padding: 16px 0; }
+
+        a.issue-link { color: #7289da; text-decoration: none; }
+        a.issue-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+            <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+            <div class="navbar-links">
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('servers_page') }}">Servers</a>
+                <a href="{{ url_for('bots_page') }}">Bots</a>
+                <a href="{{ url_for('scripts_page') }}">Scripts</a>
+                <a href="{{ url_for('admin_portal') }}" class="active" style="color:#ed4245;font-weight:600;">Admin</a>
+            </div>
+        </div>
+        <div style="color:#b9bbbe;font-size:14px;padding:6px 12px;">{{ username }}</div>
+    </nav>
+
+    <div class="container">
+        <div class="page-title">
+            &#128272; Admin Portal
+            <span class="admin-badge">OWNER ONLY</span>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Registered Users</div>
+                <div class="stat-value">{{ total_users }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Servers</div>
+                <div class="stat-value">{{ total_servers }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Bots</div>
+                <div class="stat-value">{{ total_bots }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Servers / User</div>
+                <div class="stat-value">{{ "%.1f"|format(total_servers / total_users if total_users else 0) }}</div>
+            </div>
+        </div>
+
+        <!-- Users table -->
+        <div class="section">
+            <div class="section-title">&#128100; Users ({{ total_users }})</div>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Discord</th>
+                            <th>Servers</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in user_list %}
+                        <tr>
+                            <td style="color:#72767d;">{{ loop.index }}</td>
+                            <td><strong style="color:#fff;">{{ u.username }}</strong></td>
+                            <td>{{ u.email or '—' }}</td>
+                            <td>{{ u.discord or '—' }}</td>
+                            <td>{{ u.servers }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="empty-note">No users found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Feedback / Issues -->
+        <div class="section">
+            <div class="section-title">&#128172; Recent Feedback Issues</div>
+            {% if recent_feedback %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for issue in recent_feedback %}
+                        <tr>
+                            <td><a class="issue-link" href="{{ issue.url }}" target="_blank" rel="noopener">{{ issue.title }}</a></td>
+                            <td><span class="badge badge-{{ issue.state }}">{{ issue.state }}</span></td>
+                            <td style="color:#72767d;">{{ issue.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="empty-note">No feedback issues found (or GitHub token not configured).</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% include 'footer.html' %}
+
+    <script>
+        document.getElementById('navHamburger').addEventListener('click', function() {
+            document.querySelector('.navbar-links').classList.toggle('mobile-open');
+        });
+    </script>
+</body>
+</html>

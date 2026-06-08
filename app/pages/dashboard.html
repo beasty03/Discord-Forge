@@ -1,0 +1,1322 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        
+        /* ── Shared navbar ─────────────────────────────────────────── */
+        .navbar {
+            background: #2f3136;
+            padding: 0 30px;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover { background: #36393f; color: #fff; }
+        .navbar-links a.active { background: #36393f; color: #fff; }
+        
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .user-menu { position: relative; }
+        .user-btn {
+            background: none; border: none; color: #7289da;
+            font-weight: 700; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 6px; transition: background .2s;
+        }
+        .user-btn:hover { background: #36393f; }
+        .user-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #7289da; display: flex; align-items: center;
+            justify-content: center; font-size: 13px; font-weight: 700; color: #fff;
+        }
+        .user-chevron { font-size: 10px; color: #b9bbbe; transition: transform .2s; }
+        .user-btn.open .user-chevron { transform: rotate(180deg); }
+        .user-dropdown {
+            position: absolute; top: calc(100% + 6px); right: 0;
+            background: #2f3136; border-radius: 8px; min-width: 200px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5); border: 1px solid #40444b;
+            opacity: 0; pointer-events: none;
+            transform: translateY(-6px); transition: opacity .15s, transform .15s;
+            z-index: 200;
+        }
+        .user-dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+        .user-dropdown-info { padding: 14px 16px 10px; border-bottom: 1px solid #40444b; }
+        .user-dropdown-info .ud-name  { color: #fff; font-weight: 600; font-size: 14px; }
+        .user-dropdown-info .ud-email { color: #72767d; font-size: 12px; margin-top: 2px; }
+        .user-dropdown a, .user-dropdown button {
+            display: block; width: 100%; text-align: left;
+            padding: 10px 16px; color: #b9bbbe; text-decoration: none;
+            font-size: 14px; font-weight: 500; background: none; border: none;
+            cursor: pointer; transition: background .15s, color .15s;
+        }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: #36393f; color: #fff; }
+        .ud-logout { color: #f04747 !important; border-top: 1px solid #40444b; margin-top: 4px; }
+        .ud-logout:hover { background: rgba(240,71,71,.1) !important; color: #f04747 !important; }
+
+        /* ── Layout ─────────────────────────────────────────────────── */
+        .container { max-width: 1760px; margin: 28px auto; padding: 0 20px; }
+
+        /* ── Environment blocks ─────────────────────────────────────── */
+        .env-block {
+            background: #2f3136; border-radius: 12px; margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.3); overflow: hidden;
+        }
+        .env-block-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 20px; background: #36393f;
+            border-bottom: 1px solid #40444b;
+        }
+        .env-icon {
+            width: 34px; height: 34px; border-radius: 50%;
+            object-fit: cover; border: 2px solid #7289da; flex-shrink: 0;
+        }
+        .env-icon-placeholder {
+            width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+            background: #7289da; display: flex; align-items: center;
+            justify-content: center; font-size: 15px; font-weight: 700;
+        }
+        .env-name { font-size: 1em; font-weight: 700; color: #fff; }
+        .env-name-edit {
+            cursor: text; outline: none;
+            border-bottom: 1px solid transparent; transition: border-color .15s;
+        }
+        .env-name-edit:focus { border-bottom-color: #7289da; }
+        .env-name-edit:hover { border-bottom-color: #4f545c; }
+        .env-row {
+            display: grid; grid-template-columns: 260px 1fr;
+        }
+        @media (max-width: 860px) { .env-row { grid-template-columns: 1fr; } }
+        .env-server-stats {
+            padding: 16px 20px; border-right: 1px solid #40444b;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-content: start;
+        }
+        .env-stat .label { color: #72767d; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+        .env-stat .value { color: #fff; font-weight: 700; font-size: 18px; margin-top: 2px; }
+        .env-bots-panel { padding: 14px 20px; min-height: 100px; }
+        .env-bot-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 12px; background: #36393f; border-radius: 7px; margin-bottom: 7px;
+        }
+        .env-bot-row:last-child { margin-bottom: 0; }
+        .env-bot-name { font-weight: 600; color: #fff; font-size: 13px; flex: 1; min-width: 0; }
+        .env-footer {
+            border-top: 1px solid #40444b;
+            display: grid; grid-template-columns: 1fr 1fr;
+        }
+        @media (max-width: 860px) { .env-footer { grid-template-columns: 1fr; } }
+        .env-footer-col { padding: 12px 20px; }
+        .env-footer-col + .env-footer-col { border-left: 1px solid #40444b; }
+        .env-section-label {
+            font-size: 11px; font-weight: 700; color: #72767d;
+            text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px;
+        }
+
+        .alert { padding: 14px 18px; border-radius: 8px; margin-bottom: 24px; font-weight: 500; }
+        .alert-success { background: #43b581; }
+        .alert-error   { background: #f04747; }
+        .alert-warning { background: #faa61a; color: #000; }
+
+        /* ── Section header ─────────────────────────────────────────── */
+        .section { margin-bottom: 48px; }
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px;
+        }
+        .section-title { font-size: 1.4em; font-weight: 700; color: #fff; }
+        .section-count { color: #72767d; font-size: 14px; margin-left: 10px; }
+
+        /* ── Buttons ─────────────────────────────────────────────────── */
+        .btn {
+            background: #7289da; color: #fff; border: none;
+            padding: 10px 20px; border-radius: 6px; cursor: pointer;
+            font-size: 13px; font-weight: 600; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: background .2s, transform .1s;
+        }
+        .btn:hover { background: #5b6eae; }
+        .btn:active { transform: scale(.98); }
+        .btn-success { background: #43b581; }
+        .btn-success:hover { background: #3ca374; }
+        .btn-danger  { background: #f04747; }
+        .btn-danger:hover  { background: #d84040; }
+        .btn-ghost {
+            background: transparent; border: 1px solid #40444b; color: #b9bbbe;
+            padding: 8px 14px; font-size: 12px;
+        }
+        .btn-ghost:hover { background: #40444b; color: #fff; border-color: #40444b; }
+
+        /* ── Unlinked bot cards ─────────────────────────────────────── */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 18px;
+        }
+        .setup-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
+        }
+        .setup-badge.done     { background: rgba(67,181,129,.15); color: #43b581; }
+        .setup-badge.pending  { background: rgba(250,166,26,.15);  color: #faa61a; }
+        .setup-badge.updating { background: rgba(114,137,218,.15); color: #7289da; }
+        .role-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 9px; border-radius: 10px; font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0;
+        }
+        .role-badge.owner       { background: rgba(250,166,26,.18); color: #faa61a; }
+        .role-badge.contributor { background: rgba(114,137,218,.18); color: #7289da; }
+        .role-badge.viewer      { background: rgba(114,118,125,.18); color: #72767d; }
+        .bot-card {
+            background: #2f3136; border-radius: 10px; padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.3); border-left: 4px solid #7289da;
+            display: flex; flex-direction: column; gap: 14px;
+        }
+        .bot-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .bot-name   { font-size: 1em; font-weight: 700; color: #fff; }
+        .bot-server { font-size: 12px; color: #72767d; margin-top: 3px; }
+        .bot-actions { display: flex; gap: 8px; margin-top: auto; }
+        .bot-actions .btn { flex: 1; justify-content: center; }
+
+        /* ── Empty state ────────────────────────────────────────────── */
+        .empty-state {
+            background: #2f3136; border-radius: 10px; padding: 50px 20px;
+            text-align: center; grid-column: 1 / -1;
+        }
+        .empty-state-icon { font-size: 48px; margin-bottom: 14px; opacity: .5; }
+        .empty-state h3 { color: #b9bbbe; margin-bottom: 8px; }
+        .empty-state p  { color: #72767d; font-size: 14px; margin-bottom: 20px; }
+
+        /* ── Notification ───────────────────────────────────────────── */
+        .notification {
+            position: fixed; top: 72px; right: 20px;
+            background: #2f3136; padding: 16px 20px; border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5);
+            display: none; align-items: center; gap: 12px;
+            min-width: 280px; z-index: 500; border-left: 4px solid #43b581;
+            animation: slideIn .25s ease;
+        }
+        .notification.show  { display: flex; }
+        .notification.error { border-left-color: #f04747; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(60px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+    <script>(function(){var t=localStorage.getItem('appTheme')||'dark';if(t==='system')t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+    <style>
+    /* ── Light theme overrides ── */
+    [data-theme="light"] body{background:#f2f3f5;color:#060607;}
+    [data-theme="light"] .navbar{background:#fff;box-shadow:0 1px 0 #d4d7dc;}
+    [data-theme="light"] .navbar-brand{color:#5865f2;}
+    [data-theme="light"] .navbar-links a{color:#4e5058;}
+    [data-theme="light"] .navbar-links a:hover,[data-theme="light"] .navbar-links a.active{background:#e3e5e8;color:#060607;}
+    [data-theme="light"] .user-btn{color:#5865f2;}
+    [data-theme="light"] .user-btn:hover{background:#e3e5e8;}
+    [data-theme="light"] .user-avatar{background:#5865f2;}
+    [data-theme="light"] .user-chevron{color:#80848e;}
+    [data-theme="light"] .user-dropdown{background:#fff;border-color:#c7ccd1;box-shadow:0 8px 24px rgba(0,0,0,.15);}
+    [data-theme="light"] .user-dropdown-info{border-color:#e3e5e8;}
+    [data-theme="light"] .user-dropdown-info .ud-name{color:#060607;}
+    [data-theme="light"] .user-dropdown a,[data-theme="light"] .user-dropdown button{color:#4e5058;}
+    [data-theme="light"] .user-dropdown a:hover,[data-theme="light"] .user-dropdown button:hover{background:#f2f3f5;color:#060607;}
+    [data-theme="light"] .ud-logout{color:#da373c!important;}
+    [data-theme="light"] .section-title,[data-theme="light"] .bot-name{color:#060607;}
+    [data-theme="light"] .bot-card,[data-theme="light"] .empty-state{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.1);}
+    [data-theme="light"] .notification{background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.15);}
+    [data-theme="light"] .btn-ghost{border-color:#c7ccd1;color:#4e5058;}
+    [data-theme="light"] .btn-ghost:hover{background:#e3e5e8;color:#060607;border-color:#c7ccd1;}
+    [data-theme="light"] .env-block{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.1);}
+    [data-theme="light"] .env-block-header{background:#f2f3f5;border-color:#d4d7dc;}
+    [data-theme="light"] .env-name{color:#060607;}
+    [data-theme="light"] .env-server-stats{border-color:#d4d7dc;}
+    [data-theme="light"] .env-stat .value{color:#060607;}
+    [data-theme="light"] .env-bot-row{background:#f2f3f5;}
+    [data-theme="light"] .env-bot-name{color:#060607;}
+    [data-theme="light"] .env-footer{border-color:#d4d7dc;}
+    [data-theme="light"] .env-footer-col+.env-footer-col{border-color:#d4d7dc;}
+    [data-theme="light"] .env-name-edit:focus{border-bottom-color:#5865f2;}
+    [data-theme="light"] .env-name-edit:hover{border-bottom-color:#c7ccd1;}
+    [data-theme="light"] .role-badge.owner{background:rgba(250,166,26,.15);}
+    [data-theme="light"] .role-badge.contributor{background:rgba(88,101,242,.12);color:#5865f2;}
+    [data-theme="light"] .role-badge.viewer{background:rgba(79,84,92,.1);color:#4f545c;}
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+            <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+            <div class="navbar-links">
+                <a href="{{ url_for('dashboard') }}" class="active">Dashboard</a>
+                <a href="{{ url_for('servers_page') }}">Servers</a>
+                <a href="{{ url_for('bots_page') }}">Bots</a>
+                <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+                <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+                <a id="botMgrLink" href="http://127.0.0.1:5001" target="_blank" rel="noopener"
+                   style="display:none;color:#43b581;border:1px solid rgba(67,181,129,.35);border-radius:6px;">🤖 Bot Manager</a>
+            </div>
+        </div>
+        <div class="user-menu">
+            <button class="user-btn" id="userNavBtn">
+                <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+                {{ username }}
+                <span class="user-chevron">▼</span>
+            </button>
+            <div class="user-dropdown" id="userNavDropdown">
+                <div class="user-dropdown-info">
+                    <div class="ud-name">{{ username }}</div>
+                </div>
+                <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+                <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+                <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+            </div>
+        </div>
+    </nav>
+
+{% if is_free_plan %}
+<div style="background:#1e2023;border-bottom:1px solid #40444b;padding:9px 30px;
+            display:flex;align-items:center;justify-content:space-between;gap:16px;">
+    <span style="color:#b9bbbe;font-size:13px;">
+        <strong style="color:#fff;">Free plan</strong> — bots run on your PC.
+        Upgrade for cloud hosting and more capacity.
+    </span>
+    <a href="/subscriptions" style="background:#7289da;color:#fff;text-decoration:none;
+       padding:5px 12px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap;">
+        See Plans
+    </a>
+</div>
+{% endif %}
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- ── Environments ────────────────────────────────────────────── -->
+    <div class="section">
+        <div class="section-header">
+            <div>
+                <span class="section-title">🖥️ Environments</span>
+                <span class="section-count" id="botsCount"></span>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <a href="{{ url_for('bots_page') }}" class="btn btn-ghost" style="font-size:13px;text-decoration:none;">🤖 Bots</a>
+                <a href="{{ url_for('setup') }}" class="btn btn-success" style="text-decoration:none;">➕ New Environment</a>
+            </div>
+        </div>
+
+        {% if servers %}
+            {% for server in servers %}
+            <div class="env-block">
+                <div class="env-block-header">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        {% if server.icon_path %}
+                            <img src="/{{ server.icon_path }}" class="env-icon" alt="">
+                        {% else %}
+                            <div class="env-icon-placeholder">{{ (server.env_name or server.server_name)[0]|upper }}</div>
+                        {% endif %}
+                        <span class="env-name env-name-edit" id="envName-{{ server.server_id }}"
+                              contenteditable="true" spellcheck="false"
+                              title="Click to rename"
+                              onblur="renameEnv('{{ server.server_id }}', this)"
+                              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();} if(event.key==='Escape'){this.textContent=this.dataset.orig;this.blur();}"
+                              onfocus="this.style.borderBottomColor='#7289da'"
+                              data-orig="{{ (server.env_name or server.server_name)|e }}">{{ server.env_name or server.server_name }}</span>
+                        {% if server.setup_running or server.update_running %}
+                            <span class="setup-badge updating">🔄 Updating</span>
+                        {% elif server.setup_completed %}
+                            <span class="setup-badge done">✅ Done</span>
+                        {% else %}
+                            <span class="setup-badge pending">⏳ Pending</span>
+                        {% endif %}
+                        {% if server.user_role == 'owner' %}
+                            <span class="role-badge owner" title="You own this server">Owner</span>
+                        {% elif 'edit_server' in server.user_permissions %}
+                            <span class="role-badge contributor" title="You can edit and run setup">Contributor</span>
+                        {% else %}
+                            <span class="role-badge viewer" title="View-only access — cannot run setup">Viewer</span>
+                        {% endif %}
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        {% if server.user_role == 'owner' %}
+                        <a href="{{ url_for('env_activity', server_id=server.server_id) }}" class="btn btn-ghost" title="Activity log" aria-label="Activity log" style="text-decoration:none;padding:8px 10px;">📋</a>
+                        {% endif %}
+                        {% if 'edit_server' in server.user_permissions %}
+                        <a href="{{ url_for('servers_page') }}#{{ server.server_id }}" class="btn btn-ghost">✏️ Edit</a>
+                        {% endif %}
+                        {% if server.user_role == 'owner' %}
+                        <form method="POST" action="{{ url_for('delete_server', server_id=server.server_id) }}"
+                              style="margin:0;" onsubmit="return confirm('Delete {{ server.server_name }}? This cannot be undone.');">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-danger" aria-label="Delete server">🗑️</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="env-row">
+                    <div class="env-server-stats" data-live-stats="{{ server.server_id }}">
+                        <div style="grid-column:1/-1;color:#72767d;font-size:12px;padding:6px 0;opacity:.6;">
+                            ⏳ Fetching live data…
+                        </div>
+                    </div>
+                    <div class="env-bots-panel" data-env-bots="{{ server.server_id }}">
+                        <div style="color:#72767d;font-size:13px;">Loading bots…</div>
+                    </div>
+                </div>
+                <div class="env-footer" data-env-footer="{{ server.server_id }}" data-server-name="{{ server.server_name }}">
+                    <div class="env-footer-col" data-health-col>
+                        <div class="env-section-label">Health</div>
+                        <div style="color:#72767d;font-size:12px;">Loading…</div>
+                    </div>
+                    <div class="env-footer-col" data-activity-col>
+                        <div class="env-section-label">Recent Activity</div>
+                        <div style="color:#72767d;font-size:12px;">Loading…</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div id="standaloneBots" style="display:none;margin-top:8px;">
+                <div class="section-header" style="margin-bottom:12px;">
+                    <span class="section-title" style="font-size:1em;color:#b9bbbe;">Unlinked Bots</span>
+                </div>
+                <div class="cards-grid" id="standaloneBotsGrid"></div>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">🖥️</div>
+                <h3>No environments yet</h3>
+                <p>Create your first Discord server configuration to get started.</p>
+                <a href="{{ url_for('setup') }}" class="btn btn-success">🚀 Create First Server</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:-32px;margin-bottom:16px;">
+        <a href="/stress-tests/" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;text-decoration:none;" target="_blank">🔬 Inspector</a>
+        <a href="/api/dashboard/events/export" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;text-decoration:none;" download>⬇ Export CSV</a>
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;" onclick="loadHealth();loadFeed();loadLiveStatus();">↻ Refresh All</button>
+    </div>
+</div>
+
+<!-- ── Add Bot Modal ──────────────────────────────────────────────────── -->
+<div id="createBotModal" style="
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+    align-items:center; justify-content:center; z-index:300; padding:20px;">
+    <div style="background:#2f3136; border-radius:12px; width:90%; max-width:520px;
+                box-shadow:0 12px 40px rgba(0,0,0,.5); overflow:hidden;">
+
+        <!-- Header -->
+        <div style="padding:24px 28px 0; display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+                <h2 style="color:#7289da; font-size:1.3em; margin-bottom:4px;">🤖 Add a Bot</h2>
+                <p style="color:#72767d; font-size:13px;">Connect a Discord bot to one of your servers</p>
+            </div>
+            <button onclick="closeCreateBotModal()" style="background:none; border:none; color:#72767d;
+                    font-size:22px; cursor:pointer; padding:0 0 0 12px; line-height:1;">×</button>
+        </div>
+
+        <!-- Step indicators -->
+        <div style="display:flex; gap:0; padding:20px 28px 0;">
+            <div id="step1ind" style="flex:1; text-align:center; padding-bottom:10px;
+                 border-bottom:2px solid #7289da; color:#7289da; font-size:12px; font-weight:700;">
+                1 · Create on Discord
+            </div>
+            <div id="step2ind" style="flex:1; text-align:center; padding-bottom:10px;
+                 border-bottom:2px solid #40444b; color:#72767d; font-size:12px; font-weight:700;">
+                2 · Add to App
+            </div>
+        </div>
+
+        <!-- Step 1 -->
+        <div id="cbStep1" style="padding:24px 28px;">
+            <p style="color:#b9bbbe; font-size:14px; line-height:1.7; margin-bottom:20px;">
+                Before adding a bot here, you need to create one in the Discord Developer Portal.
+                Follow these steps:
+            </p>
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px;">
+                <div style="display:flex; gap:14px; align-items:flex-start;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:#7289da;
+                         display:flex; align-items:center; justify-content:center;
+                         font-size:12px; font-weight:700; flex-shrink:0;">1</div>
+                    <div>
+                        <div style="color:#fff; font-weight:600; font-size:14px;">Open the Developer Portal</div>
+                        <div style="color:#72767d; font-size:13px; margin-top:2px;">Click the button below to open Discord's application page.</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:14px; align-items:flex-start;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:#7289da;
+                         display:flex; align-items:center; justify-content:center;
+                         font-size:12px; font-weight:700; flex-shrink:0;">2</div>
+                    <div>
+                        <div style="color:#fff; font-weight:600; font-size:14px;">Click "New Application"</div>
+                        <div style="color:#72767d; font-size:13px; margin-top:2px;">Give it a name — this will be your bot's name in Discord.</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:14px; align-items:flex-start;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:#7289da;
+                         display:flex; align-items:center; justify-content:center;
+                         font-size:12px; font-weight:700; flex-shrink:0;">3</div>
+                    <div>
+                        <div style="color:#fff; font-weight:600; font-size:14px;">Go to Bot → "Reset Token"</div>
+                        <div style="color:#72767d; font-size:13px; margin-top:2px;">Copy the token — you'll paste it in the next step. Keep it secret!</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:14px; align-items:flex-start;">
+                    <div style="width:26px; height:26px; border-radius:50%; background:#7289da;
+                         display:flex; align-items:center; justify-content:center;
+                         font-size:12px; font-weight:700; flex-shrink:0;">4</div>
+                    <div>
+                        <div style="color:#fff; font-weight:600; font-size:14px;">Enable "Message Content Intent"</div>
+                        <div style="color:#72767d; font-size:13px; margin-top:2px;">Under Bot → Privileged Gateway Intents, turn this on.</div>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <a href="https://discord.com/developers/applications" target="_blank"
+                   class="btn btn-success" style="flex:1; justify-content:center; text-decoration:none;">
+                    🔗 Open Developer Portal
+                </a>
+                <button onclick="cbGoStep2()" class="btn" style="flex:1; justify-content:center;">
+                    I have my token →
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="cbStep2" style="padding:24px 28px; display:none;">
+            <div style="margin-bottom:16px;">
+                <label style="display:block; color:#b9bbbe; font-size:13px; font-weight:600; margin-bottom:6px;">
+                    Bot Name <span style="color:#f04747;">*</span>
+                </label>
+                <input id="cbName" type="text" placeholder="e.g. Moderation Bot"
+                       style="width:100%; padding:10px 12px; background:#40444b; border:1px solid #202225;
+                              border-radius:5px; color:#fff; font-size:14px;">
+                <small style="color:#72767d; font-size:11px; margin-top:4px; display:block;">
+                    A label so you can recognise this bot in the app.
+                </small>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="display:block; color:#b9bbbe; font-size:13px; font-weight:600; margin-bottom:6px;">
+                    Bot Token <span style="color:#f04747;">*</span>
+                </label>
+                <input id="cbToken" type="password" placeholder="Paste your bot token here"
+                       style="width:100%; padding:10px 12px; background:#40444b; border:1px solid #202225;
+                              border-radius:5px; color:#fff; font-size:14px;">
+                <small style="color:#72767d; font-size:11px; margin-top:4px; display:block;">
+                    From Discord Developer Portal → Your App → Bot → Token.
+                </small>
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block; color:#b9bbbe; font-size:13px; font-weight:600; margin-bottom:6px;">
+                    Attach to Server <span style="color:#f04747;">*</span>
+                </label>
+                <select id="cbServer"
+                        style="width:100%; padding:10px 12px; background:#40444b; border:1px solid #202225;
+                               border-radius:5px; color:#fff; font-size:14px;">
+                    <option value="">— Select a server —</option>
+                </select>
+                <small style="color:#72767d; font-size:11px; margin-top:4px; display:block;">
+                    The bot token will be saved to this server's configuration.
+                </small>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button onclick="cbGoStep1()" class="btn btn-ghost" style="flex:1; justify-content:center;">← Back</button>
+                <button onclick="submitCreateBot()" class="btn btn-success" id="cbSubmit"
+                        style="flex:1; justify-content:center;">✅ Add Bot</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── Notification ──────────────────────────────────────────────────── -->
+<div id="notification" class="notification">
+    <span id="notifIcon">✓</span>
+    <span id="notifText"></span>
+</div>
+
+<script>
+    
+
+    // ── Environment rename ─────────────────────────────────────────
+    function renameEnv(serverId, el) {
+        el.style.borderBottomColor = 'transparent';
+        const newName = el.textContent.trim();
+        const orig = el.dataset.orig;
+        if (!newName) { el.textContent = orig; return; }
+        if (newName === orig) return;
+        fetch(`/api/environment/${serverId}/rename`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ env_name: newName })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                el.dataset.orig = d.env_name;
+                showNotification('Environment renamed', 'success');
+            } else {
+                el.textContent = orig;
+                showNotification(d.error || 'Rename failed', 'error');
+            }
+        })
+        .catch(() => { el.textContent = orig; showNotification('Network error', 'error'); });
+    }
+
+    // ── Notification ───────────────────────────────────────────────
+    function showNotification(msg, type = 'success') {
+        const el = document.getElementById('notification');
+        document.getElementById('notifText').textContent = msg;
+        document.getElementById('notifIcon').textContent = type === 'success' ? '✓' : '✕';
+        el.className = `notification show ${type === 'error' ? 'error' : ''}`;
+        clearTimeout(el._t);
+        el._t = setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    // ── Load bots ──────────────────────────────────────────────────
+    let currentBots  = [];
+    let canUseCloud  = false;
+
+    function loadBots() {
+        fetch('/api/bots/list')
+        .then(r => r.json())
+        .then(data => {
+            currentBots = data.bots || [];
+            canUseCloud = data.can_use_cloud === true;
+            document.getElementById('botsCount').textContent = `${data.count}/${data.limit} bots`;
+            renderBots();
+        })
+        .catch(() => {
+            document.getElementById('botsCount').textContent = '';
+            document.getElementById('botsList').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <h3>Could not load bots</h3>
+                    <p>Check your connection and refresh.</p>
+                </div>`;
+        });
+    }
+
+    function renderBots() {
+        const count = currentBots.length;
+        document.getElementById('botsCount').textContent =
+            count ? `· ${count} bot${count !== 1 ? 's' : ''}` : '';
+
+        // Group by server_id
+        const byServer = {};
+        currentBots.forEach(bot => {
+            const sid = bot.server_id || '__none__';
+            if (!byServer[sid]) byServer[sid] = [];
+            byServer[sid].push(bot);
+        });
+
+        // Populate each environment's bot panel
+        document.querySelectorAll('[data-env-bots]').forEach(panel => {
+            const sid = panel.dataset.envBots;
+            panel.innerHTML = _envBotsHTML(byServer[sid] || []);
+            delete byServer[sid];
+        });
+
+        // Standalone bots (no matching environment)
+        const remaining = Object.values(byServer).flat();
+        const standalone = document.getElementById('standaloneBots');
+        const grid = document.getElementById('standaloneBotsGrid');
+        if (standalone && grid) {
+            if (remaining.length > 0) {
+                standalone.style.display = '';
+                grid.innerHTML = '';
+                remaining.forEach(bot => {
+                    const card = document.createElement('div');
+                    card.className = 'bot-card';
+                    card.innerHTML = `
+                        <div class="bot-header">
+                            <div><div class="bot-name">${esc(bot.bot_name)}</div>
+                            <div class="bot-server">No linked server</div></div>
+                        </div>
+                        <div class="bot-actions">
+                            <a href="/bots" class="btn btn-ghost">Manage →</a>
+                            <button class="btn btn-ghost" onclick="deleteBot('${bot.server_id}','${bot.bot_id}',this)">🗑️</button>
+                        </div>`;
+                    grid.appendChild(card);
+                });
+            } else {
+                standalone.style.display = 'none';
+            }
+        }
+    }
+
+    function _envBotsHTML(bots) {
+        const addBtn = `<a href="/bots" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;white-space:nowrap;text-decoration:none;">+ Add Bot</a>`;
+        const header = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span style="font-size:11px;font-weight:700;color:#72767d;text-transform:uppercase;letter-spacing:.05em;">
+                Bots${bots.length ? ' (' + bots.length + ')' : ''}
+            </span>${addBtn}</div>`;
+
+        if (!bots.length) {
+            return header + `<div style="color:#72767d;font-size:13px;">No bots linked yet.</div>`;
+        }
+
+        return header + bots.map(bot => {
+            const runMode = (!canUseCloud || bot.bot_type === 'local') ? 'local' : 'cloud';
+            const localOnline = bot.local_last_seen &&
+                (Date.now() - new Date(bot.local_last_seen).getTime()) < 3 * 60 * 1000;
+
+            const modeBadge = runMode === 'cloud'
+                ? `<span style="font-size:10px;background:rgba(114,137,218,.18);color:#7289da;padding:2px 6px;border-radius:6px;font-weight:700;">CLOUD</span>`
+                : `<span style="font-size:10px;background:rgba(67,181,129,.15);color:#43b581;padding:2px 6px;border-radius:6px;font-weight:700;">LOCAL</span>`;
+
+            let statusHtml, actionHtml;
+            if (runMode === 'cloud') {
+                statusHtml = bot.status === 'running'
+                    ? `<span style="color:#43b581;font-size:12px;white-space:nowrap;">● Running</span>`
+                    : `<span style="color:#f04747;font-size:12px;white-space:nowrap;">● Stopped</span>`;
+                actionHtml = bot.status === 'running'
+                    ? `<button class="btn btn-danger" style="padding:4px 10px;font-size:11px;" onclick="cloudBot('${bot.server_id}','${bot.bot_id}','stop',this)">Stop</button>
+                       <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="cloudBot('${bot.server_id}','${bot.bot_id}','restart',this)">🔄</button>`
+                    : `<button class="btn btn-success" style="padding:4px 10px;font-size:11px;" onclick="cloudBot('${bot.server_id}','${bot.bot_id}','start',this)">Start</button>`;
+            } else {
+                statusHtml = localOnline
+                    ? `<span style="color:#43b581;font-size:12px;white-space:nowrap;">● Online</span>`
+                    : `<span style="color:#72767d;font-size:12px;white-space:nowrap;">○ Offline</span>`;
+                actionHtml = `<a href="/bots" class="btn btn-ghost" style="padding:4px 10px;font-size:11px;text-decoration:none;">Manage</a>`;
+            }
+
+            return `<div class="env-bot-row">
+                <span class="env-bot-name">${esc(bot.bot_name)}</span>
+                ${modeBadge}
+                ${statusHtml}
+                <div style="display:flex;gap:6px;margin-left:auto;">
+                    ${actionHtml}
+                    <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;"
+                        onclick="deleteBot('${bot.server_id}','${bot.bot_id}',this)"
+                        ${bot.status === 'running' ? 'disabled title="Stop the bot first"' : ''}>🗑️</button>
+                </div></div>`;
+        }).join('');
+    }
+
+    function cloudBot(serverId, botId, action, btn) {
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '⏳';
+        fetch(`/api/bots/${action}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({server_id: serverId, bot_id: botId})
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                showNotification(`Bot ${action}ed!`);
+                loadBots();
+            } else {
+                showNotification(d.error || 'Failed', 'error');
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        })
+        .catch(() => {
+            showNotification('Network error', 'error');
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        });
+    }
+
+    function deleteBot(serverId, botId, btn) {
+        if (!confirm('Delete this bot? This cannot be undone.')) return;
+        const orig = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '⏳';
+        fetch('/api/bots/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({server_id: serverId, bot_id: botId})
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { showNotification('Bot deleted'); loadBots(); }
+            else { showNotification(d.error || 'Failed', 'error'); btn.disabled = false; btn.innerHTML = orig; }
+        })
+        .catch(() => { showNotification('Network error', 'error'); btn.disabled = false; btn.innerHTML = orig; });
+    }
+
+    function timeSince(date) {
+        const s = Math.floor((Date.now() - date) / 1000);
+        if (s < 60)   return s + 's ago';
+        if (s < 3600) return Math.floor(s / 60) + 'm ago';
+        if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+        return Math.floor(s / 86400) + 'd ago';
+    }
+
+    // ── Add Bot modal ──────────────────────────────────────────────
+    function openCreateBotModal() {
+        // Populate server dropdown from current servers on page
+        const sel = document.getElementById('cbServer');
+        sel.innerHTML = '<option value="">— Select a server —</option>';
+        {% for server in servers %}
+        sel.innerHTML += '<option value="{{ server.server_id }}">{{ server.server_name }} ({{ server.guild_id }})</option>';
+        {% endfor %}
+        cbGoStep1();
+        document.getElementById('createBotModal').style.display = 'flex';
+    }
+    function closeCreateBotModal() {
+        document.getElementById('createBotModal').style.display = 'none';
+        ['cbToken','cbName'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('cbServer').value = '';
+    }
+    function cbGoStep1() {
+        document.getElementById('cbStep1').style.display = 'block';
+        document.getElementById('cbStep2').style.display = 'none';
+        document.getElementById('step1ind').style.borderBottomColor = '#7289da';
+        document.getElementById('step1ind').style.color = '#7289da';
+        document.getElementById('step2ind').style.borderBottomColor = '#40444b';
+        document.getElementById('step2ind').style.color = '#72767d';
+    }
+    function cbGoStep2() {
+        document.getElementById('cbStep1').style.display = 'none';
+        document.getElementById('cbStep2').style.display = 'block';
+        document.getElementById('step2ind').style.borderBottomColor = '#7289da';
+        document.getElementById('step2ind').style.color = '#7289da';
+        document.getElementById('step1ind').style.borderBottomColor = '#40444b';
+        document.getElementById('step1ind').style.color = '#72767d';
+    }
+    function submitCreateBot() {
+        const token    = document.getElementById('cbToken').value.trim();
+        const name     = document.getElementById('cbName').value.trim();
+        const serverId = document.getElementById('cbServer').value;
+        if (!token || !name || !serverId) {
+            showNotification('All fields are required', 'error');
+            return;
+        }
+        const btn = document.getElementById('cbSubmit');
+        btn.disabled = true; btn.innerHTML = '⏳ Adding...';
+
+        fetch('/api/bots/add-to-server', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({server_id: serverId, bot_name: name, bot_token: token})
+        })
+        .then(r => r.json())
+        .then(d => {
+            btn.disabled = false; btn.innerHTML = '✅ Add Bot';
+            if (d.success) { showNotification('Bot added successfully!'); closeCreateBotModal(); loadBots(); }
+            else showNotification(d.error || 'Failed to add bot', 'error');
+        })
+        .catch(() => { btn.disabled = false; btn.innerHTML = '✅ Add Bot'; showNotification('Network error', 'error'); });
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('createBotModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeCreateBotModal();
+    });
+
+    // ── Server Health (per environment) ──────────────────────────
+    async function loadHealth() {
+        try {
+            const data = await fetch('/api/dashboard/server-health').then(r => r.json());
+            const byId = {};
+            data.forEach(s => { byId[s.server_id] = s; });
+
+            document.querySelectorAll('[data-env-footer]').forEach(footer => {
+                const col = footer.querySelector('[data-health-col]');
+                if (!col) return;
+                const s = byId[footer.dataset.envFooter];
+                if (!s) {
+                    col.innerHTML = `<div class="env-section-label">Health</div>
+                        <span style="color:#72767d;font-size:12px;">No data yet.</span>`;
+                    return;
+                }
+                const botStatus = s.local_bots_total === 0
+                    ? `<span style="color:#72767d">No local bots</span>`
+                    : s.local_bots_online > 0
+                        ? `<span style="color:#43b581">🟢 ${s.local_bots_online}/${s.local_bots_total} online</span>`
+                        : `<span style="color:#f04747">🔴 Offline</span>`;
+                const syncAge = s.last_sync ? timeAgo(s.last_sync) : 'Never';
+                const setup   = s.setup_completed ? `<span style="color:#43b581">✅ Setup done</span>` : `<span style="color:#72767d">⏳ Pending</span>`;
+                const pending = s.pending_commands ? `<span style="color:#faa61a">⏳ ${s.pending_commands} pending</span>` : '';
+                const failed  = s.failed_commands  ? `<span style="color:#f04747">❌ ${s.failed_commands} failed</span>`  : '';
+                col.innerHTML = `<div class="env-section-label">Health</div>
+                    <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+                        <div>${botStatus}</div>
+                        <div style="color:#b9bbbe;">👥 ${s.member_count} members · Sync: ${syncAge}</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">${setup}${pending}${failed}</div>
+                    </div>`;
+            });
+        } catch {
+            document.querySelectorAll('[data-health-col]').forEach(col => {
+                col.innerHTML = `<div class="env-section-label">Health</div>
+                    <span style="color:#72767d;font-size:12px;">Could not load.</span>`;
+            });
+        }
+    }
+
+    // ── Activity feed (per environment) ──────────────────────────
+    async function loadFeed() {
+        try {
+            const events = await fetch('/api/dashboard/events').then(r => r.json());
+            const byName = {};
+            events.forEach(e => {
+                const n = e.server_name || '';
+                if (!byName[n]) byName[n] = [];
+                byName[n].push(e);
+            });
+
+            document.querySelectorAll('[data-env-footer]').forEach(footer => {
+                const col = footer.querySelector('[data-activity-col]');
+                if (!col) return;
+                const items = (byName[footer.dataset.serverName] || []).slice(0, 4);
+                if (!items.length) {
+                    col.innerHTML = `<div class="env-section-label">Recent Activity</div>
+                        <span style="color:#72767d;font-size:12px;">No activity yet.</span>`;
+                    return;
+                }
+                col.innerHTML = `<div class="env-section-label">Recent Activity</div>` +
+                    items.map(e => `
+                        <div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid #40444b;">
+                            <span style="font-size:14px;flex-shrink:0;">${e.icon || '📌'}</span>
+                            <div style="min-width:0;flex:1;">
+                                <div style="color:#dcddde;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.description)}</div>
+                                <div style="color:#72767d;font-size:10px;margin-top:1px;">${timeAgo(e.ts)}</div>
+                            </div>
+                        </div>`).join('');
+            });
+        } catch {
+            document.querySelectorAll('[data-activity-col]').forEach(col => {
+                col.innerHTML = `<div class="env-section-label">Recent Activity</div>
+                    <span style="color:#72767d;font-size:12px;">Could not load.</span>`;
+            });
+        }
+    }
+
+    function timeAgo(iso) {
+        if (!iso) return '—';
+        const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+        if (diff < 60)  return `${diff}s ago`;
+        if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+        return `${Math.floor(diff/86400)}d ago`;
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Live Discord status ────────────────────────────────────────
+    const _DRIFT_COLOR = {sync:'#43b581', minor:'#faa61a', out_of_sync:'#f04747', unknown:'#72767d'};
+    const _DRIFT_LABEL = {sync:'✅ In sync', minor:'⚠️ Minor drift', out_of_sync:'❌ Out of sync', unknown:'— Unknown'};
+    const _TIER_LABEL  = ['Free','Level 1','Level 2','Level 3'];
+    const _TIER_COLOR  = ['#72767d','#faa61a','#7289da','#ff73fa'];
+
+    function _liveStatsHTML(d) {
+        if (!d.ok && d.reason === 'no_guild_id') {
+            return `<div style="grid-column:1/-1;color:#72767d;font-size:12px;">⚠️ No Guild ID set — configure it in Settings.</div>`;
+        }
+        if (!d.ok) {
+            return `<div style="grid-column:1/-1;">
+                <div style="color:#f04747;font-size:12px;margin-bottom:6px;">❌ Bot is not in this Discord server</div>
+                <div style="color:#72767d;font-size:11px;">Re-invite the bot to see live data.</div>
+                <button onclick="refreshLive('${esc(d.server_id)}')" style="margin-top:8px;background:none;border:1px solid #40444b;border-radius:4px;color:#7289da;font-size:11px;padding:3px 9px;cursor:pointer;">↻ Retry</button>
+            </div>`;
+        }
+        const tier      = d.boost_tier || 0;
+        const driftCol  = _DRIFT_COLOR[d.drift_status] || '#72767d';
+        const driftLbl  = _DRIFT_LABEL[d.drift_status] || '—';
+        const driftDet  = d.ch_diff !== null
+            ? `<span style="color:#72767d;font-size:10px;font-weight:400;display:block;">${d.ch_diff} ch · ${d.role_diff} role${d.role_diff !== 1 ? 's' : ''} off</span>`
+            : '';
+        const cacheAgo  = d.cache_age_s > 0
+            ? timeAgo(new Date(Date.now() - d.cache_age_s * 1000).toISOString())
+            : 'just now';
+        const boostStr  = d.boost_count ? ` <span style="color:#72767d;font-size:10px;">(${d.boost_count})</span>` : '';
+        return `
+            <div class="env-stat">
+                <div class="label">Members</div>
+                <div class="value">${d.member_count ?? '—'}</div>
+            </div>
+            <div class="env-stat">
+                <div class="label">Server Boost</div>
+                <div class="value" style="font-size:13px;color:${_TIER_COLOR[tier]};">${_TIER_LABEL[tier]}${boostStr}</div>
+            </div>
+            <div class="env-stat">
+                <div class="label">Live Channels</div>
+                <div class="value">${d.live_channels ?? '—'}<span style="color:#72767d;font-size:10px;font-weight:400;margin-left:3px;">/ ${d.cfg_channels} cfg</span></div>
+            </div>
+            <div class="env-stat">
+                <div class="label">Config Drift</div>
+                <div class="value" style="font-size:12px;">
+                    <a href="/stress-tests/func_step3_channels.html"
+                       onclick="localStorage.setItem('func_test_server_id','${esc(d.server_id)}')"
+                       style="color:${driftCol};text-decoration:none;"
+                       title="Audit channels &amp; roles in Deployment Inspector">
+                        ${driftLbl} <span style="font-size:9px;opacity:.6;">↗</span>
+                    </a>
+                    ${driftDet}
+                </div>
+            </div>
+            <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;
+                        margin-top:4px;border-top:1px solid #40444b;padding-top:8px;">
+                <span style="color:#72767d;font-size:10px;">Checked ${cacheAgo}${d.from_cache ? ' · cached' : ''}</span>
+                <button onclick="refreshLive('${esc(d.server_id)}')"
+                        style="background:none;border:none;color:#7289da;font-size:11px;cursor:pointer;font-weight:600;padding:0;">
+                    ↻ Refresh
+                </button>
+            </div>`;
+    }
+
+    async function loadLiveStatus() {
+        try {
+            const data = await fetch('/api/dashboard/live-status').then(r => r.json());
+            data.forEach(d => {
+                const el = document.querySelector(`[data-live-stats="${d.server_id}"]`);
+                if (el) el.innerHTML = _liveStatsHTML(d);
+            });
+        } catch {
+            document.querySelectorAll('[data-live-stats]').forEach(el => {
+                el.innerHTML = '<div style="grid-column:1/-1;color:#72767d;font-size:12px;">Could not fetch live data.</div>';
+            });
+        }
+    }
+
+    async function refreshLive(serverId) {
+        const el = document.querySelector(`[data-live-stats="${serverId}"]`);
+        if (el) el.innerHTML = '<div style="grid-column:1/-1;color:#72767d;font-size:12px;opacity:.6;">⏳ Refreshing…</div>';
+        try {
+            const data = await fetch(`/api/dashboard/live-status?server_id=${encodeURIComponent(serverId)}&refresh=1`).then(r => r.json());
+            if (data[0] && el) el.innerHTML = _liveStatsHTML(data[0]);
+        } catch {
+            if (el) el.innerHTML = '<div style="grid-column:1/-1;color:#f04747;font-size:12px;">Refresh failed.</div>';
+        }
+    }
+
+    // ── Init ───────────────────────────────────────────────────────
+    loadBots();
+    loadHealth();
+    loadFeed();
+    loadLiveStatus();
+</script>
+
+<script>
+(function() {
+    var btn = document.getElementById('userNavBtn');
+    var dd  = document.getElementById('userNavDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        btn.classList.toggle('open');
+        dd.classList.toggle('open');
+    });
+    // Stop clicks inside the dropdown from closing it before navigation fires
+    dd.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+    document.addEventListener('click', function() {
+        btn.classList.remove('open');
+        dd.classList.remove('open');
+    });
+    if (['127.0.0.1','localhost'].includes(location.hostname)) {
+        document.getElementById('botMgrLink').style.display = '';
+    }
+    var hb = document.getElementById("navHamburger");
+    var nl = document.querySelector(".navbar-links");
+    if (hb && nl) {
+        hb.addEventListener("click", function(e) { e.stopPropagation(); nl.classList.toggle("mobile-open"); });
+        document.addEventListener("click", function() { nl.classList.remove("mobile-open"); });
+    }
+})();
+</script>
+
+
+<script>
+// ── Background job toast (persists across navigation via localStorage) ────────
+
+function showToast(message, type, duration) {
+    let toast = document.getElementById('bgToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'bgToast';
+        toast.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;align-items:center;gap:12px;background:#2f3136;border-radius:8px;padding:14px 18px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:280px;max-width:380px;border-left:4px solid #7289da;animation:toastIn .25s ease;';
+        document.head.insertAdjacentHTML('beforeend',
+            '<style>@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}</style>');
+        document.body.appendChild(toast);
+    }
+    const colors = {info:'#7289da', success:'#43b581', error:'#f04747'};
+    const icons  = {info:'⚙️', success:'✅', error:'❌'};
+    toast.style.borderLeftColor = colors[type] || colors.info;
+    toast.innerHTML = `
+        <span style="font-size:20px;flex-shrink:0;">${icons[type] || '⚙️'}</span>
+        <span style="color:#fff;font-size:14px;font-weight:500;flex:1;">${message}</span>
+        <button onclick="localStorage.removeItem('bgJob');this.closest('#bgToast').remove()"
+                style="background:none;border:none;color:#72767d;font-size:18px;cursor:pointer;padding:0;line-height:1;">×</button>`;
+    if (toast._timer) clearTimeout(toast._timer);
+    if (duration > 0) toast._timer = setTimeout(() => { localStorage.removeItem('bgJob'); toast.remove(); }, duration);
+}
+
+function pollToast(serverId, type, label) {
+    const statusUrl = type === 'setup'
+        ? '/api/setup/status/' + serverId
+        : '/api/update/status/' + serverId;
+    let polls = 0;
+    const interval = setInterval(() => {
+        polls++;
+        fetch(statusUrl).then(r => r.json()).then(status => {
+            const done = type === 'setup' ? status.setup_completed : status.update_complete;
+            const err  = type === 'setup' ? status.setup_error     : status.update_error;
+            if (done) {
+                clearInterval(interval);
+                localStorage.removeItem('bgJob');
+                showToast(`${label} complete! Your server is ready.`, 'success', 6000);
+                // Reload so server cards update their status badge
+                setTimeout(() => location.reload(), 5000);
+            } else if (err) {
+                clearInterval(interval);
+                localStorage.removeItem('bgJob');
+                showToast(`${label} failed: ${err}`, 'error', 0);
+            } else if (polls >= 90) {
+                clearInterval(interval);
+                localStorage.removeItem('bgJob');
+                showToast(`${label} is taking longer than expected.`, 'error', 0);
+            }
+        }).catch(() => {});
+    }, 3000);
+}
+
+// On page load: check if a background job was in progress when we navigated here
+document.addEventListener('DOMContentLoaded', () => {
+    const raw = localStorage.getItem('bgJob');
+    if (!raw) return;
+    try {
+        const job = JSON.parse(raw);
+        const currentUser = {{ current_username|tojson }};
+        if (job.user && job.user !== currentUser) {
+            localStorage.removeItem('bgJob');
+            return;
+        }
+        const { serverId, type, label } = job;
+        // First check if it's already done (might have finished while navigating)
+        const statusUrl = type === 'setup'
+            ? '/api/setup/status/' + serverId
+            : '/api/update/status/' + serverId;
+        fetch(statusUrl).then(r => r.json()).then(status => {
+            const done = type === 'setup' ? status.setup_completed : status.update_complete;
+            const err  = type === 'setup' ? status.setup_error     : status.update_error;
+            if (done) {
+                localStorage.removeItem('bgJob');
+                showToast(`${label} complete! Your server is ready.`, 'success', 6000);
+                setTimeout(() => location.reload(), 5000);
+            } else if (err) {
+                localStorage.removeItem('bgJob');
+                showToast(`${label} failed: ${err}`, 'error', 0);
+            } else {
+                // Still running — resume toast + polling
+                showToast(`⚙️ ${label} is still running in the background...`, 'info', 0);
+                pollToast(serverId, type, label);
+            }
+        }).catch(() => {
+            // Can't reach status endpoint — remove stale job
+            localStorage.removeItem('bgJob');
+        });
+    } catch(e) {
+        localStorage.removeItem('bgJob');
+    }
+});
+</script>
+
+<!-- ── New Server Modal ─────────────────────────────────────────────────── -->
+<style>
+.nsm-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+    align-items:center; justify-content:center; z-index:400; padding:20px;
+}
+.nsm-overlay.open { display:flex; }
+.nsm-box {
+    background:#2f3136; border-radius:12px; padding:32px 28px;
+    max-width:520px; width:100%; box-shadow:0 12px 40px rgba(0,0,0,.6);
+    position:relative;
+}
+.nsm-close {
+    position:absolute; top:14px; right:16px; background:none; border:none;
+    color:#72767d; font-size:22px; cursor:pointer; line-height:1;
+}
+.nsm-close:hover { color:#fff; }
+.nsm-title { font-size:20px; font-weight:700; color:#fff; margin-bottom:6px; }
+.nsm-subtitle { color:#72767d; font-size:13px; margin-bottom:24px; }
+.nsm-cards { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:0; }
+.nsm-card {
+    background:#36393f; border:2px solid #40444b; border-radius:10px;
+    padding:22px 18px; cursor:pointer; transition:border-color .15s, background .15s;
+    text-align:center;
+}
+.nsm-card:hover { border-color:#7289da; background:#3a3d44; }
+.nsm-card.active { border-color:#7289da; background:#3a3d44; }
+.nsm-card-icon { font-size:32px; margin-bottom:10px; }
+.nsm-card-title { font-size:15px; font-weight:700; color:#fff; margin-bottom:6px; }
+.nsm-card-desc { font-size:12px; color:#72767d; line-height:1.5; }
+.nsm-existing {
+    display:none; margin-top:20px; background:#36393f; border-radius:8px;
+    padding:18px; border:1px solid #40444b;
+}
+.nsm-existing.show { display:block; }
+.nsm-existing-label { font-size:12px; font-weight:600; color:#b9bbbe; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
+.nsm-existing input {
+    width:100%; background:#2f3136; border:1px solid #40444b; border-radius:5px;
+    color:#dcddde; padding:9px 12px; font-size:13px; outline:none; margin-bottom:12px;
+}
+.nsm-existing input:focus { border-color:#7289da; }
+.nsm-existing-btns { display:flex; gap:10px; flex-wrap:wrap; }
+.nsm-existing-btns button {
+    flex:1; padding:10px; border:none; border-radius:6px;
+    font-size:13px; font-weight:600; cursor:pointer; transition:background .15s;
+}
+.nsm-btn-import { background:#5865f2; color:#fff; }
+.nsm-btn-import:hover { background:#4752c4; }
+.nsm-btn-connect { background:#43b581; color:#fff; }
+.nsm-btn-connect:hover { background:#3ca374; }
+.nsm-error { color:#f04747; font-size:12px; margin-top:8px; display:none; }
+</style>
+
+<div class="nsm-overlay" id="newServerModal">
+    <div class="nsm-box">
+        <button class="nsm-close" onclick="closeNewServerModal()">×</button>
+        <div class="nsm-title">Add a Server</div>
+        <div class="nsm-subtitle">Create a fresh server or connect one you already own</div>
+        <div class="nsm-cards">
+            <div class="nsm-card" onclick="window.location.href='{{ url_for('setup') }}'">
+                <div class="nsm-card-icon">✨</div>
+                <div class="nsm-card-title">Create New</div>
+                <div class="nsm-card-desc">Start from scratch with a guided setup wizard</div>
+            </div>
+            <div class="nsm-card" id="nsmExistingCard" onclick="toggleExistingPanel()">
+                <div class="nsm-card-icon">🔗</div>
+                <div class="nsm-card-title">Add Existing</div>
+                <div class="nsm-card-desc">Connect a Discord server you already own</div>
+            </div>
+        </div>
+        <div class="nsm-existing" id="nsmExistingPanel">
+            <div class="nsm-existing-label">Enter your Guild ID (Server ID)</div>
+            <input type="text" id="nsmGuildId" placeholder="e.g. 123456789012345678"
+                   oninput="document.getElementById('nsmError').style.display='none'">
+            <div class="nsm-existing-label" style="margin-top:10px;">Bot Token</div>
+            <div style="position:relative;">
+                <input type="password" id="nsmBotToken" placeholder="Required for Import from Discord"
+                       oninput="document.getElementById('nsmError').style.display='none'"
+                       style="padding-right:38px;">
+                <button type="button" onclick="(function(){var i=document.getElementById('nsmBotToken');i.type=i.type==='password'?'text':'password';})()"
+                        style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#72767d;font-size:14px;">👁</button>
+            </div>
+            <div class="nsm-existing-btns">
+                <button class="nsm-btn-import" onclick="nsmImportFromDiscord()">
+                    📥 Import from Discord
+                </button>
+                <button class="nsm-btn-connect" onclick="nsmUseExisting()">
+                    📋 Use Existing Config
+                </button>
+            </div>
+            <div class="nsm-error" id="nsmError"></div>
+            <p style="color:#72767d;font-size:11px;margin-top:10px;line-height:1.5;">
+                <strong style="color:#b9bbbe;">Import from Discord</strong> — fetches your server's live channel/role structure.<br>
+                <strong style="color:#b9bbbe;">Use Existing Config</strong> — loads a saved config and runs an update (won't delete existing channels).
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+function openNewServerModal() {
+    document.getElementById('newServerModal').classList.add('open');
+}
+function closeNewServerModal() {
+    document.getElementById('newServerModal').classList.remove('open');
+    document.getElementById('nsmGuildId').value = '';
+    document.getElementById('nsmBotToken').value = '';
+    document.getElementById('nsmError').style.display = 'none';
+    document.getElementById('nsmExistingPanel').classList.remove('show');
+    document.getElementById('nsmExistingCard').classList.remove('active');
+}
+function toggleExistingPanel() {
+    const panel = document.getElementById('nsmExistingPanel');
+    const card  = document.getElementById('nsmExistingCard');
+    const showing = panel.classList.contains('show');
+    panel.classList.toggle('show', !showing);
+    card.classList.toggle('active', !showing);
+}
+function nsmImportFromDiscord() {
+    const guildId   = document.getElementById('nsmGuildId').value.trim();
+    const botToken  = document.getElementById('nsmBotToken').value.trim();
+    if (!guildId)   { nsmError('Please enter a Guild ID.'); return; }
+    if (!/^\d{17,20}$/.test(guildId)) { nsmError('Guild ID must be 17–20 digits.'); return; }
+    if (!botToken)  { nsmError('Please enter your Bot Token to import from Discord.'); return; }
+    fetch('/api/discord/import-guild', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ guild_id: guildId, bot_token: botToken })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) { window.location.href = '{{ url_for("setup") }}'; }
+        else { nsmError(d.error || 'Could not import server. Is your bot in your server?'); }
+    })
+    .catch(() => nsmError('Network error — please try again.'));
+}
+function nsmUseExisting() {
+    const guildId = document.getElementById('nsmGuildId').value.trim();
+    if (!guildId) { nsmError('Please enter a Guild ID.'); return; }
+    if (!/^\d{17,20}$/.test(guildId)) { nsmError('Guild ID must be 17–20 digits.'); return; }
+    window.location.href = '{{ url_for("setup") }}?guild_id=' + encodeURIComponent(guildId);
+}
+function nsmError(msg) {
+    const el = document.getElementById('nsmError');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+document.getElementById('newServerModal').addEventListener('click', function(e) {
+    if (e.target === this) closeNewServerModal();
+});
+</script>
+
+
+    {% include 'footer.html' %}
+</body>
+</html>

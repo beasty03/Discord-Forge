@@ -1,0 +1,217 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover { background: #36393f; color: #fff; }
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .container { max-width: 640px; margin: 48px auto; padding: 0 24px; }
+        .card {
+            background: #2f3136; border-radius: 12px; padding: 32px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.3);
+        }
+        h1 { font-size: 1.5em; color: #fff; margin-bottom: 6px; }
+        .subtitle { color: #72767d; font-size: 13px; margin-bottom: 28px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #b9bbbe; margin-bottom: 6px; }
+        input, select, textarea {
+            width: 100%; background: #36393f; border: 1px solid #40444b;
+            border-radius: 6px; color: #fff; padding: 10px 12px;
+            font-size: 14px; font-family: inherit; outline: none;
+            transition: border-color .15s;
+        }
+        input:focus, select:focus, textarea:focus { border-color: #7289da; }
+        select option { background: #36393f; }
+        textarea { resize: vertical; min-height: 120px; }
+        .btn {
+            background: #7289da; color: #fff; border: none;
+            padding: 11px 24px; border-radius: 6px; cursor: pointer;
+            font-size: 14px; font-weight: 600; width: 100%;
+            transition: background .15s;
+        }
+        .btn:hover { background: #5b6eae; }
+        .btn:disabled { opacity: .5; cursor: not-allowed; }
+        .toast {
+            display: none; margin-top: 16px; padding: 12px 16px;
+            border-radius: 6px; font-size: 13px; font-weight: 500;
+        }
+        .toast.success { background: rgba(67,181,129,.2); border: 1px solid #43b581; color: #43b581; }
+        .toast.error   { background: rgba(240,71,71,.2);   border: 1px solid #f04747; color: #f04747; }
+        .success-state { display: none; text-align: center; padding: 20px 0; }
+        .success-state .icon { font-size: 3em; margin-bottom: 12px; }
+        .success-state h2 { color: #43b581; margin-bottom: 8px; }
+        .success-state p { color: #b9bbbe; font-size: 14px; }
+        .success-state a { color: #7289da; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+            <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+            <div class="navbar-links">
+                {% if username %}
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('servers_page') }}">Servers</a>
+                <a href="{{ url_for('bots_page') }}">Bots</a>
+                <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+                {% endif %}
+                <a href="/about">About</a>
+                <a href="/feedback" class="active">Feedback</a>
+            </div>
+        </div>
+        {% if username %}
+        <div style="color:#b9bbbe;font-size:14px;padding:6px 12px;">{{ username }}</div>
+        {% else %}
+        <a href="{{ url_for('login') }}" style="background:#7289da;color:#fff;text-decoration:none;padding:7px 16px;border-radius:6px;font-weight:600;font-size:13px;">Login</a>
+        {% endif %}
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h1>&#128172; Send Feedback</h1>
+            <p class="subtitle">Bug reports, feature requests, and complaints are all welcome. Submissions are tracked as GitHub issues.</p>
+
+            <div id="formArea">
+                <div class="form-group">
+                    <label for="fbTitle">Title</label>
+                    <input type="text" id="fbTitle" placeholder="Short summary of your feedback" maxlength="120">
+                </div>
+                <div class="form-group">
+                    <label for="fbCategory">Category</label>
+                    <select id="fbCategory">
+                        <option value="bug">&#128027; Bug report</option>
+                        <option value="feature">&#128161; Feature request</option>
+                        <option value="complaint">&#128545; Complaint</option>
+                        <option value="question">&#10067; Question</option>
+                        <option value="general">&#128172; General feedback</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="fbBody">Description</label>
+                    <textarea id="fbBody" placeholder="Describe the issue or request in detail. For bugs, include steps to reproduce."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="fbContact">Contact (optional)</label>
+                    <input type="text" id="fbContact" placeholder="Email or Discord username if you'd like a reply">
+                </div>
+                <div id="fbToast" class="toast"></div>
+                <button class="btn" id="fbSubmit" onclick="submitFeedback()">Submit Feedback</button>
+            </div>
+
+            <div class="success-state" id="successState">
+                <div class="icon">&#10003;</div>
+                <h2>Feedback received!</h2>
+                <p>Your issue has been created on GitHub. You can <a id="issueLink" href="#" target="_blank" rel="noopener">view it here</a>.</p>
+                <p style="margin-top:12px;"><a href="/feedback" onclick="resetForm(event)">Submit another</a></p>
+            </div>
+        </div>
+    </div>
+
+    {% include 'footer.html' %}
+
+    <script>
+        document.getElementById('navHamburger').addEventListener('click', function() {
+            document.querySelector('.navbar-links').classList.toggle('mobile-open');
+        });
+
+        async function submitFeedback() {
+            const title    = document.getElementById('fbTitle').value.trim();
+            const category = document.getElementById('fbCategory').value;
+            const body     = document.getElementById('fbBody').value.trim();
+            const contact  = document.getElementById('fbContact').value.trim();
+            const toast    = document.getElementById('fbToast');
+            const btn      = document.getElementById('fbSubmit');
+
+            if (!title) { showToast('Please enter a title.', 'error'); return; }
+            if (!body)  { showToast('Please describe the issue.', 'error'); return; }
+
+            btn.disabled = true;
+            btn.textContent = 'Submitting…';
+            hideToast();
+
+            try {
+                const resp = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, category, body, contact }),
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    document.getElementById('issueLink').href = data.issue_url;
+                    document.getElementById('formArea').style.display = 'none';
+                    document.getElementById('successState').style.display = 'block';
+                } else {
+                    showToast(data.error || 'Submission failed.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Submit Feedback';
+                }
+            } catch {
+                showToast('Network error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Submit Feedback';
+            }
+        }
+
+        function showToast(msg, type) {
+            const t = document.getElementById('fbToast');
+            t.textContent = msg;
+            t.className = 'toast ' + type;
+            t.style.display = 'block';
+        }
+        function hideToast() {
+            document.getElementById('fbToast').style.display = 'none';
+        }
+
+        function resetForm(e) {
+            e.preventDefault();
+            document.getElementById('formArea').style.display = 'block';
+            document.getElementById('successState').style.display = 'none';
+            document.getElementById('fbTitle').value = '';
+            document.getElementById('fbBody').value = '';
+            document.getElementById('fbContact').value = '';
+            document.getElementById('fbSubmit').disabled = false;
+            document.getElementById('fbSubmit').textContent = 'Submit Feedback';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Server Step 5 — Bot Management API</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:12px;font-size:.95rem}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  th{text-align:left;padding:8px 10px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d;font-size:.78rem;text-transform:uppercase}
+  td{padding:9px 10px;border-bottom:1px solid #21262d;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .status{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:.82rem}
+  .ok{color:#56d364}.fail{color:#f85149}.warn{color:#e3b341}.pend{color:#8b949e}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .dot-ok{background:#56d364}.dot-fail{background:#f85149}.dot-warn{background:#e3b341}.dot-pend{background:#484f58}
+  .btn{background:#238636;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#2ea043}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .btn-row{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+  .summary-bar{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+  .sbox{background:#21262d;border-radius:8px;padding:10px 16px;text-align:center;min-width:80px}
+  .sbox-num{font-size:1.4rem;font-weight:700}
+  .sbox-lbl{font-size:.73rem;color:#8b949e;margin-top:2px}
+  .detail{font-size:.78rem;color:#8b949e;max-width:300px;word-break:break-all}
+  .progress{height:4px;background:#21262d;border-radius:2px;overflow:hidden;margin-bottom:16px}
+  .progress-bar{height:100%;background:#238636;transition:width .3s;width:0}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-next{background:#1f6feb;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-next:hover{background:#388bfd}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  .info-box{background:#1c2a3a;border:1px solid #1f6feb;border-radius:8px;padding:12px 16px;font-size:.82rem;color:#8b949e;margin-bottom:16px}
+  .info-box strong{color:#58a6ff}
+  input[type=text]{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.83rem;outline:none;width:240px}
+  input[type=text]:focus{border-color:#58a6ff}
+  .json-preview{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px;font-size:.75rem;font-family:monospace;color:#8b949e;white-space:pre-wrap;max-height:140px;overflow:auto;margin-top:8px}
+  .part-header{font-size:.8rem;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;padding:6px 0 2px;border-top:1px solid #21262d;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><span>Server</span><span class="nav-sep">/</span><span>Step 5 — Bot Management API</span></div>
+<h1>Step 5 &mdash; Bot Management API (Flask side)</h1>
+<p class="sub">Verify the bot-facing routes on port 5000 &mdash; bot list, logs, scripts, and local-bot heartbeat endpoints.</p>
+
+<div class="info-box"><strong>Note:</strong> Bot-specific endpoints (<code>/api/bots/logs</code>, <code>/bots/logs/{server_id}/{bot_id}</code>) require valid IDs. Enter them below or leave blank to skip. All auth-gated 302/401 responses count as pass.</div>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px">
+  <div>
+    <label style="font-size:.8rem;color:#8b949e;display:block;margin-bottom:4px">Server ID</label>
+    <input type="text" id="serverId" placeholder="e.g. 1234567890123456789">
+  </div>
+  <div>
+    <label style="font-size:.8rem;color:#8b949e;display:block;margin-bottom:4px">Bot ID</label>
+    <input type="text" id="botId" placeholder="e.g. abc123">
+  </div>
+</div>
+
+<div class="summary-bar">
+  <div class="sbox"><div class="sbox-num" id="s-pass" style="color:#56d364">0</div><div class="sbox-lbl">Passed</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-fail" style="color:#f85149">0</div><div class="sbox-lbl">Failed</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-warn" style="color:#e3b341">0</div><div class="sbox-lbl">Warnings</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-skip" style="color:#8b949e">0</div><div class="sbox-lbl">Skipped</div></div>
+</div>
+
+<div class="btn-row">
+  <button class="btn" id="runBtn" onclick="runAll()">Run Tests</button>
+  <button class="btn" style="background:#21262d;color:#c9d1d9" onclick="resetAll()">Reset</button>
+</div>
+<div class="progress"><div class="progress-bar" id="prog"></div></div>
+
+<div class="card">
+  <div class="card-title">Bot Pages &amp; List API</div>
+  <table>
+    <thead><tr><th>Check</th><th>Endpoint</th><th>Expected</th><th>Result</th><th>ms</th><th>Detail</th></tr></thead>
+    <tbody id="botlist-body">
+      <tr><td>Bots page</td><td><code>GET /bots</code></td><td>200/302</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Bot list API</td><td><code>GET /api/bots/list</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Scripts page</td><td><code>GET /scripts</code></td><td>200/302</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Bot manager download</td><td><code>GET /api/bots/download-manager</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-title">Script Management</div>
+  <table>
+    <thead><tr><th>Check</th><th>Endpoint</th><th>Expected</th><th>Result</th><th>ms</th><th>Detail</th></tr></thead>
+    <tbody id="scriptmgmt-body">
+      <tr><td>Available cogs</td><td><code>GET /api/bots/available-cogs</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Available scripts</td><td><code>GET /api/bots/available-scripts</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Script versions</td><td><code>GET /api/scripts/versions?path=Casino/blackjack/blackjack.py</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>GitHub test</td><td><code>GET /api/bots/test-github</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-title">Per-Bot Routes <span style="font-size:.78rem;color:#8b949e">(requires Server ID + Bot ID)</span></div>
+  <table>
+    <thead><tr><th>Check</th><th>Endpoint</th><th>Expected</th><th>Result</th><th>ms</th><th>Detail</th></tr></thead>
+    <tbody id="perbot-body">
+      <tr><td>Bot logs page</td><td><code>GET /bots/logs/{server}/{bot}</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Bot config JSON</td><td><code>GET /api/bots/config-json/{server}/{bot}</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Local bot logs</td><td><code>GET /api/local-bot/logs/{server}/{bot}</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Installed cogs</td><td><code>GET /api/bots/installed-cogs/{server}</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Bot scripts check</td><td><code>GET /api/bots/check-scripts/{server}</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Script vars</td><td><code>GET /api/bots/script-vars/{server}</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Local bot commands</td><td><code>GET /api/local-bot/commands</code></td><td>200/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Local bot members</td><td><code>GET /api/local-bot/members (not POST)</code></td><td>405/302/401</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="server_step4_servers.html">&larr; Back: Server Management</a>
+  <a class="btn-next" href="bots_step1_manager.html">Next: Bot Manager Health &rarr;</a>
+</div>
+
+<script>
+const BASE='http://127.0.0.1:5000';
+const GATED=[200,302,303,401,403,404,405];
+let pass=0,fail=0,warn=0,skip=0;
+
+function autoLogIssue(title, description, code, url, sev) {
+  const issues = JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  if(issues.find(i=>i.title===title&&i.url===url&&(Date.now()-new Date(i.created).getTime())<300000)) return;
+  issues.unshift({id:Date.now()+Math.random(),title,severity:sev||'medium',area:'server-bots-api',description,steps:'',code:String(code||''),url:url||'',created:new Date().toISOString(),auto:true});
+  localStorage.setItem('stress_test_issues',JSON.stringify(issues));
+}
+
+function setStatus(td,type,text){
+  const cls={ok:'ok',fail:'fail',warn:'warn',pend:'pend'}[type]||'pend';
+  const dot={ok:'dot-ok',fail:'dot-fail',warn:'dot-warn',pend:'dot-pend'}[type]||'dot-pend';
+  td.innerHTML=`<span class="status ${cls}"><span class="dot ${dot}"></span>${text}</span>`;
+}
+function upd(){
+  document.getElementById('s-pass').textContent=pass;
+  document.getElementById('s-fail').textContent=fail;
+  document.getElementById('s-warn').textContent=warn;
+  document.getElementById('s-skip').textContent=skip;
+}
+
+async function chk(tbodyId,rowIdx,url,codes){
+  const row=document.querySelectorAll(`#${tbodyId} tr`)[rowIdx];
+  const c=row.querySelectorAll('td');
+  setStatus(c[3],'pend','Testing…');
+  c[4].textContent='—'; c[5].textContent='—';
+  try{
+    const t0=performance.now();
+    const r=await fetch(BASE+url,{method:'GET',redirect:'manual',signal:AbortSignal.timeout(5000)});
+    const ms=Math.round(performance.now()-t0);
+    c[4].textContent=ms+'ms';
+    const isRedir=r.type==='opaqueredirect'||[301,302,303].includes(r.status);
+    const ok=codes.includes(r.status)||(isRedir&&codes.includes(302));
+    if(r.status===500){setStatus(c[3],'fail','500 Error');fail++;autoLogIssue(`${url} — 500 Error`,'Server returned 500',500,url,'critical');}
+    else if(ok){setStatus(c[3],'ok',isRedir?'Auth redirect':r.status+' OK');pass++;}
+    else{setStatus(c[3],'warn',r.status+' unexpected');warn++;autoLogIssue(`${url} — unexpected ${r.status}`,`Expected one of ${codes.join('/')}, got ${r.status}`,r.status,url,'medium');}
+    c[5].textContent=isRedir?'Auth gated':'status='+r.status;
+  }catch(e){
+    setStatus(c[3],'fail','Unreachable');
+    c[5].textContent=e.message; fail++;
+    autoLogIssue(`${url} — Unreachable`,e.message,'ERR_CONN',url,'high');
+  }
+  upd();
+}
+
+function skipRow(tbodyId,rowIdx){
+  const row=document.querySelectorAll(`#${tbodyId} tr`)[rowIdx];
+  const c=row.querySelectorAll('td');
+  setStatus(c[3],'pend','Skipped — no ID');
+  skip++; upd();
+}
+
+async function runAll(){
+  pass=0;fail=0;warn=0;skip=0;
+  document.getElementById('runBtn').disabled=true;
+  const sid=document.getElementById('serverId').value.trim();
+  const bid=document.getElementById('botId').value.trim();
+  const prog=document.getElementById('prog');
+  let done=0; const total=15;
+  const tick=()=>{done++;prog.style.width=Math.round(done/total*100)+'%';};
+
+  await chk('botlist-body',0,'/bots',[200,302,303]); tick();
+  await chk('botlist-body',1,'/api/bots/list',GATED); tick();
+  await chk('botlist-body',2,'/scripts',[200,302,303]); tick();
+  await chk('botlist-body',3,'/api/bots/download-manager',GATED); tick();
+  await chk('scriptmgmt-body',0,'/api/bots/available-cogs',GATED); tick();
+  await chk('scriptmgmt-body',1,'/api/bots/available-scripts',GATED); tick();
+  await chk('scriptmgmt-body',2,'/api/scripts/versions?path=Casino/blackjack/blackjack.py',GATED); tick();
+  await chk('scriptmgmt-body',3,'/api/bots/test-github',GATED); tick();
+
+  const hasBoth=sid&&bid;
+  const hasSid=!!sid;
+  const perRoutes=[
+    ['/bots/logs/{s}/{b}',GATED,hasBoth],
+    ['/api/bots/config-json/{s}/{b}',GATED,hasBoth],
+    ['/api/local-bot/logs/{s}/{b}',GATED,hasBoth],
+    ['/api/bots/installed-cogs/{s}',GATED,hasSid],
+    ['/api/bots/check-scripts/{s}',GATED,hasSid],
+    ['/api/bots/script-vars/{s}',GATED,hasSid],
+    ['/api/local-bot/commands',GATED,true],
+    ['/api/local-bot/members',GATED,true],
+  ];
+  for(let i=0;i<perRoutes.length;i++){
+    const [tmpl,codes,has]=perRoutes[i];
+    if(has){
+      const url=tmpl.replace('{s}',sid||'').replace('{b}',bid||'');
+      await chk('perbot-body',i,url,codes);
+    } else {
+      skipRow('perbot-body',i);
+    }
+    tick();
+  }
+
+  prog.style.width='100%';
+  prog.style.background=fail>0?'#f85149':'#56d364';
+  document.getElementById('runBtn').disabled=false;
+}
+
+function resetAll(){
+  pass=0;fail=0;warn=0;skip=0;
+  document.querySelectorAll('tbody tr').forEach(row=>{
+    const c=row.querySelectorAll('td');
+    if(c.length>=6){setStatus(c[3],'pend','Pending');c[4].textContent='—';c[5].textContent='—';}
+  });
+  ['s-pass','s-fail','s-warn','s-skip'].forEach(id=>document.getElementById(id).textContent='0');
+  document.getElementById('prog').style.cssText='width:0;background:#238636';
+}
+</script>
+</body>
+</html>

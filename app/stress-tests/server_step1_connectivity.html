@@ -1,0 +1,266 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Server Step 1 — Connectivity</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:12px;font-size:.95rem}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  th{text-align:left;padding:8px 10px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d;font-size:.78rem;text-transform:uppercase}
+  td{padding:9px 10px;border-bottom:1px solid #21262d;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .status{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:.82rem}
+  .ok{color:#56d364}.fail{color:#f85149}.warn{color:#e3b341}.pend{color:#8b949e}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .dot-ok{background:#56d364}.dot-fail{background:#f85149}.dot-warn{background:#e3b341}.dot-pend{background:#484f58}
+  .btn{background:#238636;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#2ea043}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .btn-row{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+  .summary-bar{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+  .sbox{background:#21262d;border-radius:8px;padding:10px 16px;text-align:center;min-width:80px}
+  .sbox-num{font-size:1.4rem;font-weight:700}
+  .sbox-lbl{font-size:.73rem;color:#8b949e;margin-top:2px}
+  .detail{font-size:.78rem;color:#8b949e;max-width:340px;word-break:break-all}
+  .progress{height:4px;background:#21262d;border-radius:2px;overflow:hidden;margin-bottom:16px}
+  .progress-bar{height:100%;background:#238636;transition:width .3s;width:0}
+  .latency-chart{display:flex;gap:3px;align-items:flex-end;height:40px;margin-top:8px}
+  .latency-bar{width:12px;background:#58a6ff;border-radius:2px 2px 0 0;min-height:2px;transition:height .2s}
+  .footer-nav{display:flex;justify-content:flex-end;margin-top:24px}
+  .btn-next{background:#1f6feb;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-next:hover{background:#388bfd}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><span>Server</span><span class="nav-sep">/</span><span>Step 1 — Connectivity</span></div>
+<h1>Step 1 &mdash; Server Connectivity</h1>
+<p class="sub">Ping Flask on port 5000, measure latency over 10 samples, check headers &amp; redirects.</p>
+
+<div class="summary-bar">
+  <div class="sbox"><div class="sbox-num" id="s-pass" style="color:#56d364">0</div><div class="sbox-lbl">Passed</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-fail" style="color:#f85149">0</div><div class="sbox-lbl">Failed</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-warn" style="color:#e3b341">0</div><div class="sbox-lbl">Warnings</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-ms">—</div><div class="sbox-lbl">Avg ms</div></div>
+</div>
+
+<div class="btn-row">
+  <button class="btn" id="runBtn" onclick="runAll()">Run Tests</button>
+  <button class="btn" style="background:#21262d;color:#c9d1d9" onclick="resetAll()">Reset</button>
+</div>
+<div class="progress"><div class="progress-bar" id="prog"></div></div>
+
+<div class="card">
+  <div class="card-title">Connectivity Checks</div>
+  <table>
+    <thead><tr><th>Check</th><th>Endpoint</th><th>Expected</th><th>Result</th><th>Latency</th><th>Detail</th></tr></thead>
+    <tbody id="checks-body">
+      <tr><td>Server reachable</td><td><code>GET /</code></td><td>HTTP 200</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Dashboard reachable</td><td><code>GET /dashboard</code></td><td>200 or 302</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Login page</td><td><code>GET /login</code></td><td>HTTP 200</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Static assets</td><td><code>GET /uploads/</code></td><td>200 or 404</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>About page</td><td><code>GET /about</code></td><td>HTTP 200</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>404 handling</td><td><code>GET /nonexistent_path_xyz</code></td><td>HTTP 404</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-title">Latency Samples (10&times; <code>GET /</code>)</div>
+  <div id="lat-text" style="font-size:.83rem;color:#8b949e">Run tests to collect latency samples.</div>
+  <div class="latency-chart" id="lat-chart"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">Response Headers</div>
+  <table>
+    <thead><tr><th>Header</th><th>Value</th><th>Note</th></tr></thead>
+    <tbody id="headers-body">
+      <tr><td colspan="3" style="color:#8b949e;font-size:.83rem">Run tests to inspect headers.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer-nav"><a class="btn-next" href="server_step2_auth.html">Next: Auth Endpoints &rarr;</a></div>
+
+<script>
+const BASE = 'http://127.0.0.1:5000';
+let pass=0,fail=0,warn=0,latencies=[];
+
+function autoLogIssue(title, description, code, url, sev) {
+  const issues = JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  if(issues.find(i=>i.title===title&&i.url===url&&(Date.now()-new Date(i.created).getTime())<300000)) return;
+  issues.unshift({id:Date.now()+Math.random(),title,severity:sev||'medium',area:'server-connectivity',description,steps:'',code:String(code||''),url:url||'',created:new Date().toISOString(),auto:true});
+  localStorage.setItem('stress_test_issues',JSON.stringify(issues));
+}
+
+const checks = [
+  {label:'Server reachable',    url:'/',                expect:[200,302,303],  acceptRedirect:true},
+  {label:'Dashboard reachable', url:'/dashboard',       expect:[200,302,303],  acceptRedirect:true},
+  {label:'Login page',          url:'/login',           expect:[200],          acceptRedirect:false},
+  {label:'Static assets',       url:'/uploads/',        expect:[200,404],      acceptRedirect:false},
+  {label:'About page',          url:'/about',           expect:[200],          acceptRedirect:false},
+  {label:'404 handling',        url:'/nonexistent_path_xyz', expect:[404],     acceptRedirect:false},
+];
+
+function setStatus(td, type, text) {
+  const cls = {ok:'ok',fail:'fail',warn:'warn',pend:'pend'}[type];
+  const dot = {ok:'dot-ok',fail:'dot-fail',warn:'dot-warn',pend:'dot-pend'}[type];
+  td.innerHTML = `<span class="status ${cls}"><span class="dot ${dot}"></span>${text}</span>`;
+}
+
+function updateSummary() {
+  document.getElementById('s-pass').textContent = pass;
+  document.getElementById('s-fail').textContent = fail;
+  document.getElementById('s-warn').textContent = warn;
+  if(latencies.length){
+    const avg = Math.round(latencies.reduce((a,b)=>a+b,0)/latencies.length);
+    document.getElementById('s-ms').textContent = avg+'ms';
+  }
+}
+
+async function runCheck(row, check, idx) {
+  const cells = row.querySelectorAll('td');
+  const statusTd = cells[3];
+  const latTd = cells[4];
+  const detailTd = cells[5];
+  setStatus(statusTd,'pend','Testing…');
+  latTd.textContent = '—';
+  detailTd.textContent = '—';
+  try {
+    const t0 = performance.now();
+    const resp = await fetch(BASE + check.url, {
+      method:'GET',
+      redirect: check.acceptRedirect ? 'follow' : 'manual',
+      signal: AbortSignal.timeout(5000)
+    });
+    const ms = Math.round(performance.now() - t0);
+    latTd.textContent = ms + 'ms';
+    const isRedirect = resp.type === 'opaqueredirect' || [301,302,303,307,308].includes(resp.status);
+    const ok = check.expect.includes(resp.status) || isRedirect;
+    if(ok){ setStatus(statusTd,'ok',`${resp.status} OK`); pass++; }
+    else  { setStatus(statusTd,'fail',`${resp.status} unexpected`); fail++;
+      autoLogIssue(`${check.label} — unexpected ${resp.status}`, `Expected ${check.expect.join(' or ')}, got ${resp.status}`, resp.status, check.url, resp.status>=500?'critical':'medium');
+    }
+    detailTd.textContent = `type=${resp.type}`;
+    return {ms, headers: resp.headers, ok};
+  } catch(e) {
+    latTd.textContent = '—';
+    setStatus(statusTd,'fail','Unreachable');
+    detailTd.textContent = e.message;
+    fail++;
+    autoLogIssue(`${check.label} — Unreachable`, e.message, 'ERR_CONN', check.url, 'high');
+    return {ms:null, headers:null, ok:false};
+  }
+}
+
+async function collectLatency() {
+  const samples = [];
+  const chart = document.getElementById('lat-chart');
+  chart.innerHTML = '';
+  for(let i=0;i<10;i++){
+    try{
+      const t0=performance.now();
+      await fetch(BASE+'/',{signal:AbortSignal.timeout(4000)});
+      const ms=Math.round(performance.now()-t0);
+      samples.push(ms);
+    }catch(e){samples.push(null);}
+    await new Promise(r=>setTimeout(r,80));
+  }
+  latencies = samples.filter(s=>s!==null);
+  const max = Math.max(...latencies,1);
+  samples.forEach(ms=>{
+    const bar = document.createElement('div');
+    bar.className='latency-bar';
+    bar.style.height = ms ? Math.max(4,Math.round((ms/max)*40))+'px' : '4px';
+    bar.style.background = ms===null?'#f85149':ms<200?'#56d364':ms<500?'#e3b341':'#f85149';
+    bar.title = ms ? ms+'ms' : 'timeout';
+    chart.appendChild(bar);
+  });
+  const valid = latencies;
+  if(valid.length){
+    const avg=Math.round(valid.reduce((a,b)=>a+b,0)/valid.length);
+    const min=Math.min(...valid);
+    const mmax=Math.max(...valid);
+    document.getElementById('lat-text').textContent =
+      `10 samples — min: ${min}ms, avg: ${avg}ms, max: ${mmax}ms (${10-valid.length} timeouts)`;
+  }
+}
+
+async function inspectHeaders(headers) {
+  if(!headers) return;
+  const interesting = ['content-type','server','x-frame-options','x-content-type-options','set-cookie'];
+  const tbody = document.getElementById('headers-body');
+  tbody.innerHTML = '';
+  interesting.forEach(h=>{
+    const v = headers.get(h);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><code>${h}</code></td><td style="word-break:break-all;font-size:.8rem">${v||'<em style="color:#8b949e">not present</em>'}</td><td style="font-size:.78rem;color:#8b949e">${headerNote(h,v)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function headerNote(h,v){
+  if(h==='x-frame-options') return v?'Clickjacking protection set':'Consider X-Frame-Options';
+  if(h==='x-content-type-options') return v==='nosniff'?'MIME sniff blocked':'Consider nosniff';
+  if(h==='server') return v?'Exposes server info — consider removing':'Not exposed';
+  if(h==='set-cookie') return v?'Session cookie set':'No session yet';
+  return '';
+}
+
+async function runAll() {
+  pass=0;fail=0;warn=0;latencies=[];
+  document.getElementById('runBtn').disabled=true;
+  const rows = document.querySelectorAll('#checks-body tr');
+  const total = rows.length + 10 + 1;
+  let done = 0;
+  const prog = document.getElementById('prog');
+  const tick = ()=>{ done++; prog.style.width=Math.round(done/total*100)+'%'; };
+
+  let firstHeaders = null;
+  for(let i=0;i<rows.length;i++){
+    const r = await runCheck(rows[i], checks[i], i);
+    if(i===0 && r.headers) firstHeaders = r.headers;
+    updateSummary();
+    tick();
+    await new Promise(res=>setTimeout(res,100));
+  }
+  await collectLatency();
+  for(let i=0;i<10;i++) tick();
+  if(firstHeaders) inspectHeaders(firstHeaders);
+  prog.style.width='100%';
+  prog.style.background = fail>0?'#f85149':'#56d364';
+  document.getElementById('runBtn').disabled=false;
+  updateSummary();
+}
+
+function resetAll() {
+  pass=0;fail=0;warn=0;latencies=[];
+  const rows = document.querySelectorAll('#checks-body tr');
+  rows.forEach(row=>{
+    const cells=row.querySelectorAll('td');
+    setStatus(cells[3],'pend','Pending');
+    cells[4].textContent='—';
+    cells[5].textContent='—';
+  });
+  document.getElementById('s-pass').textContent='0';
+  document.getElementById('s-fail').textContent='0';
+  document.getElementById('s-warn').textContent='0';
+  document.getElementById('s-ms').textContent='—';
+  document.getElementById('prog').style.width='0';
+  document.getElementById('prog').style.background='#238636';
+  document.getElementById('lat-text').textContent='Run tests to collect latency samples.';
+  document.getElementById('lat-chart').innerHTML='';
+  document.getElementById('headers-body').innerHTML='<tr><td colspan="3" style="color:#8b949e;font-size:.83rem">Run tests to inspect headers.</td></tr>';
+}
+</script>
+</body>
+</html>

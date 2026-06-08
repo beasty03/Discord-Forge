@@ -1,0 +1,31 @@
+# Secrets / runtime state
+app/.env
+app/.secret_key
+app/.revoked_sessions.json
+app/.claude/
+
+# Runtime user data (sensitive)
+data/users.json
+data/users/
+data/uploads/
+data/bots/
+data/pending_resets.json
+data/pending_verify.json
+data/server_invites.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Logs
+*.log
+
+# Generated / build output
+graphify-out/
+
+# OS
+.DS_Store
+Thumbs.db

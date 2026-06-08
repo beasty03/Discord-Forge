@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiscordForge — Checklist v2 (React SPA)</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1e2124;
+    color: #dcddde;
+    min-height: 100vh;
+    padding: 32px 16px 64px;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; }
+
+  h1 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .subtitle { color: #72767d; font-size: 13px; margin-bottom: 6px; }
+  .legend {
+    display: flex; gap: 18px; font-size: 12px; margin-bottom: 24px; flex-wrap: wrap; color: #72767d;
+  }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot-g { background: #57f287; }
+  .dot-y { background: #faa61a; }
+  .dot-r { background: #ed4245; }
+
+  /* overall progress */
+  .overall-bar {
+    background: #2f3136;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .overall-bar .label { color: #b9bbbe; font-size: 13px; white-space: nowrap; }
+  .bar-wrap { flex: 1; min-width: 120px; background: #40444b; border-radius: 4px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; background: #57f287; border-radius: 4px; transition: width .3s; }
+  .overall-bar .pct { color: #57f287; font-weight: 700; font-size: 14px; white-space: nowrap; min-width: 38px; text-align: right; }
+  .ctrl-btn {
+    padding: 6px 14px;
+    background: #4f545c;
+    border: none;
+    border-radius: 6px;
+    color: #dcddde;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .ctrl-btn:hover { background: #5865f2; color: #fff; }
+  .ctrl-btn.danger:hover { background: #ed4245; }
+
+  /* section */
+  .section { background: #2f3136; border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 18px;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid #40444b;
+    gap: 12px;
+  }
+  .section-header:hover { background: #36393f; }
+  .section-title { font-size: 14px; font-weight: 700; color: #fff; flex: 1; }
+  .section-tag {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+    padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+  }
+  .tag-fe  { background: rgba(88,101,242,.2); color: #7289da; }
+  .tag-be  { background: rgba(87,242,135,.15); color: #57f287; }
+  .tag-sec { background: rgba(237,66,69,.15); color: #ed4245; }
+  .tag-ops { background: rgba(250,166,26,.15); color: #faa61a; }
+  .section-progress { font-size: 12px; color: #72767d; white-space: nowrap; }
+  .section-progress.done { color: #57f287; }
+  .chevron { color: #72767d; font-size: 11px; transition: transform .2s; }
+  .section.collapsed .chevron { transform: rotate(-90deg); }
+  .section-body { padding: 8px 0; }
+  .section.collapsed .section-body { display: none; }
+
+  /* subsection */
+  .subsection-label {
+    padding: 10px 18px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    color: #72767d;
+  }
+
+  /* item row */
+  .item-wrap { margin: 0 4px; border-radius: 6px; transition: background .1s; }
+  .item-wrap:hover { background: #36393f; }
+  .item-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 5px 10px 5px 18px;
+    cursor: default;
+  }
+  .item-row input[type=checkbox] {
+    margin-top: 3px; width: 15px; height: 15px; accent-color: #57f287; cursor: pointer; flex-shrink: 0;
+  }
+  .item-text { font-size: 13px; color: #dcddde; line-height: 1.5; flex: 1; cursor: pointer; user-select: none; }
+  .item-wrap.checked .item-text { color: #57f287; text-decoration: line-through; opacity: .65; }
+  .item-wrap.warn .item-text { color: #faa61a; }
+  .item-wrap.warn.checked .item-text { color: #faa61a; opacity: .45; }
+  .item-wrap.new-item .item-text::after {
+    content: ' NEW'; font-size: 9px; font-weight: 700; color: #57f287; letter-spacing: .5px;
+    background: rgba(87,242,135,.12); padding: 1px 5px; border-radius: 3px; margin-left: 6px; vertical-align: middle;
+  }
+
+  /* note button */
+  .note-btn {
+    background: none; border: none; cursor: pointer; padding: 2px 5px; border-radius: 4px;
+    font-size: 12px; line-height: 1; color: #4f545c; opacity: 0;
+    transition: opacity .15s, background .15s, color .15s; flex-shrink: 0; margin-top: 2px;
+  }
+  .item-wrap:hover .note-btn { opacity: 1; }
+  .note-btn:hover { background: #40444b; color: #b9bbbe; }
+  .note-btn.has-note { opacity: 1; color: #faa61a; }
+  .note-btn.open { opacity: 1; color: #7289da; background: #40444b; }
+
+  /* note area */
+  .note-area { display: none; padding: 0 10px 8px 43px; }
+  .note-area.open { display: block; }
+  .note-area textarea {
+    width: 100%; background: #1e2124; border: 1px solid #40444b; border-radius: 6px;
+    color: #dcddde; font-size: 12px; font-family: inherit; padding: 7px 10px;
+    resize: vertical; min-height: 52px; outline: none; line-height: 1.5;
+    transition: border-color .15s;
+  }
+  .note-area textarea:focus { border-color: #7289da; }
+  .note-area textarea::placeholder { color: #4f545c; }
+  .note-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+  .note-saved { font-size: 11px; color: #57f287; opacity: 0; transition: opacity .3s; }
+  .note-saved.show { opacity: 1; }
+  .note-clear { font-size: 11px; color: #72767d; background: none; border: none; cursor: pointer; }
+  .note-clear:hover { color: #ed4245; }
+
+  code {
+    background: #40444b; border-radius: 3px; padding: 1px 5px;
+    font-size: 11px; font-family: 'Consolas', 'Courier New', monospace; color: #e3e5e8;
+  }
+
+  /* broken table */
+  .broken-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+  .broken-table th {
+    text-align: left; padding: 8px 12px; background: #40444b; color: #b9bbbe;
+    font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .broken-table td { padding: 8px 12px; border-bottom: 1px solid #40444b; vertical-align: top; }
+  .broken-table td:first-child { color: #72767d; width: 24px; }
+  .broken-table td:nth-child(2) { color: #faa61a; font-weight: 600; min-width: 200px; }
+  .broken-table td:nth-child(3) { color: #b9bbbe; }
+  .broken-table tr:last-child td { border-bottom: none; }
+  .broken-wrap { padding: 12px 18px; }
+
+  /* notes modal */
+  #notesModal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75);
+    z-index: 999; padding: 40px 16px; overflow-y: auto;
+  }
+  .modal-inner {
+    max-width: 700px; margin: 0 auto; background: #2f3136; border-radius: 12px;
+    padding: 28px 24px; position: relative;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>DiscordForge — Implementation Checklist</h1>
+  <p class="subtitle">v2 · React SPA edition · Updated after Tier 1–3 + gap-filling sessions</p>
+  <div class="legend">
+    <span><span class="dot dot-g"></span> Check off when verified</span>
+    <span><span class="dot dot-y"></span> Warning / partial / untested</span>
+    <span><span class="dot dot-r"></span> Known broken / deferred</span>
+    <span style="margin-left:auto;color:#5865f2;font-weight:600">NEW = added this session</span>
+  </div>
+
+  <div class="overall-bar">
+    <span class="label">Overall progress</span>
+    <div class="bar-wrap"><div class="bar-fill" id="globalBar" style="width:0%"></div></div>
+    <span class="pct" id="globalPct">0%</span>
+    <button class="ctrl-btn" onclick="showNotes()">📋 Notes</button>
+    <button class="ctrl-btn danger" onclick="resetAll()">Reset all</button>
+  </div>
+
+  <!-- Notes modal -->
+  <div id="notesModal">
+    <div class="modal-inner">
+      <button onclick="document.getElementById('notesModal').style.display='none'"
+        style="position:absolute;top:14px;right:16px;background:#40444b;border:none;color:#b9bbbe;font-size:18px;cursor:pointer;border-radius:6px;width:32px;height:32px;line-height:1;">✕</button>
+      <h2 style="color:#fff;font-size:18px;margin-bottom:16px;">Your notes</h2>
+      <div id="notesContent"></div>
+      <p id="notesEmpty" style="color:#72767d;font-size:13px;display:none;">No notes yet.</p>
+    </div>
+  </div>
+
+  <div id="sections"></div>
+</div>
+
+<script>
+const DATA = [
+
+  // ── SECTION 1 ──────────────────────────────────────────────────────
+  { title: "1. SPA Architecture & Routing", tag: "fe", items: [
+    { sub: "Entry point" },
+    { t: "App loads at <code>/app/</code> (Vite base = /app/)" },
+    { t: "Root <code>/</code> redirects to <code>/app/</code>" },
+    { t: "React SPA renders without console errors" },
+    { t: "Sidebar and topbar render correctly on first load" },
+    { t: "Loading spinner shows while profile/servers/events fetch" },
+    { sub: "Auth wall" },
+    { t: "Unauthenticated visit to <code>/app/</code> shows LoginPage (not a Flask redirect)", isNew: true },
+    { t: "Any API 401 dispatches <code>df:auth-expired</code> and shows LoginPage", isNew: true },
+    { t: "CSRF token read from profile response and auto-injected on all POST/PATCH/DELETE", isNew: true },
+    { sub: "Navigation" },
+    { t: "Sidebar server rail switches active server on click" },
+    { t: "All 12 nav items in sidebar navigate correctly (dashboard → inspector)" },
+    { t: "Quick Access items in sidebar navigate on click (was broken — now fixed)", isNew: true },
+    { t: "Quick Access customisation in Account page toggles correct items" },
+    { t: "Page title in topbar updates when switching pages" },
+    { sub: "Server switching" },
+    { t: "Switching server in sidebar re-fetches channels, roles, members, bot for new server" },
+    { t: "Bot state in sidebar footer updates to reflect selected server's bot" },
+  ]},
+
+  // ── SECTION 2 ──────────────────────────────────────────────────────
+  { title: "2. Authentication Pages (React)", tag: "fe", items: [
+    { sub: "Login" },
+    { t: "<code>LoginPage</code> renders with username + password fields", isNew: true },
+    { t: "Submit calls <code>POST /api/auth/login</code> — no page reload", isNew: true },
+    { t: "Successful login hides auth wall and loads dashboard", isNew: true },
+    { t: "Wrong credentials shows inline error message", isNew: true },
+    { t: "Rate-limit error (429) shown as friendly message", isNew: true },
+    { t: "Link to Register page works", isNew: true },
+    { t: "Link to Forgot Password works", isNew: true },
+    { sub: "Register" },
+    { t: "<code>RegisterPage</code> renders with username/email/password/confirm fields", isNew: true },
+    { t: "Submit calls <code>POST /api/auth/register</code>", isNew: true },
+    { t: "Duplicate username returns 409 error shown inline", isNew: true },
+    { t: "Password mismatch shown inline", isNew: true },
+    { t: "Success shows 'check your email' or 'you can now sign in' message", isNew: true },
+    { sub: "Forgot Password" },
+    { t: "<code>ForgotPasswordPage</code> renders with username + email fields", isNew: true },
+    { t: "Submit calls <code>POST /api/auth/forgot-password</code>", isNew: true },
+    { t: "Always shows 'check your mailbox' regardless of match (prevents enumeration)", isNew: true },
+    { sub: "OAuth (Discord)" },
+    { t: "Discord login still works (proxied through Vite to Flask)" },
+    { t: "Callback redirects to <code>/app/</code> and dashboard loads" },
+  ]},
+
+  // ── SECTION 3 ──────────────────────────────────────────────────────
+  { title: "3. Dashboard Page", tag: "fe", items: [
+    { sub: "Data loading" },
+    { t: "Server list loaded from <code>/api/servers/list</code> on mount" },
+    { t: "Live status loaded from <code>/api/dashboard/live-status</code>" },
+    { t: "Events feed loaded from <code>/api/dashboard/events</code>" },
+    { t: "Bot list loaded from <code>/api/bots/list</code>", isNew: true },
+    { t: "User profile loaded from <code>/api/account/profile</code>", isNew: true },
+    { t: "Sidebar footer shows real username + plan (not hardcoded 'Admin')", isNew: true },
+    { sub: "Stats cards" },
+    { t: "Member count populated from live-status <code>member_count</code>" },
+    { t: "Boost tier + boost count populated from live-status" },
+    { t: "Bot status card shows 'online' / 'offline' from bot list", isNew: true },
+    { sub: "Activity feed" },
+    { t: "Recent Events card shows real events (not EVENTS mock) when data available" },
+    { t: "Server Info card shows live channel/role counts and drift status" },
+    { sub: "Sparklines" },
+    { t: "Activity sparklines render without NaN errors" },
+  ]},
+
+  // ── SECTION 4 ──────────────────────────────────────────────────────
+  { title: "4. Server Page (Channels & Roles)", tag: "fe", items: [
+    { sub: "Live data fetch" },
+    { t: "Channels fetched from <code>/api/server/&lt;sid&gt;/live-channels</code> (live Discord)", isNew: true },
+    { t: "Roles fetched from <code>/api/func-test/roles/&lt;sid&gt;</code> (configured + live)", isNew: true },
+    { t: "Falls back to mock data gracefully when bot is offline / no token" },
+    { t: "Re-fetches on server switch" },
+    { sub: "Channels tab — display" },
+    { t: "Channels grouped by category with correct icons (# / 🔊)" },
+    { t: "Selecting a channel shows edit panel on the right" },
+    { t: "Edit panel inputs are controlled (name, topic, NSFW, slowmode)" },
+    { sub: "Channels tab — CRUD" },
+    { t: "+ New button shows inline form (name, type, category)", isNew: true },
+    { t: "Create channel calls <code>channelOp 'create_channel'</code> → pushes to Discord", isNew: true },
+    { t: "Save button calls <code>channelOp 'edit'</code> → updates name/topic/nsfw/slowmode on Discord", isNew: true },
+    { t: "Delete button confirms then calls <code>channelOp 'delete'</code>", isNew: true },
+    { t: "Success/error message shown in page subtitle", isNew: true },
+    { sub: "Roles tab — display" },
+    { t: "Roles sorted by position descending" },
+    { t: "Configured roles shown with color dots" },
+    { t: "'not live' badge on roles not yet deployed to Discord" },
+    { sub: "Roles tab — CRUD" },
+    { t: "Save role calls <code>POST /api/roles/&lt;sid&gt;</code>", isNew: true },
+    { t: "Delete role calls <code>DELETE /api/roles/&lt;sid&gt;/&lt;name&gt;</code>", isNew: true },
+    { t: "Managed (bot-created) roles cannot be deleted", isNew: true },
+    { sub: "Other tabs" },
+    { t: "Overview tab shows server name + system channel selects from live channels" },
+    { t: "Moderation tab renders AutoMod toggles" },
+  ]},
+
+  // ── SECTION 5 ──────────────────────────────────────────────────────
+  { title: "5. Bot Page", tag: "fe", items: [
+    { sub: "Overview" },
+    { t: "Bot name, ID, type (local/cloud) shown from real <code>/api/bots/list</code> data", isNew: true },
+    { t: "Status badge shows 'online' / 'offline' in correct colour", isNew: true },
+    { t: "Bot switches when active server changes (bot re-matched per server_id)", isNew: true },
+    { sub: "Controls" },
+    { t: "Cloud bots: Start / Stop / Restart buttons enabled based on current status", isNew: true },
+    { t: "Start calls <code>POST /api/bots/start</code>, Stop calls <code>/api/bots/stop</code>", isNew: true },
+    { t: "Action result message shown (success / error) for 4 s", isNew: true },
+    { t: "Local bots: shows explanation + Download Manager link instead of Start/Stop", isNew: true },
+    { t: "Local bots: Restart still available (queues restart command)", isNew: true },
+    { sub: "Logs tab" },
+    { t: "Logs fetched from <code>/api/local-bot/logs/&lt;sid&gt;/&lt;bid&gt;</code>", isNew: true },
+    { t: "Logs auto-refresh every 10 s while on Logs tab", isNew: true },
+    { t: "Log lines colour-coded by level (error = red, warn = yellow, info = default)", isNew: true },
+    { t: "Empty state shown when no logs yet", isNew: true },
+    { t: "Updated-at timestamp shown in header", isNew: true },
+  ]},
+
+  // ── SECTION 6 ──────────────────────────────────────────────────────
+  { title: "6. Members Page", tag: "fe", items: [
+    { sub: "Data" },
+    { t: "Members fetched from <code>GET /api/members/&lt;sid&gt;</code> (new Flask route)", isNew: true },
+    { t: "Falls back to mock data when no members synced yet (bot not running)" },
+    { t: "Member count in subtitle updates to real counts", isNew: true },
+    { t: "Member fields normalised (bot may push varying key names)", isNew: true },
+    { sub: "Search & filter" },
+    { t: "Search by name or tag filters the list" },
+    { t: "Online / Staff filter chips work" },
+    { sub: "Member detail panel" },
+    { t: "Joined date, message count, warn count shown from real data" },
+    { t: "Roles rendered from real member.roles array" },
+    { sub: "Actions" },
+    { t: "Warn button queues <code>warn</code> action (POST /api/members/&lt;sid&gt;/action)", isNew: true },
+    { t: "Kick button queues <code>kick</code> action", isNew: true },
+    { t: "Ban button queues <code>ban</code> action", isNew: true },
+    { t: "Action result toast shown for 3 s", isNew: true },
+  ]},
+
+  // ── SECTION 7 ──────────────────────────────────────────────────────
+  { title: "7. Scripts / Cogs Page", tag: "fe", items: [
+    { sub: "Data" },
+    { t: "Available scripts fetched from <code>/api/bots/available-scripts</code>", isNew: true },
+    { t: "Installed cogs fetched from <code>/api/bots/installed-cogs/&lt;sid&gt;</code>", isNew: true },
+    { t: "'installed' badge correct per server (not global)", isNew: true },
+    { sub: "Install / Remove" },
+    { t: "Install calls <code>POST /api/bots/import-cogs</code> with cog path", isNew: true },
+    { t: "Remove calls <code>POST /api/bots/remove-script</code> with cog name", isNew: true },
+    { t: "Action result shown in page subtitle", isNew: true },
+    { sub: "Update checker" },
+    { t: "'Check for Updates' button calls <code>/api/bots/check-scripts/&lt;sid&gt;</code>", isNew: true },
+    { t: "Out-of-date cogs shown as badges with version numbers", isNew: true },
+    { t: "'Update' button calls <code>POST /api/scripts/update</code>", isNew: true },
+    { t: "Updated cog removed from update badge list on success", isNew: true },
+    { sub: "Search & filter" },
+    { t: "Search by name / description / tags works" },
+    { t: "Category filter chips work" },
+  ]},
+
+  // ── SECTION 8 ──────────────────────────────────────────────────────
+  { title: "8. Integrations Page (Webhooks)", tag: "fe", items: [
+    { t: "Webhooks fetched from <code>GET /api/integrations/&lt;sid&gt;</code>", isNew: true },
+    { t: "+ Add inline form shows name / URL / channel inputs", isNew: true },
+    { t: "URL must start with https:// — validation shown inline", isNew: true },
+    { t: "Create calls <code>POST /api/integrations/&lt;sid&gt;</code>", isNew: true },
+    { t: "Delete calls <code>DELETE /api/integrations/&lt;sid&gt;/&lt;wid&gt;</code> with confirmation", isNew: true },
+    { t: "Test calls <code>POST /api/integrations/&lt;sid&gt;/&lt;wid&gt;/test</code>", isNew: true },
+    { t: "Test success / failure shown inline", isNew: true },
+    { t: "Selecting webhook shows side panel with event checkboxes", isNew: true },
+    { t: "Event toggle calls <code>PATCH /api/integrations/&lt;sid&gt;/&lt;wid&gt;</code>", isNew: true },
+    { t: "Fire log fetched from <code>GET .../log</code> and shows ts / event / ok status", isNew: true },
+    { t: "'last_used' timestamp refreshes after test", isNew: true },
+  ]},
+
+  // ── SECTION 9 ──────────────────────────────────────────────────────
+  { title: "9. Collaborators Page", tag: "fe", items: [
+    { t: "Collaborators fetched from <code>GET /api/collaborators/&lt;sid&gt;</code>", isNew: true },
+    { t: "Collaborator list shows username, permissions, added date", isNew: true },
+    { t: "Edit permissions shows checkbox grid (view_server / edit_server / view_bots / edit_bots)", isNew: true },
+    { t: "Save calls <code>POST /api/collaborators/&lt;sid&gt;/update</code>", isNew: true },
+    { t: "Remove calls <code>POST /api/collaborators/&lt;sid&gt;/remove</code> with confirmation", isNew: true },
+    { t: "Invite generator: select permissions → Generate Invite Link", isNew: true },
+    { t: "Invite creation calls <code>POST /api/invites/create</code>", isNew: true },
+    { t: "Generated link shown with Copy button", isNew: true },
+    { t: "Copy to clipboard works", isNew: true },
+  ]},
+
+  // ── SECTION 10 ──────────────────────────────────────────────────────
+  { title: "10. Settings Page", tag: "fe", items: [
+    { sub: "General" },
+    { t: "Server Name input pre-filled from current server data", isNew: true },
+    { t: "Guild ID input pre-filled from current server data", isNew: true },
+    { t: "Save calls <code>POST /api/settings/&lt;sid&gt;</code>", isNew: true },
+    { t: "Reset button restores pre-filled values", isNew: true },
+    { sub: "Environment label" },
+    { t: "Env Label input present", isNew: true },
+    { t: "Rename calls <code>POST /api/environment/&lt;sid&gt;/rename</code>", isNew: true },
+    { sub: "Danger zone — Delete Server" },
+    { t: "Delete button disabled until server name typed exactly", isNew: true },
+    { t: "Delete calls <code>POST /api/server/&lt;sid&gt;/delete</code> (CSRF protected)", isNew: true },
+    { t: "After delete: server list reloads, page switches to dashboard", isNew: true },
+    { t: "Install directory removed from disk on delete", isNew: true },
+  ]},
+
+  // ── SECTION 11 ──────────────────────────────────────────────────────
+  { title: "11. Activity Log Page", tag: "fe", items: [
+    { t: "Events fetched from <code>GET /api/environment/&lt;sid&gt;/events</code>", isNew: true },
+    { t: "Events shown newest-first with icon, type badge, actor, description, timestamp", isNew: true },
+    { t: "Type filter chips narrow the list", isNew: true },
+    { t: "Event count in subtitle updates on filter", isNew: true },
+    { t: "Export CSV button downloads file with all visible events", isNew: true },
+    { t: "Empty state shown when no events yet", isNew: true },
+  ]},
+
+  // ── SECTION 12 ──────────────────────────────────────────────────────
+  { title: "12. Assets Page (Emojis / Stickers / Soundboard)", tag: "fe", items: [
+    { t: "Configured assets fetched from <code>GET /api/server/&lt;sid&gt;/assets</code>", isNew: true },
+    { t: "Live Discord assets fetched from <code>GET .../assets/live</code>", isNew: true },
+    { t: "Missing assets (configured but not live) shown in yellow", isNew: true },
+    { t: "Extra assets (live but not configured) shown in cyan", isNew: true },
+    { t: "'All in sync' shown when no diff", isNew: true },
+    { t: "'Push to Discord' calls <code>POST .../assets/push</code>", isNew: true },
+    { t: "Refresh button re-fetches both sources", isNew: true },
+    { t: "Graceful empty state when no asset config exists", isNew: true },
+  ]},
+
+  // ── SECTION 13 ──────────────────────────────────────────────────────
+  { title: "13. Agent Page", tag: "fe", items: [
+    { t: "Agent token fetched from <code>GET /api/agent/token</code>", isNew: true },
+    { t: "Token shown masked by default; toggle to reveal", isNew: true },
+    { t: "Copy button copies token to clipboard", isNew: true },
+    { t: "Token creation date shown", isNew: true },
+    { t: "Regenerate calls <code>POST /api/agent/token/regenerate</code> with confirmation", isNew: true },
+    { t: "Agent status fetched from <code>GET /api/agent/status</code>", isNew: true },
+    { t: "Status key/value pairs rendered in info card", isNew: true },
+  ]},
+
+  // ── SECTION 14 ──────────────────────────────────────────────────────
+  { title: "14. Account / User Page", tag: "fe", items: [
+    { sub: "Profile tab" },
+    { t: "Username shown from real <code>/api/account/profile</code> (not hardcoded 'Admin')", isNew: true },
+    { t: "Email shown from real profile data", isNew: true },
+    { t: "Plan badge shows actual plan (free / pro / team)", isNew: true },
+    { t: "Server count shown as X / max_servers", isNew: true },
+    { t: "Discord linked badge shown if linked", isNew: true },
+    { t: "Email unverified badge shown if not verified", isNew: true },
+    { sub: "Security tab" },
+    { t: "'Revoke Other Sessions' calls <code>POST /api/account/revoke-other-sessions</code>", isNew: true },
+    { t: "Action result shown inline for 3 s", isNew: true },
+    { t: "Session timeout value shown from profile data", isNew: true },
+    { sub: "Subscription tab" },
+    { t: "Current plan highlighted (from real profile.plan)", isNew: true },
+    { t: "Switch buttons disabled on current plan", isNew: true },
+    { sub: "Quick Access tab" },
+    { t: "Toggling items updates sidebar Quick Access section" },
+    { t: "Preview reflects selection in real time" },
+  ]},
+
+  // ── SECTION 15 ──────────────────────────────────────────────────────
+  { title: "15. Inspector Hub", tag: "fe", items: [
+    { sub: "Environment health strip" },
+    { t: "Flask health pings <code>/api/dashboard/server-health</code> on mount", isNew: true },
+    { t: "Agent status pings <code>/api/agent/status</code> on mount", isNew: true },
+    { t: "Ping latency shown for each environment card", isNew: true },
+    { t: "Status shown as 'online' / 'error' / 'offline' based on response", isNew: true },
+    { sub: "Run All" },
+    { t: "Run All fires real HTTP requests (not fake setTimeout)", isNew: true },
+    { t: "Results stream into log panel as each check completes", isNew: true },
+    { t: "pass / fail / warn counts correct", isNew: true },
+    { t: "Progress bar increments to 100% on completion", isNew: true },
+    { sub: "Run Suite" },
+    { t: "Server suite hits all Flask API endpoints listed in SUITES", isNew: true },
+    { t: "Bots suite hits /api/bots/list and /api/agent/status", isNew: true },
+    { t: "Func suite hits /api/func-test/* for the selected server", isNew: true },
+    { t: "Func suite disabled (skipped) when no server selected", isNew: true },
+    { sub: "Server selector" },
+    { t: "Server dropdown populated from serverList prop" },
+    { t: "Selecting server enables Func suite" },
+  ]},
+
+  // ── SECTION 16 ──────────────────────────────────────────────────────
+  { title: "16. Create Server Wizard", tag: "fe", items: [
+    { sub: "Step 1 — Connect Discord" },
+    { t: "Token + Guild ID auto-validated 900 ms after typing stops", isNew: true },
+    { t: "Validation calls <code>POST /api/validate-bot-token</code>", isNew: true },
+    { t: "'✓ BotName · in server' shown on valid token + guild match", isNew: true },
+    { t: "'not in server — invite bot' link shown when bot not in guild", isNew: true },
+    { t: "Bot name + client ID pre-filled from validation result", isNew: true },
+    { t: "Validation error shown inline for invalid token", isNew: true },
+    { sub: "Steps 2–7" },
+    { t: "Basics step: server name + icon selection" },
+    { t: "Template step: picks preset channels/roles/scripts" },
+    { t: "Channels step: add/edit/delete channel rows" },
+    { t: "Roles step: add/edit/delete role rows with colour picker" },
+    { t: "Scripts step: toggle scripts to include" },
+    { t: "Review step: shows full config summary" },
+    { sub: "Submission" },
+    { t: "Submit POSTs FormData to <code>/setup</code>" },
+    { t: "After /setup: calls <code>POST /api/setup/run</code>" },
+    { t: "Polls <code>/api/setup/status/&lt;id&gt;</code> until done" },
+    { t: "Streams <code>/api/setup/log/&lt;id&gt;</code> into log pane" },
+    { t: "Success screen shows and server added to rail" },
+  ]},
+
+  // ── SECTION 17 ──────────────────────────────────────────────────────
+  { title: "17. Invite Accept Flow", tag: "fe", items: [
+    { t: "<code>/invite/&lt;token&gt;</code> (Flask) redirects to <code>/app/invite/&lt;token&gt;</code>", isNew: true },
+    { t: "<code>/app/invite/&lt;token&gt;</code> served by Flask SPA catch-all", isNew: true },
+    { t: "App detects invite token in URL on mount, shows <code>InvitePage</code>", isNew: true },
+    { t: "InvitePage fetches invite data from <code>GET /api/invite/&lt;token&gt;</code>", isNew: true },
+    { t: "Server name + permissions + creator shown", isNew: true },
+    { t: "Accept button calls <code>POST /api/invite/&lt;token&gt;/accept</code>", isNew: true },
+    { t: "Success message shown with Go to Dashboard button", isNew: true },
+    { t: "Invalid / used / expired token shows error message", isNew: true },
+    { t: "Unauthenticated user: auth wall shown first, invite resumes after login" },
+  ]},
+
+  // ── SECTION 18 ──────────────────────────────────────────────────────
+  { title: "18. Backend: Auth & Account API", tag: "be", items: [
+    { sub: "JSON auth endpoints" },
+    { t: "<code>POST /api/auth/login</code> returns 200 + sets session cookie", isNew: true },
+    { t: "<code>POST /api/auth/login</code> returns 401 on wrong credentials", isNew: true },
+    { t: "<code>POST /api/auth/register</code> creates user record", isNew: true },
+    { t: "<code>POST /api/auth/register</code> returns 409 on duplicate username", isNew: true },
+    { t: "<code>POST /api/auth/forgot-password</code> always returns 200 (anti-enumeration)", isNew: true },
+    { t: "<code>POST /api/auth/logout</code> clears session", isNew: true },
+    { sub: "Profile" },
+    { t: "<code>GET /api/account/profile</code> returns username, email, plan, server_count", isNew: true },
+    { t: "Profile response includes <code>csrf_token</code> from session", isNew: true },
+    { t: "<code>GET /api/config</code> returns hcaptcha_site_key + discord_configured", isNew: true },
+    { sub: "Invite JSON API" },
+    { t: "<code>GET /api/invite/&lt;token&gt;</code> returns server_name + permissions", isNew: true },
+    { t: "<code>POST /api/invite/&lt;token&gt;/accept</code> adds collaborator + marks invite used", isNew: true },
+    { t: "Expired or used invite returns 404 / 410", isNew: true },
+    { sub: "Delete server" },
+    { t: "<code>POST /api/server/&lt;sid&gt;/delete</code> removes server + install dir", isNew: true },
+    { t: "Request without CSRF token returns 403", isNew: true },
+    { t: "Non-owner cannot delete server (403)", isNew: true },
+  ]},
+
+  // ── SECTION 19 ──────────────────────────────────────────────────────
+  { title: "19. Backend: Setup & Update", tag: "be", items: [
+    { t: "<code>POST /setup</code> creates server record (or returns 409 on duplicate)" },
+    { t: "<code>POST /api/setup/run</code> starts background setup thread" },
+    { t: "Setup log written line-by-line (<code>/api/setup/log/&lt;id&gt;</code>)" },
+    { t: "Setup status polling returns setup_running / setup_completed" },
+    { t: "Bot token decrypted before subprocess, re-encrypted after" },
+    { t: "Bot stays in server after setup (<code>keep_in_guild = True</code>)" },
+    { t: "Concurrent setup for same server returns 409" },
+    { t: "<code>GET /api/validate-bot-token</code> — valid token returns bot_name + invite_url" },
+    { t: "<code>in_guild: true/false</code> returned when guild_id provided" },
+    { t: "Update run (<code>/api/update/run</code>) re-runs setup with updated config", warn: true },
+    { t: "Update status + log streaming work correctly", warn: true },
+  ]},
+
+  // ── SECTION 20 ──────────────────────────────────────────────────────
+  { title: "20. Backend: Bot Management API", tag: "be", items: [
+    { t: "<code>GET /api/bots/list</code> returns all bots with status, bot_type, server_id" },
+    { t: "<code>POST /api/bots/start</code> — cloud bots only; returns error for local" },
+    { t: "<code>POST /api/bots/stop</code> — cloud bots stop; local returns friendly message" },
+    { t: "<code>POST /api/bots/restart</code> queues restart" },
+    { t: "<code>GET /api/local-bot/logs/&lt;sid&gt;/&lt;bid&gt;</code> returns lines + updated_at" },
+    { t: "<code>GET /api/bots/available-scripts</code> returns scripts from GitHub with description" },
+    { t: "<code>GET /api/bots/installed-cogs/&lt;sid&gt;</code> returns per-server installed cogs" },
+    { t: "<code>POST /api/bots/import-cogs</code> downloads cog from GitHub" },
+    { t: "<code>POST /api/bots/remove-script</code> deletes cog folder" },
+    { t: "<code>GET /api/bots/check-scripts/&lt;sid&gt;</code> returns update availability" },
+    { t: "<code>GET /api/local-bot/heartbeat</code> updates bot last_seen timestamp" },
+  ]},
+
+  // ── SECTION 21 ──────────────────────────────────────────────────────
+  { title: "21. Backend: Server & Channel API", tag: "be", items: [
+    { t: "<code>GET /api/servers/list</code> returns servers with server_id, server_name, guild_id" },
+    { t: "<code>GET /api/dashboard/live-status</code> returns per-server Discord status" },
+    { t: "<code>GET /api/server/&lt;sid&gt;/live-channels</code> returns categories + channels from Discord" },
+    { t: "<code>POST /api/server/&lt;sid&gt;/live-channels/op</code> — <code>create_channel</code> creates on Discord" },
+    { t: "<code>op: edit</code> patches name/topic/nsfw/slowmode on Discord channel", isNew: true },
+    { t: "<code>op: delete</code> deletes channel on Discord" },
+    { t: "<code>POST /api/roles/&lt;sid&gt;</code> creates / updates role in config" },
+    { t: "<code>DELETE /api/roles/&lt;sid&gt;/&lt;name&gt;</code> removes role from config" },
+    { t: "<code>GET /api/members/&lt;sid&gt;</code> returns members + role_names", isNew: true },
+    { t: "<code>POST /api/members/&lt;sid&gt;/action</code> queues kick/ban command for bot" },
+    { t: "<code>GET /api/environment/&lt;sid&gt;/events</code> returns per-server events" },
+    { t: "<code>POST /api/environment/&lt;sid&gt;/rename</code> updates env_name", isNew: true },
+    { t: "<code>POST /api/settings/&lt;sid&gt;</code> updates server_name + guild_id in record + config" },
+  ]},
+
+  // ── SECTION 22 ──────────────────────────────────────────────────────
+  { title: "22. Security", tag: "sec", items: [
+    { sub: "CSRF" },
+    { t: "CSRF token present in session after <code>/api/account/profile</code> call", isNew: true },
+    { t: "CSRF token auto-included as <code>X-CSRF-Token</code> header on all React POST/DELETE", isNew: true },
+    { t: "<code>POST /api/server/&lt;sid&gt;/delete</code> rejected without valid CSRF token", isNew: true },
+    { t: "<code>POST /api/account/revoke-other-sessions</code> rejected without CSRF token" },
+    { sub: "Auth" },
+    { t: "401 from any API call shows login wall in React (no redirect to Flask /login)", isNew: true },
+    { t: "Session nonce invalidates other devices on login" },
+    { t: "Session timeout enforced per user preference" },
+    { t: "<code>login_required</code> non-API redirect goes to <code>/app/</code> not <code>/login</code>", isNew: true },
+    { sub: "Rate limiting" },
+    { t: "30 login attempts / min triggers 429" },
+    { t: "10 register attempts / hr triggers 429" },
+    { t: "5 forgot-password attempts / hr triggers 429" },
+    { sub: "Input sanitisation" },
+    { t: "Bot token never appears in page source or localStorage" },
+    { t: "Icon upload with path-traversal filename rejected" },
+    { t: "Invite <code>?next=</code> redirect blocks external URLs" },
+    { t: "Script var path traversal guard in place" },
+    { sub: "Encryption" },
+    { t: "Bot token written as <code>enc:...</code> in config.json" },
+    { t: "Bot manager only accepts requests from 127.0.0.1 + valid X-Manager-Secret" },
+  ]},
+
+  // ── SECTION 23 ──────────────────────────────────────────────────────
+  { title: "23. Deployment & Operations", tag: "ops", items: [
+    { sub: "Frontend build" },
+    { t: "<code>npm run build</code> in /frontend/ outputs to /app/static/dist/", isNew: true },
+    { t: "Flask serves <code>/app/</code> and <code>/app/&lt;path&gt;</code> from static/dist/index.html" },
+    { t: "Vite dev proxy (<code>/api</code>, <code>/auth</code>, <code>/uploads</code>) routes correctly to :5000" },
+    { t: "<code>/app/invite/&lt;token&gt;</code> served by Flask so React can pick up the token", isNew: true },
+    { sub: "control.ps1" },
+    { t: "Start Flask in new visible window" },
+    { t: "Restart kills old PID and starts fresh" },
+    { t: "Status pings :5000 + :5001 and shows latency" },
+    { t: "Logs teed to flask.log via Tee-Object" },
+    { t: "Stress test hub opens from menu" },
+    { sub: "Vite config" },
+    { t: "Base = <code>/app/</code> in vite.config.js" },
+    { t: "Build output dir = <code>../app/static/dist</code>" },
+    { t: "emptyOutDir: true (stale chunks cleaned on rebuild)" },
+  ]},
+
+];
+
+// ── known broken / deferred ────────────────────────────────────────────
+const BROKEN = [
+  { item: "Subscriptions / payment", notes: "Page renders (/subscriptions) but no Stripe or payment backend — intentionally deferred." },
+  { item: "Cloud bot mode", notes: "Only free plan active (PLANS dict). Cloud button disabled for free plan; cloud backend not fully wired. UI correctly blocks with 'local_required: true' error." },
+  { item: "HTTPS / TLS", notes: "DuckDNS ACME challenges fail (SERVFAIL). sslip.io hit Let's Encrypt rate limits. Running on HTTP :5000. Revisit when a real domain is acquired." },
+  { item: "Admin portal (/admin)", notes: "Backend route exists and is gated to beastyboy03. No React page — still served as Flask HTML. Low priority to migrate." },
+  { item: "Feedback page (/feedback)", notes: "Still a Flask HTML page. Backend works (creates GitHub issue). No React version yet." },
+  { item: "Commands page (/commands/<sid>)", notes: "Still a Flask HTML page. No React version. Bot command queue visible via Flask only." },
+  { item: "Account mutations (change password / email / avatar)", notes: "UserPage shows profile data and revoke-sessions but does NOT have change-password or change-email forms. Still available at /account (Flask HTML)." },
+  { item: "Bot update flow (/api/update/*)", notes: "Backend fully ready (update/invite, update/run, update/log, update/status). No React page built for this flow yet." },
+  { item: "Script vars editor", notes: "GET/POST /api/bots/script-vars/<sid> endpoints exist. No React UI to view or edit script variables." },
+  { item: "hCaptcha in React register", notes: "RegisterPage sends h-captcha-response but does not render the hCaptcha widget (needs @hcaptcha/react-hcaptcha package). Works only when HCAPTCHA_SITE_KEY is empty (dev)." },
+  { item: "Password reset (React)", notes: "ForgotPasswordPage sends the reset request. The reset link in the email goes to /reset-password/<token> which is still a Flask HTML page — not a React component." },
+  { item: "Old HTML pages in /app/pages/", notes: "All 23 Jinja2 templates still exist on disk. They are bypassed by redirects but not deleted. Can be removed once all flows are verified working in React." },
+];
+
+// ── storage ────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'df_checklist_v2';
+function load()   { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } }
+function save(st) { localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); }
+function itemKey(s,i) { return `s${s}_i${i}`; }
+function noteKey(s,i) { return `s${s}_i${i}_note`; }
+let state = load();
+
+// ── counts ────────────────────────────────────────────────────────────
+function countItems(sIdx) {
+  let total = 0, done = 0, iIdx = 0;
+  DATA[sIdx].items.forEach(it => {
+    if (it.t) { total++; if (state[itemKey(sIdx,iIdx)]) done++; }
+    iIdx++;
+  });
+  return { total, done };
+}
+function globalCount() {
+  let total = 0, done = 0;
+  DATA.forEach((_,i) => { const c = countItems(i); total += c.total; done += c.done; });
+  return { total, done };
+}
+function updateGlobal() {
+  const { total, done } = globalCount();
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('globalBar').style.width = pct+'%';
+  document.getElementById('globalPct').textContent = pct+'%';
+}
+function updateSection(sIdx) {
+  const { total, done } = countItems(sIdx);
+  const el = document.getElementById(`sp_${sIdx}`);
+  if (!el) return;
+  el.textContent = `${done} / ${total}`;
+  el.className = 'section-progress' + (done===total && total>0 ? ' done' : '');
+}
+
+// ── checkbox toggle ───────────────────────────────────────────────────
+function toggle(sIdx, iIdx, cb) {
+  state[itemKey(sIdx,iIdx)] = cb.checked;
+  save(state);
+  cb.closest('.item-wrap').classList.toggle('checked', cb.checked);
+  updateSection(sIdx);
+  updateGlobal();
+}
+
+// ── note ──────────────────────────────────────────────────────────────
+function toggleNote(btn, sIdx, iIdx) {
+  const wrap = btn.closest('.item-wrap');
+  const area = wrap.querySelector('.note-area');
+  const open = area.classList.contains('open');
+  area.classList.toggle('open', !open);
+  btn.classList.toggle('open', !open);
+  if (!open) wrap.querySelector('textarea').focus();
+}
+const saveTimers = {};
+function onNoteInput(ta, sIdx, iIdx, savedEl, btn) {
+  clearTimeout(saveTimers[`${sIdx}_${iIdx}`]);
+  saveTimers[`${sIdx}_${iIdx}`] = setTimeout(() => {
+    const val = ta.value.trim();
+    if (val) state[noteKey(sIdx,iIdx)] = val; else delete state[noteKey(sIdx,iIdx)];
+    save(state);
+    btn.classList.toggle('has-note', !!val);
+    savedEl.classList.add('show');
+    setTimeout(() => savedEl.classList.remove('show'), 1400);
+  }, 400);
+}
+function clearNote(sIdx, iIdx, btn, ta) {
+  ta.value = ''; delete state[noteKey(sIdx,iIdx)]; save(state); btn.classList.remove('has-note');
+}
+
+// ── reset ─────────────────────────────────────────────────────────────
+function resetAll() {
+  if (!confirm('Reset all checkboxes and notes?')) return;
+  state = {}; save(state);
+  document.querySelectorAll('.item-wrap').forEach(w => {
+    w.classList.remove('checked');
+    const cb = w.querySelector('input[type=checkbox]');
+    if (cb) cb.checked = false;
+    const ta = w.querySelector('textarea');
+    if (ta) ta.value = '';
+    const nb = w.querySelector('.note-btn');
+    if (nb) nb.classList.remove('has-note','open');
+    const na = w.querySelector('.note-area');
+    if (na) na.classList.remove('open');
+  });
+  DATA.forEach((_,i) => updateSection(i));
+  updateGlobal();
+}
+
+// ── helpers ───────────────────────────────────────────────────────────
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt(t) { return esc(t).replace(/`([^`]+)`/g,'<code>$1</code>'); }
+
+// ── tag badge ─────────────────────────────────────────────────────────
+const TAG_LABELS = { fe:'Frontend', be:'Backend', sec:'Security', ops:'Operations' };
+
+// ── render ────────────────────────────────────────────────────────────
+function render() {
+  const container = document.getElementById('sections');
+
+  DATA.forEach((section, sIdx) => {
+    const secDiv = document.createElement('div');
+    secDiv.className = 'section';
+
+    const body = document.createElement('div');
+    body.className = 'section-body';
+
+    let iIdx = 0;
+    section.items.forEach(it => {
+      if (it.sub) {
+        const lbl = document.createElement('div');
+        lbl.className = 'subsection-label';
+        lbl.textContent = it.sub;
+        body.appendChild(lbl);
+        iIdx++;
+        return;
+      }
+
+      const key     = itemKey(sIdx,iIdx);
+      const nKey    = noteKey(sIdx,iIdx);
+      const checked = !!state[key];
+      const noteVal = state[nKey] || '';
+      const si = sIdx, ii = iIdx;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'item-wrap' + (it.warn?'  warn':'') + (checked?' checked':'') + (it.isNew?' new-item':'');
+
+      const row = document.createElement('div');
+      row.className = 'item-row';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = checked;
+      cb.addEventListener('change', () => toggle(si, ii, cb));
+
+      const span = document.createElement('span');
+      span.className = 'item-text';
+      span.innerHTML = fmt(it.t);
+      span.addEventListener('click', () => { cb.checked = !cb.checked; toggle(si,ii,cb); });
+
+      const noteBtn = document.createElement('button');
+      noteBtn.className = 'note-btn' + (noteVal?' has-note':'');
+      noteBtn.title = 'Add note';
+      noteBtn.textContent = '✏️';
+      noteBtn.addEventListener('click', e => { e.stopPropagation(); toggleNote(noteBtn,si,ii); });
+
+      row.appendChild(cb); row.appendChild(span); row.appendChild(noteBtn);
+      wrap.appendChild(row);
+
+      const noteArea = document.createElement('div');
+      noteArea.className = 'note-area';
+      const ta = document.createElement('textarea');
+      ta.placeholder = 'Note… (auto-saves)';
+      ta.value = noteVal;
+      const meta = document.createElement('div');
+      meta.className = 'note-meta';
+      const savedEl = document.createElement('span');
+      savedEl.className = 'note-saved';
+      savedEl.textContent = 'saved';
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'note-clear';
+      clearBtn.textContent = 'Clear';
+      clearBtn.addEventListener('click', () => clearNote(si,ii,noteBtn,ta));
+      ta.addEventListener('input', () => onNoteInput(ta,si,ii,savedEl,noteBtn));
+      meta.appendChild(savedEl); meta.appendChild(clearBtn);
+      noteArea.appendChild(ta); noteArea.appendChild(meta);
+      wrap.appendChild(noteArea);
+
+      body.appendChild(wrap);
+      iIdx++;
+    });
+
+    const { total, done } = countItems(sIdx);
+    const doneClass = (done===total && total>0) ? ' done' : '';
+    const tagLabel = TAG_LABELS[section.tag] || '';
+    const tagClass = section.tag ? `section-tag tag-${section.tag}` : '';
+
+    const header = document.createElement('div');
+    header.className = 'section-header';
+    header.innerHTML = `
+      <span class="section-title">${esc(section.title)}</span>
+      ${tagLabel ? `<span class="${tagClass}">${tagLabel}</span>` : ''}
+      <span class="section-progress${doneClass}" id="sp_${sIdx}">${done} / ${total}</span>
+      <span class="chevron">▼</span>`;
+    header.addEventListener('click', () => secDiv.classList.toggle('collapsed'));
+
+    secDiv.appendChild(header);
+    secDiv.appendChild(body);
+    container.appendChild(secDiv);
+  });
+
+  // Known broken (static table)
+  const brokenDiv = document.createElement('div');
+  brokenDiv.className = 'section';
+  const rows = BROKEN.map((b,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${esc(b.item)}</td>
+      <td>${esc(b.notes)}</td>
+    </tr>`).join('');
+  brokenDiv.innerHTML = `
+    <div class="section-header">
+      <span class="section-title">24. Known Gaps / Not Yet Implemented</span>
+      <span class="section-tag tag-ops">Backlog</span>
+      <span class="section-progress" style="color:#faa61a">${BROKEN.length} items</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+      <div class="broken-wrap">
+        <table class="broken-table">
+          <thead><tr><th>#</th><th>Item</th><th>Notes</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  brokenDiv.querySelector('.section-header').addEventListener('click', () => brokenDiv.classList.toggle('collapsed'));
+  container.appendChild(brokenDiv);
+
+  updateGlobal();
+}
+
+render();
+
+// ── notes modal ───────────────────────────────────────────────────────
+function showNotes() {
+  const content = document.getElementById('notesContent');
+  const empty   = document.getElementById('notesEmpty');
+  content.innerHTML = '';
+  let found = false;
+  DATA.forEach((section, sIdx) => {
+    let html = '';
+    let iIdx = 0;
+    section.items.forEach(it => {
+      if (it.t) {
+        const val = state[noteKey(sIdx,iIdx)];
+        if (val) {
+          found = true;
+          html += `<div style="margin-bottom:10px;padding:10px 12px;background:#36393f;border-radius:6px;border-left:3px solid #7289da;">
+            <div style="color:#72767d;font-size:11px;margin-bottom:3px;">${esc(section.title)}</div>
+            <div style="color:#dcddde;font-size:13px;margin-bottom:5px;">${esc(it.t)}</div>
+            <div style="color:#faa61a;white-space:pre-wrap;font-size:13px;">${esc(val)}</div>
+          </div>`;
+        }
+        iIdx++;
+      } else { iIdx++; }
+    });
+    if (html) content.innerHTML += html;
+  });
+  empty.style.display   = found ? 'none'  : 'block';
+  content.style.display = found ? 'block' : 'none';
+  document.getElementById('notesModal').style.display = 'block';
+}
+
+document.getElementById('notesModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('notesModal'))
+    document.getElementById('notesModal').style.display = 'none';
+});
+</script>
+</body>
+</html>

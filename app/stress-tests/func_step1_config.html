@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Func Step 1 — Config Verification</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:12px;font-size:.95rem}
+  .btn{background:#6e40c9;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#a371f7}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .btn-row{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-next{background:#1f6feb;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-next:hover{background:#388bfd}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  th{text-align:left;padding:8px 10px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d;font-size:.78rem;text-transform:uppercase}
+  td{padding:9px 10px;border-bottom:1px solid #21262d;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .ok{color:#56d364}.fail{color:#f85149}.warn{color:#e3b341}.na{color:#8b949e}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+  .dot-ok{background:#56d364}.dot-fail{background:#f85149}.dot-warn{background:#e3b341}.dot-na{background:#484f58}
+  .bot-card{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px;margin-bottom:10px}
+  .bot-name{font-weight:600;color:#f0f6fc;font-size:.9rem;margin-bottom:8px}
+  .kv-row{display:flex;gap:8px;padding:4px 0;font-size:.82rem}
+  .kv-key{color:#8b949e;min-width:140px}
+  .kv-val{color:#f0f6fc;font-family:monospace}
+  .server-selector{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  select{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.85rem;outline:none;min-width:200px}
+  select:focus{border-color:#a371f7}
+  .empty-state{text-align:center;padding:32px;color:#484f58;font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><a href="func_index.html">Function Tests</a><span class="nav-sep">/</span><span>Step 1 — Config</span></div>
+<h1>Step 1 &mdash; Config Verification</h1>
+<p class="sub">Check local server config: guild_id, bot tokens, application IDs and repo paths.</p>
+
+<div class="server-selector">
+  <label style="font-size:.85rem;color:#8b949e">Server:</label>
+  <select id="serverSelect" onchange="saveServer()"><option value="">— select —</option></select>
+  <button class="btn" id="runBtn" onclick="runCheck()">Run Check</button>
+</div>
+
+<div id="output"><div class="empty-state">Select a server and click "Run Check".</div></div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="func_index.html">&larr; Function Test Hub</a>
+  <a class="btn-next" href="func_step2_guild.html">Next: Guild Presence &rarr;</a>
+</div>
+
+<script>
+const F=window.location.origin;
+
+async function loadServers(){
+  const sel=document.getElementById('serverSelect');
+  try{
+    const r=await fetch(F+'/api/servers/list',{redirect:'manual',signal:AbortSignal.timeout(5000)});
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){
+      sel.innerHTML='<option value="">— Please log in first —</option>';if(!document.getElementById('_loginBtn')){const a=document.createElement('a');a.id='_loginBtn';a.href=F+'/login?next='+encodeURIComponent(window.location.pathname);a.textContent='Log in';a.style.cssText='margin-left:8px;background:#238636;color:#fff;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;text-decoration:none;display:inline-block;';sel.parentNode.insertBefore(a,sel.nextSibling);const b=document.createElement('button');b.id='_refreshBtn';b.textContent='↻ Refresh';b.onclick=loadServers;b.style.cssText='margin-left:8px;background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 14px;font-size:.875rem;font-weight:600;cursor:pointer;';a.parentNode.insertBefore(b,a.nextSibling);}return;
+    }
+    const data=await r.json();
+    const servers=data.servers||data||[];
+    sel.innerHTML='<option value="">— select —</option>';
+    servers.forEach(s=>{
+      const opt=document.createElement('option');
+      opt.value=s.server_id||s.id||s.name;
+      opt.textContent=s.name||(s.server_id||s.id);
+      sel.appendChild(opt);
+    });
+    const saved=localStorage.getItem('func_test_server_id');
+    if(saved) for(let i=0;i<sel.options.length;i++) if(sel.options[i].value===saved){sel.selectedIndex=i;break;}
+  }catch(e){ sel.innerHTML='<option value="">— Flask unreachable —</option>'; }
+}
+
+function saveServer(){
+  const v=document.getElementById('serverSelect').value;
+  if(v) localStorage.setItem('func_test_server_id',v);
+}
+
+function icon(v){
+  if(v===true) return '<span class="dot dot-ok"></span><span class="ok">Yes</span>';
+  if(v===false) return '<span class="dot dot-fail"></span><span class="fail">No</span>';
+  return '<span class="dot dot-na"></span><span class="na">—</span>';
+}
+
+async function runCheck(){
+  const sid=document.getElementById('serverSelect').value;
+  if(!sid){alert('Select a server first.');return;}
+  const btn=document.getElementById('runBtn');
+  const out=document.getElementById('output');
+  btn.disabled=true;
+  out.innerHTML='<div class="empty-state">Checking…</div>';
+
+  try{
+    const r=await fetch(`${F}/api/func-test/config/${encodeURIComponent(sid)}`,{
+      redirect:'manual',signal:AbortSignal.timeout(8000)
+    });
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){
+      out.innerHTML='<div class="empty-state">Login required — <a href="'+F+'/login?next='+encodeURIComponent(window.location.pathname)+'" style="color:#58a6ff">log in</a> &nbsp;<button onclick="runCheck()" style="background:#21262d;color:#c9d1d9;border:none;border-radius:6px;padding:5px 12px;font-size:.82rem;font-weight:600;cursor:pointer;">↻ Retry</button></div>';
+      btn.disabled=false; return;
+    }
+    if(!r.ok){
+      let errText='HTTP '+r.status;
+      try{const e=await r.clone().json();errText=e.error||errText;}catch(x){}
+      out.innerHTML=`<div class="empty-state" style="color:#f85149">${escHtml(errText)}</div>`;
+      btn.disabled=false;return;
+    }
+    const d=await r.json();
+
+    let html=`<div class="card"><div class="card-title">Server: ${escHtml(d.server_name)}</div>
+      <div class="kv-row"><span class="kv-key">Server ID</span><span class="kv-val">${escHtml(sid)}</span></div>
+      <div class="kv-row"><span class="kv-key">Guild ID</span><span class="kv-val">${icon(d.has_guild_id)} ${escHtml(d.guild_id||'—')}</span></div>
+      <div class="kv-row"><span class="kv-key">Invite</span><span class="kv-val">${icon(d.has_invite)}</span></div>
+      <div class="kv-row"><span class="kv-key">Template</span><span class="kv-val">${escHtml(d.template||'none')}</span></div>
+      <div class="kv-row"><span class="kv-key">Created</span><span class="kv-val">${escHtml(d.created_at||'—')}</span></div>
+    </div>`;
+
+    if(d.bots&&d.bots.length>0){
+      html+=`<div class="card"><div class="card-title">Bots (${d.bots.length})</div>`;
+      d.bots.forEach(b=>{
+        const typeColor=b.bot_type==='cloud'?'#58a6ff':'#56d364';
+        html+=`<div class="bot-card">
+          <div class="bot-name">${escHtml(b.name)} <span style="font-size:.72rem;color:${typeColor}">${b.bot_type}</span></div>
+          <div class="kv-row"><span class="kv-key">Token</span><span class="kv-val">${icon(b.has_token)}</span></div>
+          <div class="kv-row"><span class="kv-key">Application ID</span><span class="kv-val">${icon(b.has_app_id)}</span></div>
+          <div class="kv-row"><span class="kv-key">Repo ready</span><span class="kv-val">${icon(b.repo_ready)}</span></div>
+          <div class="kv-row"><span class="kv-key">Cogs</span><span class="kv-val">${b.cogs_count}</span></div>
+          <div class="kv-row"><span class="kv-key">Scripts</span><span class="kv-val">${b.scripts_count}</span></div>
+        </div>`;
+      });
+      html+='</div>';
+    } else {
+      html+='<div class="card"><div class="empty-state">No bots configured for this server.</div></div>';
+    }
+
+    out.innerHTML=html;
+  }catch(e){
+    out.innerHTML=`<div class="empty-state" style="color:#f85149">Error: ${escHtml(e.message)}</div>`;
+  }
+  btn.disabled=false;
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+loadServers();
+</script>
+</body>
+</html>

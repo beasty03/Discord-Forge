@@ -1,0 +1,374 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>(function(){var s=localStorage.getItem('appTheme')||'dark';var r=s==='system'?(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):s;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',s);})();</script>
+    <title>Activity — {{ env_display_name }} · DiscordForge</title>
+    <style>
+        :root {
+            --bg:      #1e2124; --bg2: #2f3136; --bg3: #36393f; --bg4: #40444b;
+            --text:    #dcddde; --text2: #b9bbbe; --text3: #72767d;
+            --border:  #202225; --border2: #40444b;
+            --accent:  #7289da; --accent-h: #5b6eae;
+            --success: #43b581; --danger: #f04747; --warn: #faa61a;
+        }
+        [data-theme="light"] {
+            --bg: #f2f3f5; --bg2: #fff; --bg3: #f2f3f5; --bg4: #e3e5e8;
+            --text: #060607; --text2: #4e5058; --text3: #80848e;
+            --border: #d4d7dc; --border2: #c7ccd1;
+            --accent: #5865f2; --accent-h: #4752c4;
+            --success: #248046; --danger: #da373c; --warn: #c07014;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:var(--bg); color:var(--text); font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; min-height:100vh; }
+
+        /* ── Navbar ── */
+        .navbar {
+            background:var(--bg2); padding:0 30px; height:60px;
+            display:flex; justify-content:space-between; align-items:center;
+            box-shadow:0 1px 0 var(--border2); position:sticky; top:0; z-index:100;
+        }
+        .navbar-left { display:flex; align-items:center; gap:28px; }
+        .navbar-brand { font-size:1.3em; color:var(--accent); font-weight:700; text-decoration:none; }
+        .navbar-links { display:flex; gap:4px; }
+        .navbar-links a {
+            color:var(--text2); text-decoration:none; font-weight:500; font-size:14px;
+            padding:6px 12px; border-radius:6px; transition:background .15s,color .15s;
+        }
+        .navbar-links a:hover { background:var(--bg3); color:var(--text); }
+        .user-menu { position:relative; }
+        .user-btn {
+            background:none; border:none; color:var(--accent); font-weight:700; font-size:14px;
+            cursor:pointer; display:flex; align-items:center; gap:8px;
+            padding:6px 12px; border-radius:6px; transition:background .2s;
+        }
+        .user-btn:hover { background:var(--bg3); }
+        .user-avatar {
+            width:30px; height:30px; border-radius:50%; background:var(--accent);
+            display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff;
+        }
+        .user-chevron { font-size:10px; color:var(--text3); transition:transform .2s; }
+        .user-btn.open .user-chevron { transform:rotate(180deg); }
+        .user-dropdown {
+            position:absolute; top:calc(100% + 6px); right:0; background:var(--bg2);
+            border-radius:8px; min-width:200px; box-shadow:0 8px 24px rgba(0,0,0,.4);
+            border:1px solid var(--border2); opacity:0; pointer-events:none;
+            transform:translateY(-6px); transition:opacity .15s,transform .15s; z-index:200;
+        }
+        .user-dropdown.open { opacity:1; pointer-events:all; transform:translateY(0); }
+        .user-dropdown-info { padding:14px 16px 10px; border-bottom:1px solid var(--border2); }
+        .user-dropdown-info .ud-name { color:var(--text); font-weight:600; font-size:14px; }
+        .user-dropdown a, .user-dropdown button {
+            display:block; width:100%; text-align:left; padding:10px 16px;
+            color:var(--text2); text-decoration:none; font-size:14px; font-weight:500;
+            background:none; border:none; cursor:pointer; transition:background .15s,color .15s;
+        }
+        .user-dropdown a:hover, .user-dropdown button:hover { background:var(--bg3); color:var(--text); }
+        .ud-logout { color:var(--danger)!important; border-top:1px solid var(--border2); margin-top:4px; }
+
+        /* ── Layout ── */
+        .container { max-width:900px; margin:36px auto; padding:0 20px; }
+
+        /* ── Page header ── */
+        .page-header {
+            display:flex; align-items:center; justify-content:space-between;
+            margin-bottom:28px; flex-wrap:wrap; gap:12px;
+        }
+        .page-header-left { display:flex; flex-direction:column; gap:4px; }
+        .breadcrumb { font-size:13px; color:var(--text3); }
+        .breadcrumb a { color:var(--accent); text-decoration:none; }
+        .breadcrumb a:hover { text-decoration:underline; }
+        .page-title { font-size:1.6em; font-weight:700; color:var(--text); }
+        .page-subtitle { font-size:13px; color:var(--text3); margin-top:2px; }
+
+        /* ── Filter bar ── */
+        .filter-bar {
+            display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+            margin-bottom:20px; padding:14px 16px;
+            background:var(--bg2); border-radius:8px; border:1px solid var(--border2);
+        }
+        .filter-bar select, .filter-bar input {
+            background:var(--bg3); border:1px solid var(--border2); border-radius:6px;
+            color:var(--text); padding:7px 10px; font-size:13px; outline:none;
+            transition:border-color .15s;
+        }
+        .filter-bar select:focus, .filter-bar input:focus { border-color:var(--accent); }
+        .filter-bar label { font-size:12px; color:var(--text3); font-weight:600; white-space:nowrap; }
+        .filter-spacer { flex:1; }
+        .btn {
+            background:var(--accent); color:#fff; border:none; padding:8px 16px;
+            border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;
+            text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+            transition:background .15s;
+        }
+        .btn:hover { background:var(--accent-h); }
+        .btn-ghost {
+            background:transparent; border:1px solid var(--border2); color:var(--text2);
+        }
+        .btn-ghost:hover { background:var(--bg3); color:var(--text); border-color:var(--border2); }
+
+        /* ── Event feed ── */
+        .feed { display:flex; flex-direction:column; gap:0; }
+
+        .event-row {
+            display:flex; align-items:flex-start; gap:14px;
+            padding:14px 18px; border-bottom:1px solid var(--border2);
+            background:var(--bg2); transition:background .1s;
+        }
+        .event-row:first-child { border-radius:8px 8px 0 0; }
+        .event-row:last-child  { border-radius:0 0 8px 8px; border-bottom:none; }
+        .event-row:only-child  { border-radius:8px; border-bottom:none; }
+        .event-row:hover { background:var(--bg3); }
+
+        .event-icon {
+            width:34px; height:34px; border-radius:50%; flex-shrink:0;
+            display:flex; align-items:center; justify-content:center; font-size:15px;
+            margin-top:1px;
+        }
+        .event-icon.type-setup        { background:rgba(114,137,218,.15); }
+        .event-icon.type-update       { background:rgba(250,166,26,.12); }
+        .event-icon.type-bot_add      { background:rgba(67,181,129,.12); }
+        .event-icon.type-bot_delete   { background:rgba(240,71,71,.12); }
+        .event-icon.type-collab_add   { background:rgba(114,137,218,.12); }
+        .event-icon.type-collab_remove { background:rgba(240,71,71,.10); }
+        .event-icon.type-collab_invite { background:rgba(67,181,129,.10); }
+        .event-icon.type-rename       { background:rgba(114,137,218,.10); }
+        .event-icon.type-bot_online   { background:rgba(67,181,129,.12); }
+        .event-icon.type-bot_offline  { background:rgba(240,71,71,.12); }
+        .event-icon.type-edit         { background:rgba(250,166,26,.10); }
+
+        .event-body { flex:1; min-width:0; }
+        .event-desc { font-size:14px; color:var(--text); line-height:1.5; word-break:break-word; }
+        .event-meta {
+            display:flex; align-items:center; gap:10px; margin-top:5px; flex-wrap:wrap;
+        }
+        .event-ts {
+            font-size:11px; color:var(--text3);
+            cursor:default;
+        }
+        .actor-badge {
+            font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;
+        }
+        .actor-owner { background:rgba(114,137,218,.15); color:var(--accent); }
+        .actor-collab { background:rgba(67,181,129,.13); color:var(--success); }
+        .type-badge {
+            font-size:10px; font-weight:700; padding:2px 7px; border-radius:8px;
+            background:var(--bg4); color:var(--text3); text-transform:uppercase; letter-spacing:.04em;
+        }
+
+        /* ── States ── */
+        .loading-state {
+            text-align:center; padding:60px 20px;
+            color:var(--text3); font-size:14px;
+        }
+        .empty-state {
+            text-align:center; padding:60px 20px; background:var(--bg2);
+            border-radius:8px; border:1px solid var(--border2);
+        }
+        .empty-state-icon { font-size:48px; margin-bottom:14px; opacity:.4; }
+        .empty-state h3 { color:var(--text2); margin-bottom:8px; }
+        .empty-state p  { color:var(--text3); font-size:14px; }
+        .event-count { font-size:13px; color:var(--text3); margin-bottom:12px; }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="navbar-left">
+        <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+        <div class="navbar-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('servers_page') }}">Servers</a>
+            <a href="{{ url_for('bots_page') }}">Bots</a>
+            <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+        </div>
+    </div>
+    <div class="user-menu">
+        <button class="user-btn" id="userNavBtn">
+            <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+            {{ username }}
+            <span class="user-chevron">▼</span>
+        </button>
+        <div class="user-dropdown" id="userNavDropdown">
+            <div class="user-dropdown-info">
+                <div class="ud-name">{{ username }}</div>
+            </div>
+            <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+            <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+            <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+
+    <div class="page-header">
+        <div class="page-header-left">
+            <div class="breadcrumb">
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                &rsaquo; {{ env_display_name }}
+            </div>
+            <div class="page-title">Activity Log</div>
+            <div class="page-subtitle">All changes made to this environment, newest first</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" onclick="loadEvents()">↻ Refresh</button>
+            <a href="{{ url_for('export_env_events', server_id=server_id) }}"
+               class="btn btn-ghost" style="text-decoration:none;">⬇ Export CSV</a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-ghost" style="text-decoration:none;">← Back</a>
+        </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+        <label>Type</label>
+        <select id="filterType" onchange="applyFilters()">
+            <option value="">All types</option>
+            <option value="setup">Setup</option>
+            <option value="update">Update</option>
+            <option value="bot_add">Bot added</option>
+            <option value="bot_delete">Bot deleted</option>
+            <option value="bot_online">Bot online</option>
+            <option value="bot_offline">Bot offline</option>
+            <option value="collab_add">Collaborator added</option>
+            <option value="collab_remove">Collaborator removed</option>
+            <option value="collab_invite">Invite accepted</option>
+            <option value="rename">Renamed</option>
+            <option value="edit">Edit</option>
+        </select>
+        <label>Actor</label>
+        <select id="filterActor" onchange="applyFilters()">
+            <option value="">Anyone</option>
+            <option value="__owner__">Owner only</option>
+            <option value="__collab__">Collaborators only</option>
+        </select>
+        <label>Search</label>
+        <input type="text" id="filterSearch" placeholder="Search descriptions…"
+               oninput="applyFilters()" style="min-width:160px;">
+        <div class="filter-spacer"></div>
+        <span class="event-count" id="eventCount"></span>
+    </div>
+
+    <!-- Feed -->
+    <div id="feed" class="feed">
+        <div class="loading-state">Loading activity…</div>
+    </div>
+
+</div>
+
+<script>
+const SERVER_OWNER = {{ username|tojson }};
+let allEvents = [];
+
+function relativeTime(isoStr) {
+    const d = new Date(isoStr);
+    const s = Math.floor((Date.now() - d) / 1000);
+    if (s < 5)   return 'just now';
+    if (s < 60)  return s + 's ago';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
+}
+
+function fmtAbsolute(isoStr) {
+    return new Date(isoStr).toLocaleString();
+}
+
+function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function loadEvents() {
+    fetch('/api/environment/{{ server_id }}/events')
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { renderError(data.error); return; }
+        allEvents = data;
+        applyFilters();
+    })
+    .catch(() => renderError('Could not load events. Check your connection.'));
+}
+
+function applyFilters() {
+    const typeF   = document.getElementById('filterType').value;
+    const actorF  = document.getElementById('filterActor').value;
+    const searchF = document.getElementById('filterSearch').value.toLowerCase();
+
+    let filtered = allEvents.filter(e => {
+        if (typeF && e.type !== typeF) return false;
+        if (actorF === '__owner__'  && e.actor !== SERVER_OWNER) return false;
+        if (actorF === '__collab__' && e.actor === SERVER_OWNER) return false;
+        if (searchF && !e.description.toLowerCase().includes(searchF)) return false;
+        return true;
+    });
+    renderFeed(filtered);
+}
+
+function renderFeed(events) {
+    const feed = document.getElementById('feed');
+    const count = document.getElementById('eventCount');
+
+    if (!events.length) {
+        count.textContent = '';
+        feed.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <h3>No events yet</h3>
+                <p>Actions like setup runs, bot changes, and collaborator updates will appear here.</p>
+            </div>`;
+        return;
+    }
+
+    count.textContent = `${events.length} event${events.length !== 1 ? 's' : ''}`;
+
+    feed.innerHTML = events.map(e => {
+        const isOwner  = e.actor === SERVER_OWNER;
+        const actorBadge = `<span class="actor-badge ${isOwner ? 'actor-owner' : 'actor-collab'}">${esc(e.actor)}${isOwner ? ' (owner)' : ''}</span>`;
+        const typeBadge  = `<span class="type-badge">${esc(e.type || 'event')}</span>`;
+        const ts = `<span class="event-ts" title="${fmtAbsolute(e.ts)}">${relativeTime(e.ts)}</span>`;
+        const iconClass  = `type-${(e.type||'').replace(/_/g,'-')}`;
+        return `
+        <div class="event-row">
+            <div class="event-icon ${iconClass}">${esc(e.icon || '📌')}</div>
+            <div class="event-body">
+                <div class="event-desc">${esc(e.description)}</div>
+                <div class="event-meta">${ts}${actorBadge}${typeBadge}</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderError(msg) {
+    document.getElementById('feed').innerHTML = `
+        <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <h3>Error</h3>
+            <p>${esc(msg)}</p>
+        </div>`;
+}
+
+// Navbar dropdown
+(function(){
+    var btn = document.getElementById('userNavBtn');
+    var dd  = document.getElementById('userNavDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e){ e.stopPropagation(); btn.classList.toggle('open'); dd.classList.toggle('open'); });
+    dd.addEventListener('click', function(e){ e.stopPropagation(); });
+    document.addEventListener('click', function(){ btn.classList.remove('open'); dd.classList.remove('open'); });
+})();
+
+// Theme
+(function(){
+    var s = localStorage.getItem('appTheme')||'dark';
+    var r = s==='system'?(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):s;
+    document.documentElement.setAttribute('data-theme',r);
+})();
+
+loadEvents();
+setInterval(loadEvents, 30000);
+</script>
+
+{% include 'footer.html' %}
+</body>
+</html>

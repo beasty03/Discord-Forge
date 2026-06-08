@@ -1,0 +1,579 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrations — {{ server.server_name }} - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover, .navbar-links a.active { background: #36393f; color: #fff; }
+        
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .user-menu { position: relative; }
+        .user-btn {
+            background: none; border: none; color: #7289da;
+            font-weight: 700; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 6px; transition: background .2s;
+        }
+        .user-btn:hover { background: #36393f; }
+        .user-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #7289da; display: flex; align-items: center;
+            justify-content: center; font-size: 13px; font-weight: 700; color: #fff;
+        }
+        .user-chevron { font-size: 10px; color: #b9bbbe; transition: transform .2s; }
+        .user-btn.open .user-chevron { transform: rotate(180deg); }
+        .user-dropdown {
+            position: absolute; top: calc(100% + 6px); right: 0;
+            background: #2f3136; border-radius: 8px; min-width: 200px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5); border: 1px solid #40444b;
+            opacity: 0; pointer-events: none;
+            transform: translateY(-6px); transition: opacity .15s, transform .15s; z-index: 200;
+        }
+        .user-dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+        .user-dropdown-info { padding: 14px 16px 10px; border-bottom: 1px solid #40444b; }
+        .user-dropdown-info .ud-name { color: #fff; font-weight: 600; font-size: 14px; }
+        .user-dropdown a, .user-dropdown button {
+            display: block; width: 100%; text-align: left;
+            padding: 10px 16px; color: #b9bbbe; text-decoration: none;
+            font-size: 14px; font-weight: 500; background: none; border: none;
+            cursor: pointer; transition: background .15s, color .15s;
+        }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: #36393f; color: #fff; }
+        .ud-logout { color: #f04747 !important; border-top: 1px solid #40444b; margin-top: 4px; }
+        .ud-logout:hover { background: rgba(240,71,71,.1) !important; color: #f04747 !important; }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 36px 24px; }
+        .page-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 28px; flex-wrap: wrap; gap: 14px;
+        }
+        .page-title { font-size: 24px; font-weight: 700; color: #fff; }
+        .page-subtitle { color: #72767d; font-size: 13px; margin-top: 4px; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #7289da; text-decoration: none; font-size: 14px; font-weight: 600;
+            margin-bottom: 20px; transition: color .15s;
+        }
+        .back-link:hover { color: #5b6eae; }
+
+        .btn { padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+        .btn-primary { background: #7289da; color: #fff; }
+        .btn-primary:hover { background: #5b6eae; }
+        .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: 5px; border: none; cursor: pointer; font-weight: 600; }
+        .btn-ghost { background: #36393f; color: #b9bbbe; }
+        .btn-ghost:hover { background: #40444b; color: #fff; }
+        .btn-danger-sm { background: rgba(240,71,71,.15); color: #f04747; }
+        .btn-danger-sm:hover { background: rgba(240,71,71,.3); }
+
+        .webhook-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+        .webhook-card {
+            background: #2f3136; border-radius: 8px; padding: 16px 20px;
+            border: 1px solid #40444b; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        }
+        .webhook-icon { font-size: 26px; flex-shrink: 0; }
+        .webhook-info { flex: 1; min-width: 0; }
+        .webhook-name { color: #fff; font-weight: 600; font-size: 14px; }
+        .webhook-meta { color: #72767d; font-size: 12px; margin-top: 3px; }
+        .webhook-url {
+            font-family: monospace; font-size: 11px; color: #72767d;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 360px;
+        }
+        .webhook-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .empty-state {
+            text-align: center; padding: 60px 20px; color: #72767d;
+        }
+        .empty-state h3 { font-size: 18px; margin-bottom: 8px; color: #b9bbbe; }
+        .empty-state p { font-size: 13px; line-height: 1.6; }
+
+        /* Add modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.7); z-index: 500;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #2f3136; border-radius: 10px; padding: 28px 28px 24px;
+            min-width: 380px; max-width: 500px; width: 100%;
+            box-shadow: 0 12px 40px rgba(0,0,0,.6); border: 1px solid #40444b;
+        }
+        .modal h3 { color: #fff; font-size: 17px; margin-bottom: 18px; }
+        .modal label { display: block; color: #b9bbbe; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+        .modal input[type=text] {
+            width: 100%; background: #202225; border: 1px solid #40444b; border-radius: 5px;
+            color: #dcddde; padding: 9px 12px; font-size: 13px; outline: none; margin-bottom: 14px;
+        }
+        .modal input:focus { border-color: #7289da; }
+        .modal-hint { color: #72767d; font-size: 11px; margin-top: -10px; margin-bottom: 14px; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+        .btn-cancel { background: #40444b; color: #b9bbbe; }
+        .btn-cancel:hover { background: #4f545c; color: #fff; }
+
+        .webhook-notify-row {
+            width: 100%; margin-top: 10px; padding-top: 10px;
+            border-top: 1px solid #40444b;
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .notify-label { color: #72767d; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+        .notify-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: #202225; border: 1px solid #40444b; border-radius: 20px;
+            padding: 4px 10px; font-size: 12px; color: #b9bbbe;
+            cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+            user-select: none;
+        }
+        .notify-chip input[type=checkbox] { display: none; }
+        .notify-chip.active {
+            background: rgba(67,181,129,.12); border-color: #43b581; color: #43b581;
+        }
+        .notify-chip:hover { background: #2e3136; border-color: #7289da; color: #fff; }
+
+        .log-entry { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #40444b; font-size: 12px; align-items: flex-start; }
+        .log-entry:last-child { border-bottom: none; }
+        .log-ts { color: #72767d; white-space: nowrap; min-width: 130px; }
+        .log-event { font-weight: 700; min-width: 80px; }
+        .log-msg { color: #dcddde; flex: 1; word-break: break-word; }
+        .log-ok { color: #43b581; }
+        .log-fail { color: #f04747; }
+        .log-empty { color: #72767d; font-size: 13px; padding: 16px 0; text-align: center; }
+
+        .tmpl-modal textarea {
+            width: 100%; background: #202225; border: 1px solid #40444b; border-radius: 5px;
+            color: #dcddde; padding: 8px 11px; font-size: 12px; font-family: monospace;
+            resize: vertical; min-height: 52px; outline: none; margin-bottom: 4px;
+        }
+        .tmpl-modal textarea:focus { border-color: #7289da; }
+        .tmpl-var-hint { color: #72767d; font-size: 11px; margin-bottom: 12px; }
+
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+            background: #2f3136; border: 1px solid #40444b; border-radius: 8px;
+            padding: 12px 18px; font-size: 13px; color: #dcddde;
+            box-shadow: 0 6px 24px rgba(0,0,0,.5);
+            transform: translateY(20px); opacity: 0;
+            transition: opacity .2s, transform .2s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-color: #43b581; color: #43b581; }
+        .toast.error   { border-color: #f04747; color: #f04747; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-left">
+        <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+        <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+        <div class="navbar-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('servers_page') }}" class="active">Servers</a>
+            <a href="{{ url_for('bots_page') }}">Bots</a>
+            <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+        </div>
+    </div>
+    <div class="user-menu">
+        <button class="user-btn" id="userNavBtn">
+            <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+            {{ username }}
+            <span class="user-chevron">▼</span>
+        </button>
+        <div class="user-dropdown" id="userNavDropdown">
+            <div class="user-dropdown-info">
+                <div class="ud-name">{{ username }}</div>
+            </div>
+            <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+            <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+            <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <a class="back-link" href="{{ url_for('servers_page') }}">← Back to Servers</a>
+
+    <div class="page-header">
+        <div>
+            <div class="page-title">🔗 Integrations — {{ server.server_name }}</div>
+            <div class="page-subtitle">Manage Discord webhooks for this server</div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add Webhook</button>
+    </div>
+
+    <div class="webhook-list" id="webhookList">
+        {% if not integrations %}
+        <div class="empty-state" id="emptyState">
+            <h3>No webhooks yet</h3>
+            <p>Add a Discord webhook URL to send messages to a channel from external services.</p>
+        </div>
+        {% else %}
+        {% for h in integrations %}
+        <div class="webhook-card" id="wh-{{ h.id }}">
+            <div class="webhook-icon">🪝</div>
+            <div class="webhook-info">
+                <div class="webhook-name">{{ h.name }}</div>
+                <div class="webhook-meta">
+                    {% if h.channel %}Channel: {{ h.channel }} &nbsp;·&nbsp;{% endif %}
+                    Added {{ h.created_at[:10] }}
+                    {% if h.last_used %}&nbsp;·&nbsp; Last used {{ h.last_used[:10] }}{% endif %}
+                </div>
+                <div class="webhook-url">{{ h.url }}</div>
+            </div>
+            <div class="webhook-actions">
+                <button class="btn-sm btn-ghost" onclick="copyUrl('{{ h.url | replace("'", "\\'") }}')" title="Copy URL">📋 Copy</button>
+                <button class="btn-sm btn-ghost" onclick="testWebhook('{{ h.id }}')" title="Send test message">▶ Test</button>
+                <button class="btn-sm btn-ghost" onclick="openTemplates('{{ h.id }}', {{ (h.message_templates or {}) | tojson }})" title="Edit message templates">📝</button>
+                <button class="btn-sm btn-ghost" onclick="openFireLog('{{ h.id }}')" title="View fire log">📜</button>
+                <button class="btn-sm btn-danger-sm" onclick="deleteWebhook('{{ h.id }}', '{{ h.name | replace("'", "\\'") }}')" title="Remove">🗑</button>
+            </div>
+            <div class="webhook-notify-row">
+                <span class="notify-label">Notify on:</span>
+                {% set ne = h.notify_events if h.notify_events is defined else [] %}
+                {% for ev, icon, label in [('bot_online','🟢','Bot Online'),('bot_offline','🔴','Bot Offline'),('member_sync','🔄','Member Sync'),('command','⚡','Commands')] %}
+                <label class="notify-chip{% if ev in ne %} active{% endif %}" data-wh="{{ h.id }}" data-event="{{ ev }}" onclick="toggleNotifyEvent('{{ h.id }}', '{{ ev }}', this)">
+                    <input type="checkbox" {% if ev in ne %}checked{% endif %}>{{ icon }} {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Fire log modal -->
+<div class="modal-overlay" id="logModal">
+    <div class="modal" style="max-width:560px;">
+        <h3>📜 Webhook Fire Log</h3>
+        <div id="logContent"><div class="log-empty">Loading…</div></div>
+        <div class="modal-footer" style="margin-top:16px;">
+            <button class="btn btn-cancel" onclick="document.getElementById('logModal').classList.remove('open')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Message templates modal -->
+<div class="modal-overlay" id="tmplModal">
+    <div class="modal tmpl-modal" style="max-width:540px;">
+        <h3>📝 Message Templates</h3>
+        <p class="tmpl-var-hint">Leave blank to use the default message. Variables: <code>{bot_name}</code>, <code>{server_name}</code>, <code>{count}</code>, <code>{description}</code></p>
+        <label>🟢 Bot Online</label>
+        <textarea id="tmpl_bot_online" placeholder="e.g. 🟢 {bot_name} is now online on {server_name}!"></textarea>
+        <label>🔴 Bot Offline</label>
+        <textarea id="tmpl_bot_offline" placeholder="e.g. 🔴 {bot_name} went offline on {server_name}."></textarea>
+        <label>🔄 Member Sync</label>
+        <textarea id="tmpl_member_sync" placeholder="e.g. 🔄 {server_name} has {count} members now."></textarea>
+        <label>⚡ Commands</label>
+        <textarea id="tmpl_command" placeholder="e.g. ⚡ Action on {server_name}: {description}"></textarea>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeTmplModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveTemplates()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add webhook modal -->
+<div class="modal-overlay" id="addModal">
+    <div class="modal">
+        <h3>Add Webhook</h3>
+        <label for="whName">Name</label>
+        <input type="text" id="whName" placeholder="e.g. Alerts" maxlength="80">
+        <label for="whUrl">Webhook URL</label>
+        <input type="text" id="whUrl" placeholder="https://discord.com/api/webhooks/…">
+        <p class="modal-hint">Create one in Discord: Channel Settings → Integrations → Webhooks</p>
+        <label for="whChannel">Channel (optional label)</label>
+        <input type="text" id="whChannel" placeholder="e.g. #alerts" maxlength="80">
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeAddModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveWebhook()">Add</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const SERVER_ID = {{ server.server_id | tojson }};
+
+    let _tmplWebhookId = null;
+
+    function openTemplates(webhookId, templates) {
+        _tmplWebhookId = webhookId;
+        const t = templates || {};
+        document.getElementById('tmpl_bot_online').value   = t.bot_online   || '';
+        document.getElementById('tmpl_bot_offline').value  = t.bot_offline  || '';
+        document.getElementById('tmpl_member_sync').value  = t.member_sync  || '';
+        document.getElementById('tmpl_command').value      = t.command      || '';
+        document.getElementById('tmplModal').classList.add('open');
+    }
+
+    function closeTmplModal() {
+        document.getElementById('tmplModal').classList.remove('open');
+        _tmplWebhookId = null;
+    }
+
+    async function saveTemplates() {
+        if (!_tmplWebhookId) return;
+        const tmpl = {
+            bot_online:  document.getElementById('tmpl_bot_online').value.trim(),
+            bot_offline: document.getElementById('tmpl_bot_offline').value.trim(),
+            member_sync: document.getElementById('tmpl_member_sync').value.trim(),
+            command:     document.getElementById('tmpl_command').value.trim(),
+        };
+        // Remove empty entries
+        Object.keys(tmpl).forEach(k => { if (!tmpl[k]) delete tmpl[k]; });
+        const resp = await fetch('/api/integrations/' + SERVER_ID + '/' + _tmplWebhookId, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message_templates: tmpl}),
+        });
+        const data = await resp.json();
+        if (data.ok) {
+            closeTmplModal();
+            showToast('Templates saved.', 'success');
+        } else {
+            showToast(data.error || 'Save failed', 'error');
+        }
+    }
+
+    document.getElementById('tmplModal').addEventListener('click', function(e) {
+        if (e.target === this) closeTmplModal();
+    });
+
+    document.getElementById('logModal').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+    });
+
+    async function openFireLog(webhookId) {
+        const content = document.getElementById('logContent');
+        content.innerHTML = '<div class="log-empty">Loading…</div>';
+        document.getElementById('logModal').classList.add('open');
+        const serverId = '{{ server.server_id }}';
+        try {
+            const resp = await fetch(`/api/integrations/${serverId}/${webhookId}/log`);
+            const data = await resp.json();
+            if (!resp.ok) { content.innerHTML = `<div class="log-empty">${data.error || 'Failed to load log.'}</div>`; return; }
+            if (!data.length) { content.innerHTML = '<div class="log-empty">No fire log entries yet.</div>'; return; }
+            content.innerHTML = data.map(e => {
+                const ts = new Date(e.ts).toLocaleString();
+                const status = e.ok
+                    ? '<span class="log-ok">✓ OK</span>'
+                    : '<span class="log-fail">✗ FAIL</span>';
+                return `<div class="log-entry">
+                    <span class="log-ts">${ts}</span>
+                    <span class="log-event">${e.event}</span>
+                    <span class="log-msg">${e.msg}</span>
+                    ${status}
+                </div>`;
+            }).join('');
+        } catch {
+            content.innerHTML = '<div class="log-empty">Network error.</div>';
+        }
+    }
+
+    function openAddModal() {
+        document.getElementById('whName').value = '';
+        document.getElementById('whUrl').value = '';
+        document.getElementById('whChannel').value = '';
+        document.getElementById('addModal').classList.add('open');
+    }
+    function closeAddModal() {
+        document.getElementById('addModal').classList.remove('open');
+    }
+
+    async function saveWebhook() {
+        const name    = document.getElementById('whName').value.trim();
+        const url     = document.getElementById('whUrl').value.trim();
+        const channel = document.getElementById('whChannel').value.trim();
+        if (!url) { showToast('Enter a webhook URL.', 'error'); return; }
+        const resp = await fetch('/api/integrations/' + SERVER_ID, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: name || 'Webhook', url, channel }),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+            closeAddModal();
+            addCard(data.integration);
+            document.getElementById('emptyState') && document.getElementById('emptyState').remove();
+            showToast('Webhook added.', 'success');
+        } else {
+            showToast(data.error || 'Error adding webhook.', 'error');
+        }
+    }
+
+    const NOTIFY_EVENTS = [
+        {type: 'bot_online',   icon: '🟢', label: 'Bot Online'},
+        {type: 'bot_offline',  icon: '🔴', label: 'Bot Offline'},
+        {type: 'member_sync',  icon: '🔄', label: 'Member Sync'},
+        {type: 'command',      icon: '⚡', label: 'Commands'},
+    ];
+
+    function notifyChipsHtml(id, active) {
+        const ne = active || [];
+        return `<div class="webhook-notify-row">
+            <span class="notify-label">Notify on:</span>
+            ${NOTIFY_EVENTS.map(e => {
+                const on = ne.includes(e.type);
+                return `<label class="notify-chip${on ? ' active' : ''}" data-wh="${id}" data-event="${e.type}" onclick="toggleNotifyEvent('${id}','${e.type}',this)">
+                    <input type="checkbox"${on ? ' checked' : ''}>${e.icon} ${e.label}
+                </label>`;
+            }).join('')}
+        </div>`;
+    }
+
+    function addCard(h) {
+        const list = document.getElementById('webhookList');
+        const d = document.createElement('div');
+        d.className = 'webhook-card';
+        d.id = 'wh-' + h.id;
+        d.innerHTML = `
+            <div class="webhook-icon">🪝</div>
+            <div class="webhook-info">
+                <div class="webhook-name">${esc(h.name)}</div>
+                <div class="webhook-meta">${h.channel ? 'Channel: ' + esc(h.channel) + ' &nbsp;·&nbsp; ' : ''}Added ${h.created_at.slice(0,10)}</div>
+                <div class="webhook-url">${esc(h.url)}</div>
+            </div>
+            <div class="webhook-actions">
+                <button class="btn-sm btn-ghost" onclick="copyUrl('${h.url.replace(/'/g,"\\'")}')">📋 Copy</button>
+                <button class="btn-sm btn-ghost" onclick="testWebhook('${h.id}')">▶ Test</button>
+                <button class="btn-sm btn-ghost" onclick="openTemplates('${h.id}', {})">📝</button>
+                <button class="btn-sm btn-ghost" onclick="openFireLog('${h.id}')">📜</button>
+                <button class="btn-sm btn-danger-sm" onclick="deleteWebhook('${h.id}','${esc(h.name)}')">🗑</button>
+            </div>
+            ${notifyChipsHtml(h.id, h.notify_events)}`;
+        list.appendChild(d);
+    }
+
+    async function toggleNotifyEvent(webhookId, eventType, chipEl) {
+        const cb = chipEl.querySelector('input[type=checkbox]');
+        const nowActive = !cb.checked;
+        cb.checked = nowActive;
+        chipEl.classList.toggle('active', nowActive);
+
+        const card = document.getElementById('wh-' + webhookId);
+        const events = [];
+        card.querySelectorAll('.notify-chip').forEach(c => {
+            if (c.querySelector('input').checked) events.push(c.dataset.event);
+        });
+
+        const resp = await fetch('/api/integrations/' + SERVER_ID + '/' + webhookId, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({notify_events: events}),
+        });
+        const data = await resp.json();
+        if (!data.ok) {
+            cb.checked = !nowActive;
+            chipEl.classList.toggle('active', !nowActive);
+            showToast(data.error || 'Save failed', 'error');
+        }
+    }
+
+    async function testWebhook(id) {
+        const resp = await fetch('/api/integrations/' + SERVER_ID + '/' + id + '/test', { method: 'POST' });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+            showToast('Test message sent!', 'success');
+        } else {
+            showToast(data.error || 'Test failed.', 'error');
+        }
+    }
+
+    async function deleteWebhook(id, name) {
+        if (!confirm('Remove webhook "' + name + '"?')) return;
+        const resp = await fetch('/api/integrations/' + SERVER_ID + '/' + id, { method: 'DELETE' });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+            document.getElementById('wh-' + id)?.remove();
+            showToast('Webhook removed.', 'success');
+        } else {
+            showToast(data.error || 'Error removing.', 'error');
+        }
+    }
+
+    function copyUrl(url) {
+        navigator.clipboard.writeText(url).then(() => showToast('URL copied.', 'success'));
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast ' + (type || '');
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    document.getElementById('addModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAddModal();
+    });
+</script>
+<script>
+(function() {
+    var btn = document.getElementById('userNavBtn');
+    var dd  = document.getElementById('userNavDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        btn.classList.toggle('open');
+        dd.classList.toggle('open');
+    });
+    document.addEventListener('click', function() {
+        btn.classList.remove('open');
+        dd.classList.remove('open');
+    });
+    var hb = document.getElementById("navHamburger");
+    var nl = document.querySelector(".navbar-links");
+    if (hb && nl) {
+        hb.addEventListener("click", function(e) { e.stopPropagation(); nl.classList.toggle("mobile-open"); });
+        document.addEventListener("click", function() { nl.classList.remove("mobile-open"); });
+    }
+})();
+</script>
+
+    {% include 'footer.html' %}
+</body>
+</html>

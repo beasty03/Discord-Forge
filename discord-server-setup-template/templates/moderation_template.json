@@ -1,0 +1,72 @@
+{
+    "roles": [
+        {
+            "name": "Admin",
+            "permissions": {
+                "administrator": false,
+                "manage_guild": true,
+                "manage_roles": true,
+                "manage_channels": true,
+                "kick_members": true,
+                "ban_members": true,
+                "manage_messages": true,
+                "view_audit_log": true,
+                "manage_webhooks": true,
+                "manage_emojis": true,
+                "moderate_members": true
+            },
+            "color": "red",
+            "hoist": true
+        },
+        {
+            "name": "Moderator",
+            "permissions": {
+                "kick_members": true,
+                "ban_members": true,
+                "manage_messages": true,
+                "view_audit_log": true,
+                "moderate_members": true,
+                "manage_threads": true
+            },
+            "color": "orange",
+            "hoist": true
+        }
+    ],
+    "categories": [
+        {
+            "name": "MODERATION",
+            "text_channels": [
+                {
+                    "name": "mod-chat",
+                    "permissions": {
+                        "view": ["Admin", "Moderator"],
+                        "deny": ["@everyone"]
+                    }
+                },
+                {
+                    "name": "bot-logs",
+                    "permissions": {
+                        "view": ["Admin", "Moderator"],
+                        "deny": ["@everyone"]
+                    }
+                },
+                {
+                    "name": "control-panel",
+                    "permissions": {
+                        "view": ["Admin"],
+                        "deny": ["@everyone", "Moderator"]
+                    }
+                }
+            ],
+            "voice_channels": [
+                {
+                    "name": "Staff Meeting",
+                    "permissions": {
+                        "view": ["Admin", "Moderator"],
+                        "deny": ["@everyone"]
+                    }
+                }
+            ]
+        }
+    ]
+}

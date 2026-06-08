@@ -1,0 +1,413 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Func Step 3 — Channel Audit</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:14px;font-size:.95rem}
+  .btn{background:#6e40c9;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#a371f7}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .btn-sm{padding:5px 12px;font-size:.78rem;border-radius:5px}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-next{background:#1f6feb;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-next:hover{background:#388bfd}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  .server-selector{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  select{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.85rem;outline:none;min-width:200px}
+  select:focus{border-color:#a371f7}
+  .empty-state{text-align:center;padding:32px;color:#484f58;font-size:.9rem}
+
+  /* Summary */
+  .summary-bar{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .sbox{background:#21262d;border-radius:8px;padding:10px 16px;text-align:center;min-width:80px}
+  .sbox-num{font-size:1.4rem;font-weight:700}
+  .sbox-lbl{font-size:.73rem;color:#8b949e;margin-top:2px}
+
+  /* Missing alert */
+  .missing-box{background:#3d1f1f;border:1px solid #f85149;border-radius:8px;padding:12px 16px;margin-bottom:16px}
+  .missing-box-title{font-weight:700;color:#f85149;margin-bottom:8px;font-size:.88rem}
+  .missing-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #2a1f1f;font-size:.83rem}
+  .missing-item:last-child{border-bottom:none}
+
+  /* Extra channels */
+  .extra-box{background:#2a2200;border:1px solid #e3b341;border-radius:8px;padding:12px 16px;margin-bottom:16px}
+  .extra-box-title{font-weight:700;color:#e3b341;margin-bottom:8px;font-size:.88rem}
+  .extra-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #2d2600;font-size:.83rem;flex-wrap:wrap}
+  .extra-item:last-child{border-bottom:none}
+  .extra-item-info{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+  .btn-add{background:#6e40c9;color:#fff;border:none;border-radius:5px;padding:3px 11px;font-size:.74rem;font-weight:600;cursor:pointer;flex-shrink:0}
+  .btn-add:hover{background:#a371f7}.btn-add:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+
+  /* Tabs */
+  .tabs{display:flex;gap:2px;margin-bottom:16px;background:#0d1117;border-radius:8px;padding:3px;width:fit-content}
+  .tab{padding:6px 16px;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;color:#8b949e;border:none;background:none;transition:all .15s}
+  .tab.active{background:#21262d;color:#f0f6fc}
+
+  /* Comparison table */
+  .comp-table{width:100%;border-collapse:collapse;font-size:.83rem}
+  .comp-table th{text-align:left;padding:7px 10px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d;font-size:.75rem;text-transform:uppercase}
+  .comp-table td{padding:7px 10px;border-bottom:1px solid #21262d;vertical-align:middle}
+  .comp-table tr:last-child td{border-bottom:none}
+  .comp-table tr.missing-row{background:#1a0d0d}
+
+  /* Category rows */
+  .cat-row td{background:#1a1a2a;font-weight:600;color:#a371f7;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;padding:5px 10px}
+
+  /* Type pills */
+  .type-pill{font-size:.7rem;padding:2px 7px;border-radius:8px;font-weight:600}
+  .type-text{background:#1f3a5f;color:#58a6ff}
+  .type-voice{background:#1a3d26;color:#56d364}
+  .type-category{background:#2d1f4e;color:#a371f7}
+  .type-forum{background:#3d2a1f;color:#e3b341}
+  .type-announcement{background:#3d1f3a;color:#d2a8ff}
+  .type-other{background:#21262d;color:#8b949e}
+
+  /* Status */
+  .ok{color:#56d364;font-weight:700}
+  .fail{color:#f85149;font-weight:700}
+  .btn-fix{background:#b08800;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:.85rem;font-weight:700;cursor:pointer;transition:background .15s;margin-top:12px}
+  .btn-fix:hover{background:#e3b341}.btn-fix:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .fix-result{margin-top:10px;background:#0d1117;border:1px solid #30363d;border-radius:7px;padding:10px 14px;font-size:.82rem}
+  .fix-ok{color:#56d364}.fix-fail{color:#f85149}.fix-skip{color:#8b949e}
+
+  /* Live-only table */
+  .live-table{width:100%;border-collapse:collapse;font-size:.82rem}
+  .live-table th{text-align:left;padding:7px 10px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d;font-size:.75rem;text-transform:uppercase}
+  .live-table td{padding:6px 10px;border-bottom:1px solid #21262d}
+  .live-table tr:last-child td{border-bottom:none}
+  .filter-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .filter-btn{background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:4px 12px;font-size:.78rem;cursor:pointer}
+  .filter-btn.active{background:#2d1f4e;color:#a371f7;border-color:#6e40c9}
+  .search-box{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:5px 10px;color:#c9d1d9;font-size:.8rem;outline:none;width:200px}
+  .search-box:focus{border-color:#a371f7}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><a href="func_index.html">Function Tests</a><span class="nav-sep">/</span><span>Step 3 — Channels</span></div>
+<h1>Step 3 &mdash; Channel Audit</h1>
+<p class="sub">Compares the configured channel structure (from server setup) against what's actually on Discord.</p>
+
+<div class="server-selector">
+  <label style="font-size:.85rem;color:#8b949e">Server:</label>
+  <select id="serverSelect" onchange="saveServer()"><option value="">— select —</option></select>
+  <button class="btn" id="runBtn" onclick="runCheck()">Fetch Channels</button>
+</div>
+
+<div id="output"><div class="empty-state">Select a server and click "Fetch Channels".</div></div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="func_step2_guild.html">&larr; Back: Guild</a>
+  <a class="btn-next" href="func_step4_permissions.html">Next: Permissions &rarr;</a>
+</div>
+
+<script>
+const F=window.location.origin;
+let allLiveChannels=[];
+let allExtraChannels=[];
+let activeFilter='all';
+
+async function loadServers(){
+  const sel=document.getElementById('serverSelect');
+  try{
+    const r=await fetch(F+'/api/servers/list',{redirect:'manual',signal:AbortSignal.timeout(5000)});
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){sel.innerHTML='<option value="">— Please log in first —</option>';if(!document.getElementById('_loginBtn')){const a=document.createElement('a');a.id='_loginBtn';a.href=F+'/login?next='+encodeURIComponent(window.location.pathname);a.textContent='Log in';a.style.cssText='margin-left:8px;background:#238636;color:#fff;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;text-decoration:none;display:inline-block;';sel.parentNode.insertBefore(a,sel.nextSibling);const b=document.createElement('button');b.id='_refreshBtn';b.textContent='↻ Refresh';b.onclick=loadServers;b.style.cssText='margin-left:8px;background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 14px;font-size:.875rem;font-weight:600;cursor:pointer;';a.parentNode.insertBefore(b,a.nextSibling);}return;}
+    const data=await r.json();
+    const servers=data.servers||data||[];
+    sel.innerHTML='<option value="">— select —</option>';
+    servers.forEach(s=>{
+      const opt=document.createElement('option');
+      opt.value=s.server_id||s.id||s.name;
+      opt.textContent=s.server_name||s.name||(s.server_id||s.id);
+      sel.appendChild(opt);
+    });
+    const saved=localStorage.getItem('func_test_server_id');
+    if(saved) for(let i=0;i<sel.options.length;i++) if(sel.options[i].value===saved){sel.selectedIndex=i;break;}
+  }catch(e){sel.innerHTML='<option value="">— Flask unreachable —</option>';}
+}
+
+function saveServer(){
+  const v=document.getElementById('serverSelect').value;
+  if(v) localStorage.setItem('func_test_server_id',v);
+}
+
+function typePill(t){
+  const cls={text:'type-text',voice:'type-voice',category:'type-category',forum:'type-forum',announcement:'type-announcement'}[t]||'type-other';
+  return `<span class="type-pill ${cls}">${t}</span>`;
+}
+
+function setFilter(f){
+  activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.toggle('active',b.dataset.f===f));
+  renderLiveTable();
+}
+
+function renderLiveTable(){
+  const q=(document.getElementById('live-search')?.value||'').toLowerCase();
+  const tbody=document.getElementById('live-body');
+  if(!tbody) return;
+  const visible=allLiveChannels.filter(c=>{
+    if(activeFilter!=='all'&&c.type_name!==activeFilter) return false;
+    if(q&&!c.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  tbody.innerHTML=visible.map(c=>`<tr>
+    <td>${escHtml(c.name)}</td>
+    <td>${typePill(c.type_name)}</td>
+    <td style="color:#484f58;font-size:.75rem;font-family:monospace">${escHtml(c.id)}</td>
+  </tr>`).join('');
+}
+
+function showTab(tab){
+  document.getElementById('tab-compare').style.display = tab==='compare'?'block':'none';
+  document.getElementById('tab-live').style.display    = tab==='live'?'block':'none';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+}
+
+async function runCheck(){
+  const sid=document.getElementById('serverSelect').value;
+  if(!sid){alert('Select a server first.');return;}
+  const btn=document.getElementById('runBtn');
+  const out=document.getElementById('output');
+  btn.disabled=true;
+  out.innerHTML='<div class="empty-state">Fetching channels…</div>';
+
+  try{
+    const r=await fetch(`${F}/api/func-test/channels/${encodeURIComponent(sid)}`,{
+      redirect:'manual',signal:AbortSignal.timeout(12000)
+    });
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){
+      out.innerHTML='<div class="empty-state">Login required.</div>';btn.disabled=false;return;
+    }
+    if(!r.ok){
+      let errText='HTTP '+r.status;
+      try{const e=await r.clone().json();errText=e.error||errText;}catch(x){}
+      out.innerHTML=`<div class="empty-state" style="color:#f85149">${escHtml(errText)}</div>`;
+      btn.disabled=false;return;
+    }
+    const d=await r.json();
+    if(!d.ok){
+      out.innerHTML=`<div class="empty-state" style="color:#f85149">${escHtml(d.error||'Discord error')} (HTTP ${d.discord_status})</div>`;
+      btn.disabled=false;return;
+    }
+
+    allLiveChannels=d.channels||[];
+    allExtraChannels=d.extra||[];
+
+    // Log missing channels as issues
+    if(d.missing_count>0){
+      d.missing.forEach(m=>{
+        autoLogIssue(
+          `Channel missing: #${m.name} (${m.type}) in "${m.category}"`,
+          `Channel configured in setup but not found on Discord`,
+          'CHANNEL_MISSING', `/api/func-test/channels/${sid}`, 'high'
+        );
+      });
+    }
+
+    // Summary bar
+    let html=`<div class="summary-bar">
+      <div class="sbox"><div class="sbox-num">${d.configured_count}</div><div class="sbox-lbl">Configured</div></div>
+      <div class="sbox"><div class="sbox-num" style="color:#56d364">${d.total}</div><div class="sbox-lbl">Live</div></div>
+      <div class="sbox"><div class="sbox-num" style="color:${d.missing_count>0?'#f85149':'#56d364'}">${d.missing_count}</div><div class="sbox-lbl">Missing</div></div>
+      <div class="sbox"><div class="sbox-num" style="color:${(d.extra_count||0)>0?'#e3b341':'#56d364'}">${d.extra_count||0}</div><div class="sbox-lbl">Extra</div></div>
+    </div>`;
+
+    // Missing alert box
+    if(d.missing_count>0){
+      html+=`<div class="missing-box">
+        <div class="missing-box-title">&#x26A0; ${d.missing_count} channel(s) configured but not found on Discord</div>
+        ${d.missing.map(m=>`<div class="missing-item">
+          ${typePill(m.type)}
+          <span style="font-weight:600">#${escHtml(m.name)}</span>
+          <span style="color:#484f58;font-size:.78rem">in category: ${escHtml(m.category)}</span>
+        </div>`).join('')}
+        <button class="btn-fix" id="fixBtn" onclick="fixChannels()">&#x1F527; Fix Missing Channels</button>
+        <div id="fix-result"></div>
+      </div>`;
+    } else if(d.configured_count>0){
+      html+=`<div style="background:#1a3d26;border:1px solid #238636;border-radius:8px;padding:10px 14px;font-size:.83rem;color:#56d364;margin-bottom:14px">
+        &#x2713; All ${d.configured_count} configured channels are present on Discord.
+      </div>`;
+    } else {
+      html+=`<div style="background:#21262d;border:1px solid #30363d;border-radius:8px;padding:10px 14px;font-size:.83rem;color:#8b949e;margin-bottom:14px">
+        No categories/channels were configured in server setup — showing live Discord channels only.
+      </div>`;
+    }
+
+    // Extra channels box (manually added to Discord, not in config)
+    if((d.extra_count||0)>0){
+      html+=`<div class="extra-box">
+        <div class="extra-box-title">&#x26A0; ${d.extra_count} channel(s) on Discord not in your config</div>
+        <div style="color:#b08800;font-size:.8rem;margin-bottom:8px">These were added manually to Discord. You can add them to your webapp config to keep things in sync.</div>
+        ${(d.extra||[]).map((m,i)=>`<div class="extra-item">
+          <div class="extra-item-info">
+            ${typePill(m.type)}
+            <span style="font-weight:600">${escHtml(m.name)}</span>
+            ${m.category?`<span style="color:#484f58;font-size:.78rem">in: ${escHtml(m.category)}</span>`:''}
+          </div>
+          <button class="btn-add" id="addBtn_${i}" onclick="addToConfig(${i},this)">Add to Config</button>
+        </div>`).join('')}
+      </div>`;
+    }
+
+    // Tabs
+    html+=`<div class="tabs">
+      <button class="tab active" data-tab="compare" onclick="showTab('compare')">Comparison View</button>
+      <button class="tab" data-tab="live" onclick="showTab('live')">Live Channels (${d.total})</button>
+    </div>`;
+
+    // ── Comparison tab ──
+    html+=`<div id="tab-compare">`;
+    if(d.configured_count===0){
+      html+=`<div class="empty-state">No channels configured — nothing to compare.</div>`;
+    } else {
+      // Group configured by category
+      const cats={};
+      (d.configured||[]).forEach(ch=>{
+        if(!cats[ch.category]) cats[ch.category]=[];
+        cats[ch.category].push(ch);
+      });
+
+      html+=`<div class="card"><div class="card-title">Configured vs Live</div>
+        <table class="comp-table">
+          <thead><tr><th>Channel</th><th>Type</th><th>Category</th><th>Status</th></tr></thead>
+          <tbody>`;
+
+      Object.entries(cats).forEach(([catName, items])=>{
+        html+=`<tr class="cat-row"><td colspan="4">${escHtml(catName)}</td></tr>`;
+        items.forEach(ch=>{
+          const isCategory=ch.type==='category';
+          if(isCategory) return; // category row already shown above
+          html+=`<tr class="${ch.live?'':'missing-row'}">
+            <td style="padding-left:20px">&#x23;&#xFE0F; ${escHtml(ch.name)}</td>
+            <td>${typePill(ch.type)}</td>
+            <td style="color:#484f58;font-size:.78rem">${escHtml(ch.category)}</td>
+            <td>${ch.live
+              ? '<span class="ok">&#x2713; Present</span>'
+              : '<span class="fail">&#x2717; Missing on Discord</span>'
+            }</td>
+          </tr>`;
+        });
+      });
+
+      html+=`</tbody></table></div>`;
+    }
+    html+=`</div>`; // end tab-compare
+
+    // ── Live tab ──
+    const liveTypes=[...new Set(allLiveChannels.map(c=>c.type_name))];
+    html+=`<div id="tab-live" style="display:none">
+      <div class="card"><div class="card-title">All Live Discord Channels</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <div class="filter-row" style="margin:0">
+            <button class="filter-btn active" data-f="all" onclick="setFilter('all')">All</button>
+            ${liveTypes.map(t=>`<button class="filter-btn" data-f="${t}" onclick="setFilter('${t}')">${t}</button>`).join('')}
+          </div>
+          <input class="search-box" id="live-search" placeholder="Filter by name…" oninput="renderLiveTable()">
+        </div>
+        <table class="live-table">
+          <thead><tr><th>Name</th><th>Type</th><th>ID</th></tr></thead>
+          <tbody id="live-body"></tbody>
+        </table>
+      </div>
+    </div>`;
+
+    out.innerHTML=html;
+    renderLiveTable();
+
+  }catch(e){
+    out.innerHTML=`<div class="empty-state" style="color:#f85149">Error: ${escHtml(e.message)}</div>`;
+  }
+  btn.disabled=false;
+}
+
+async function fixChannels(){
+  const sid=document.getElementById('serverSelect').value;
+  if(!sid) return;
+  const btn=document.getElementById('fixBtn');
+  const res=document.getElementById('fix-result');
+  if(!btn||!res) return;
+  btn.disabled=true;
+  btn.textContent='Fixing…';
+  res.innerHTML='<span style="color:#8b949e">Creating missing channels on Discord…</span>';
+  try{
+    const r=await fetch(`${F}/api/func-test/fix-channels/${encodeURIComponent(sid)}`,{
+      method:'POST',redirect:'manual',signal:AbortSignal.timeout(30000)
+    });
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){res.innerHTML='<span class="fix-fail">Login required.</span>';btn.disabled=false;btn.textContent='🔧 Fix Missing Channels';return;}
+    if(!r.ok){let e='HTTP '+r.status;try{const j=await r.clone().json();e=j.error||e;}catch(x){}res.innerHTML=`<span class="fix-fail">Error: ${escHtml(e)}</span>`;btn.disabled=false;btn.textContent='🔧 Fix Missing Channels';return;}
+    const d=await r.json();
+    let html=`<div style="margin-top:4px">`;
+    if(d.created_count>0) html+=`<div class="fix-ok">&#x2713; Created ${d.created_count} channel(s): ${d.created.map(c=>escHtml(c.name)+' ('+c.type+')').join(', ')}</div>`;
+    if(d.failed_count>0)  html+=`<div class="fix-fail">&#x2717; Failed ${d.failed_count}: ${d.failed.map(c=>escHtml(c.name)+' — '+escHtml(c.error)).join('; ')}</div>`;
+    if(d.skipped_count>0) html+=`<div class="fix-skip">&#x2014; Skipped ${d.skipped_count} (already exist)</div>`;
+    html+=`</div>`;
+    res.innerHTML=html;
+    if(d.created_count>0){
+      btn.textContent='✓ Done — refreshing…';
+      btn.style.background='#238636';
+      setTimeout(()=>runCheck(), 1200);
+    } else {
+      btn.disabled=false;btn.textContent='🔧 Fix Missing Channels';
+    }
+  }catch(e){
+    res.innerHTML=`<span class="fix-fail">Error: ${escHtml(e.message)}</span>`;
+    btn.disabled=false;btn.textContent='🔧 Fix Missing Channels';
+  }
+}
+
+async function addToConfig(idx, btn){
+  const m=allExtraChannels[idx];
+  if(!m){btn.textContent='✗ Error';btn.title='Channel data not found — re-fetch first';return;}
+  const sid=document.getElementById('serverSelect').value;
+  if(!sid) return;
+  btn.disabled=true;
+  btn.textContent='Adding…';
+  try{
+    const r=await fetch(`${F}/api/func-test/add-to-config/${encodeURIComponent(sid)}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({channel_name:m.name,channel_type:m.type,category_name:m.category||''}),
+      redirect:'manual',signal:AbortSignal.timeout(10000)
+    });
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){btn.textContent='Login required';return;}
+    const d=await r.json();
+    if(d.ok){
+      btn.textContent='✓ Added';
+      btn.style.background='#238636';
+      // Re-run check so the channel disappears from the "extra" list
+      setTimeout(()=>runCheck(), 800);
+    } else {
+      btn.textContent='✗ Error';
+      btn.style.background='#da3633';
+      btn.title=d.error||'Unknown error';
+      btn.disabled=false;
+    }
+  }catch(e){
+    btn.textContent='✗ Error';btn.disabled=false;btn.title=e.message;
+  }
+}
+
+function autoLogIssue(title,description,code,url,sev){
+  const issues=JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  if(issues.find(i=>i.title===title&&i.url===url&&(Date.now()-new Date(i.created).getTime())<300000)) return;
+  issues.unshift({id:Date.now()+Math.random(),title,severity:sev,area:'func-channels',description,steps:'',code:String(code||''),url,created:new Date().toISOString(),auto:true});
+  localStorage.setItem('stress_test_issues',JSON.stringify(issues));
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+loadServers();
+</script>
+</body>
+</html>

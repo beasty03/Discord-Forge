@@ -1,0 +1,263 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Func Step 7 — Assets</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:14px;font-size:.95rem;display:flex;align-items:center;gap:8px}
+  .btn{background:#6e40c9;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#a371f7}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-next{background:#1f6feb;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-next:hover{background:#388bfd}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  .server-selector{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  select{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.85rem;outline:none;min-width:200px}
+  select:focus{border-color:#a371f7}
+  .empty-state{text-align:center;padding:32px;color:#484f58;font-size:.9rem}
+
+  .summary-bar{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .sbox{background:#21262d;border-radius:8px;padding:10px 16px;text-align:center;min-width:80px}
+  .sbox-num{font-size:1.4rem;font-weight:700}
+  .sbox-lbl{font-size:.73rem;color:#8b949e;margin-top:2px}
+
+  .asset-table{width:100%;border-collapse:collapse;font-size:.83rem}
+  .asset-table th{text-align:left;padding:7px 10px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d;font-size:.75rem;text-transform:uppercase}
+  .asset-table td{padding:7px 10px;border-bottom:1px solid #21262d;vertical-align:middle}
+  .asset-table tr:last-child td{border-bottom:none}
+
+  .ok{color:#56d364;font-weight:700}
+  .fail{color:#f85149;font-weight:700}
+  .warn{color:#e3b341;font-weight:700}
+  .na{color:#484f58}
+
+  .section-head{font-size:.78rem;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;padding:10px 0 6px;border-bottom:1px solid #21262d;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+  .count-badge{font-size:.72rem;padding:2px 8px;border-radius:8px;background:#21262d;color:#c9d1d9}
+
+  .extra-tag{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:8px;background:#1a3d26;color:#56d364;margin:2px}
+  .warn-box{background:#3d2a1f;border:1px solid #e3b341;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#8b949e;margin-bottom:14px}
+  .warn-box strong{color:#e3b341}
+  .info-box{background:#1a3d26;border:1px solid #238636;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#8b949e;margin-bottom:14px}
+  .info-box strong{color:#56d364}
+  .btn-fix{background:#b08800;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:.85rem;font-weight:700;cursor:pointer;transition:background .15s;margin-top:12px}
+  .btn-fix:hover{background:#e3b341}.btn-fix:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .fix-result{margin-top:10px;background:#0d1117;border:1px solid #30363d;border-radius:7px;padding:10px 14px;font-size:.82rem}
+  .fix-ok{color:#56d364}.fix-fail{color:#f85149}.fix-skip{color:#8b949e}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><a href="func_index.html">Function Tests</a><span class="nav-sep">/</span><span>Step 7 — Assets</span></div>
+<h1>Step 7 &mdash; Assets</h1>
+<p class="sub">Compare configured emojis, stickers and soundboard sounds against what's live in the Discord guild.</p>
+
+<div class="server-selector">
+  <label style="font-size:.85rem;color:#8b949e">Server:</label>
+  <select id="serverSelect" onchange="saveServer()"><option value="">— select —</option></select>
+  <button class="btn" id="runBtn" onclick="runCheck()">Check Assets</button>
+</div>
+
+<div id="output"><div class="empty-state">Select a server and click "Check Assets".</div></div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="func_step6_commands.html">&larr; Back: Slash Commands</a>
+  <a class="btn-next" href="func_step8_roles.html">Next: Roles &rarr;</a>
+</div>
+
+<script>
+const F=window.location.origin;
+
+async function loadServers(){
+  const sel=document.getElementById('serverSelect');
+  try{
+    const r=await fetch(F+'/api/servers/list',{redirect:'manual',signal:AbortSignal.timeout(5000)});
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){sel.innerHTML='<option value="">— Please log in first —</option>';if(!document.getElementById('_loginBtn')){const a=document.createElement('a');a.id='_loginBtn';a.href=F+'/login?next='+encodeURIComponent(window.location.pathname);a.textContent='Log in';a.style.cssText='margin-left:8px;background:#238636;color:#fff;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;text-decoration:none;display:inline-block;';sel.parentNode.insertBefore(a,sel.nextSibling);const b=document.createElement('button');b.id='_refreshBtn';b.textContent='↻ Refresh';b.onclick=loadServers;b.style.cssText='margin-left:8px;background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 14px;font-size:.875rem;font-weight:600;cursor:pointer;';a.parentNode.insertBefore(b,a.nextSibling);}return;}
+    const data=await r.json();
+    const servers=data.servers||data||[];
+    sel.innerHTML='<option value="">— select —</option>';
+    servers.forEach(s=>{
+      const opt=document.createElement('option');
+      opt.value=s.server_id||s.id||s.name;
+      opt.textContent=s.server_name||s.name||(s.server_id||s.id);
+      sel.appendChild(opt);
+    });
+    const saved=localStorage.getItem('func_test_server_id');
+    if(saved) for(let i=0;i<sel.options.length;i++) if(sel.options[i].value===saved){sel.selectedIndex=i;break;}
+  }catch(e){sel.innerHTML='<option value="">— Flask unreachable —</option>';}
+}
+
+function saveServer(){
+  const v=document.getElementById('serverSelect').value;
+  if(v) localStorage.setItem('func_test_server_id',v);
+}
+
+function assetSection(title, icon, data){
+  if(!data) return '';
+  const {configured, live_total, discord_ok, matches, extra_live} = data;
+  const missing = (matches||[]).filter(m=>!m.live).length;
+  const allOk   = discord_ok && missing===0;
+
+  let statusColor = allOk ? '#56d364' : (missing>0 ? '#f85149' : '#e3b341');
+  let statusText  = !discord_ok ? 'Discord unreachable' : (missing===0 ? 'All present' : `${missing} missing`);
+
+  let rows='';
+  if(matches&&matches.length>0){
+    rows=matches.map(m=>`<tr>
+      <td style="font-family:monospace">${escHtml(m.name)}</td>
+      <td>${m.live?'<span class="ok">✓ Live</span>':'<span class="fail">✗ Missing</span>'}</td>
+    </tr>`).join('');
+  }
+
+  const extraHtml = extra_live&&extra_live.length
+    ? `<div style="margin-top:10px;font-size:.78rem;color:#8b949e">Extra on Discord (not in config):<br>${extra_live.map(e=>`<span class="extra-tag">${escHtml(e.name)}</span>`).join('')}</div>`
+    : '';
+
+  return `<div style="margin-bottom:20px">
+    <div class="section-head">
+      ${icon} ${title}
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="count-badge">Configured: ${configured}</span>
+        <span class="count-badge">Live: ${live_total}</span>
+        <span style="font-size:.75rem;font-weight:700;color:${statusColor}">${statusText}</span>
+      </div>
+    </div>
+    ${configured===0 ? '<div style="font-size:.82rem;color:#484f58;padding:4px 0">No items configured for this type.</div>' : `
+    <table class="asset-table">
+      <thead><tr><th>Name</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`}
+    ${extraHtml}
+  </div>`;
+}
+
+async function runCheck(){
+  const sid=document.getElementById('serverSelect').value;
+  if(!sid){alert('Select a server first.');return;}
+  const btn=document.getElementById('runBtn');
+  const out=document.getElementById('output');
+  btn.disabled=true;
+  out.innerHTML='<div class="empty-state">Checking assets…</div>';
+
+  try{
+    const r=await fetch(`${F}/api/func-test/assets/${encodeURIComponent(sid)}`,{
+      redirect:'manual',signal:AbortSignal.timeout(15000)
+    });
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){
+      out.innerHTML='<div class="empty-state">Login required.</div>';btn.disabled=false;return;
+    }
+    if(!r.ok){
+      let errText='HTTP '+r.status;
+      try{const e=await r.clone().json();errText=e.error||errText;}catch(x){}
+      out.innerHTML=`<div class="empty-state" style="color:#f85149">${escHtml(errText)}</div>`;
+      btn.disabled=false;return;
+    }
+    const d=await r.json();
+
+    const emojiMissing    = (d.emoji?.matches||[]).filter(m=>!m.live).length;
+    const stickerMissing  = (d.stickers?.matches||[]).filter(m=>!m.live).length;
+    const soundMissing    = (d.soundboard?.matches||[]).filter(m=>!m.live).length;
+    const totalConfigured = (d.emoji?.configured||0)+(d.stickers?.configured||0)+(d.soundboard?.configured||0);
+    const totalMissing    = emojiMissing+stickerMissing+soundMissing;
+    const totalLive       = (d.emoji?.live_total||0)+(d.stickers?.live_total||0)+(d.soundboard?.live_total||0);
+
+    if(totalMissing>0){
+      // Inject fix button into the summary bar area — store sid for fixAssets()
+      window._lastAssetSid=sid;
+    }
+    if(totalMissing>0) autoLogIssue(`Assets missing: ${totalMissing} item(s)`,
+      `Configured assets not found on Discord: ${totalMissing} missing`,'ASSET_MISSING',`/api/func-test/assets/${sid}`,'medium');
+
+    let html='';
+
+    html+=`<div class="summary-bar">
+      <div class="sbox"><div class="sbox-num">${totalConfigured}</div><div class="sbox-lbl">Configured</div></div>
+      <div class="sbox"><div class="sbox-num" style="color:#56d364">${totalLive}</div><div class="sbox-lbl">Live</div></div>
+      <div class="sbox"><div class="sbox-num" style="color:${totalMissing>0?'#f85149':'#56d364'}">${totalMissing}</div><div class="sbox-lbl">Missing</div></div>
+    </div>`;
+
+    if(totalConfigured===0){
+      html+=`<div class="info-box"><strong>No assets configured</strong> — no emojis, stickers or soundboard sounds were set up for this server. You can add them in the server setup form (Step 6).</div>`;
+    }
+
+    if(!d.emoji?.discord_ok||!d.stickers?.discord_ok){
+      html+=`<div class="warn-box"><strong>Note:</strong> Some Discord API calls failed. The bot needs <code>MANAGE_EMOJIS_AND_STICKERS</code> permission to read custom emojis/stickers, and the guild must be at a tier that supports soundboard sounds.</div>`;
+    }
+
+    if(totalMissing>0){
+      html+=`<div style="background:#3d2a1f;border:1px solid #e3b341;border-radius:8px;padding:12px 16px;margin-bottom:14px">
+        <div style="font-weight:700;color:#e3b341;margin-bottom:4px">&#x26A0; ${totalMissing} asset(s) missing — upload them to Discord</div>
+        <div style="font-size:.8rem;color:#8b949e;margin-bottom:8px">Requires stored image/audio data from setup. Assets without saved file data will be reported as failed.</div>
+        <button class="btn-fix" id="fixAssetsBtn" onclick="fixAssets()">&#x1F527; Fix Missing Assets</button>
+        <div id="fix-assets-result"></div>
+      </div>`;
+    }
+
+    html+=`<div class="card">
+      ${assetSection('Custom Emoji', '😀', d.emoji)}
+      ${assetSection('Stickers', '🎨', d.stickers)}
+      ${assetSection('Soundboard Sounds', '🔊', d.soundboard)}
+    </div>`;
+
+    out.innerHTML=html;
+  }catch(e){
+    out.innerHTML=`<div class="empty-state" style="color:#f85149">Error: ${escHtml(e.message)}</div>`;
+  }
+  btn.disabled=false;
+}
+
+async function fixAssets(){
+  const sid=window._lastAssetSid||document.getElementById('serverSelect').value;
+  if(!sid) return;
+  const btn=document.getElementById('fixAssetsBtn');
+  const res=document.getElementById('fix-assets-result');
+  if(!btn||!res) return;
+  btn.disabled=true;
+  btn.textContent='Uploading…';
+  res.innerHTML='<span style="color:#8b949e">Uploading missing assets to Discord… (this may take a moment)</span>';
+  try{
+    const r=await fetch(`${F}/api/func-test/fix-assets/${encodeURIComponent(sid)}`,{
+      method:'POST',redirect:'manual',signal:AbortSignal.timeout(60000)
+    });
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){res.innerHTML='<span class="fix-fail">Login required.</span>';btn.disabled=false;btn.textContent='🔧 Fix Missing Assets';return;}
+    if(!r.ok){let e='HTTP '+r.status;try{const j=await r.clone().json();e=j.error||e;}catch(x){}res.innerHTML=`<span class="fix-fail">Error: ${escHtml(e)}</span>`;btn.disabled=false;btn.textContent='🔧 Fix Missing Assets';return;}
+    const d=await r.json();
+    let html='<div style="margin-top:4px">';
+    if(d.created_count>0) html+=`<div class="fix-ok">&#x2713; Uploaded ${d.created_count} asset(s): ${d.created.map(c=>`${escHtml(c.name)} (${c.type})`).join(', ')}</div>`;
+    if(d.failed_count>0)  html+=`<div class="fix-fail">&#x2717; Failed ${d.failed_count}: ${d.failed.map(c=>`${escHtml(c.name)} — ${escHtml(c.error)}`).join('; ')}</div>`;
+    if(d.skipped_count>0) html+=`<div class="fix-skip">&#x2014; Skipped ${d.skipped_count} (already exist)</div>`;
+    html+='</div>';
+    res.innerHTML=html;
+    if(d.created_count>0){
+      btn.textContent='✓ Done — Re-run check to verify';
+      btn.style.background='#238636';
+    } else {
+      btn.disabled=false;btn.textContent='🔧 Fix Missing Assets';
+    }
+  }catch(e){
+    res.innerHTML=`<span class="fix-fail">Error: ${escHtml(e.message)}</span>`;
+    btn.disabled=false;btn.textContent='🔧 Fix Missing Assets';
+  }
+}
+
+function autoLogIssue(title,description,code,url,sev){
+  const issues=JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  if(issues.find(i=>i.title===title&&i.url===url&&(Date.now()-new Date(i.created).getTime())<300000)) return;
+  issues.unshift({id:Date.now()+Math.random(),title,severity:sev,area:'func-assets',description,steps:'',code:String(code||''),url,created:new Date().toISOString(),auto:true});
+  localStorage.setItem('stress_test_issues',JSON.stringify(issues));
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+loadServers();
+</script>
+</body>
+</html>

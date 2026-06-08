@@ -1,0 +1,683 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deployment Inspector — Hub</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:32px 24px}
+  h1{font-size:1.7rem;font-weight:700;color:#f0f6fc;margin-bottom:4px}
+  .sub{color:#8b949e;font-size:.9rem;margin-bottom:24px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;text-decoration:none;color:inherit;display:block;transition:border-color .15s,background .15s;position:relative}
+  .card:hover{border-color:#58a6ff;background:#1c2230}
+  .card.func-card:hover{border-color:#a371f7;background:#1a1c2e}
+  .card-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em}
+  .badge-server{background:#1f3a5f;color:#58a6ff}
+  .badge-bot{background:#1f3d2c;color:#56d364}
+  .badge-issues{background:#3d2a1f;color:#e3b341}
+  .badge-func{background:#2d1f4e;color:#a371f7}
+  .card-title{font-weight:600;font-size:1rem;color:#f0f6fc}
+  .card-desc{font-size:.83rem;color:#8b949e;line-height:1.5}
+  .step-num{font-size:.75rem;color:#484f58;margin-left:auto}
+  .section-label{font-size:.75rem;font-weight:600;color:#484f58;text-transform:uppercase;letter-spacing:.08em;margin:28px 0 0}
+  footer{margin-top:40px;font-size:.78rem;color:#484f58;text-align:center}
+  .ping-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+  .ping-badge{font-size:.72rem;padding:2px 8px;border-radius:6px;background:#21262d;color:#8b949e;transition:all .2s}
+  select{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.83rem;outline:none;min-width:200px}
+  select:focus{border-color:#a371f7}
+
+  /* Shared button styles */
+  .btn-run-all{background:#238636;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .15s;white-space:nowrap}
+  .btn-run-all:hover{background:#2ea043}
+  .btn-run-all:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .btn-secondary{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:10px 18px;font-size:.875rem;font-weight:600;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block}
+  .btn-secondary:hover{background:#30363d}
+  .btn-part{color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:.82rem;font-weight:700;cursor:pointer;transition:background .15s;white-space:nowrap}
+  .btn-part:hover{filter:brightness(1.15)}
+  .btn-part:disabled{background:#21262d;color:#484f58;cursor:not-allowed;filter:none}
+  .btn-part-server{background:#1f3a5f;color:#58a6ff}.btn-part-server:hover{background:#1e3f6a}
+  .btn-part-bots{background:#1f3d2c;color:#56d364}.btn-part-bots:hover{background:#1e4430}
+  .btn-part-func{background:#2d1f4e;color:#a371f7}.btn-part-func:hover{background:#351e5e}
+  .btn-reset-sm{background:#21262d;color:#8b949e;border:none;border-radius:6px;padding:7px 12px;font-size:.8rem;font-weight:600;cursor:pointer}
+  .btn-reset-sm:hover{background:#30363d}
+
+  /* Global run-all box */
+  .run-all-box{background:#161b22;border:1px solid #238636;border-radius:10px;padding:20px;margin-bottom:28px}
+  .run-all-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:0}
+  .server-row{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .server-row label{font-size:.82rem;color:#8b949e;white-space:nowrap}
+  .server-hint{font-size:.75rem;color:#484f58}
+  .run-summary{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+  .rs{background:#0d1117;border-radius:8px;padding:8px 14px;text-align:center;min-width:72px}
+  .rs-num{font-size:1.25rem;font-weight:700}
+  .rs-lbl{font-size:.7rem;color:#8b949e;margin-top:1px}
+
+  /* Per-part run bar */
+  .part-run-bar{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:12px 16px;margin:10px 0 12px}
+  .part-run-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .part-status{font-size:.78rem;color:#8b949e}
+  .part-stats{font-size:.78rem;gap:10px;display:none}
+  .part-stats span{margin-right:4px}
+
+  /* Shared progress + table */
+  .progress{height:4px;background:#21262d;border-radius:3px;overflow:hidden;margin-top:10px}
+  .progress-bar{height:100%;background:#238636;transition:width .2s;width:0}
+  .results-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:10px}
+  .results-table th{text-align:left;padding:6px 10px;color:#8b949e;font-weight:600;font-size:.73rem;text-transform:uppercase;border-bottom:1px solid #21262d}
+  .results-table td{padding:7px 10px;border-bottom:1px solid #161b22;vertical-align:middle}
+  .results-table tr:last-child td{border-bottom:none}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-weight:600;font-size:.78rem}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .c-ok{color:#56d364}.c-fail{color:#f85149}.c-warn{color:#e3b341}.c-skip{color:#8b949e}.c-pend{color:#484f58}
+  .d-ok{background:#56d364}.d-fail{background:#f85149}.d-warn{background:#e3b341}.d-skip{background:#484f58}.d-pend{background:#30363d}
+  .area-tag{font-size:.68rem;padding:1px 7px;border-radius:8px;background:#21262d;color:#8b949e;white-space:nowrap}
+  .results-wrap{display:none;margin-top:4px}
+  .results-wrap.show{display:block}
+</style>
+</head>
+<body>
+<div style="margin-bottom:16px;font-size:.83rem;color:#8b949e"><a href="/" style="color:#58a6ff;text-decoration:none">🏠 Home</a></div>
+<h1>Deployment Inspector</h1>
+<p class="sub">Step-by-step diagnostics for Server, Bot &amp; Discord guild infrastructure</p>
+
+<!-- ── Global Run All ── -->
+<div class="run-all-box">
+  <div class="run-all-head">
+    <button class="btn-run-all" id="runAllBtn" onclick="runAll()">&#x25B6; Run All Tests</button>
+    <button class="btn-secondary" onclick="resetAll()">Reset</button>
+    <a class="btn-secondary" href="issues.html" style="text-decoration:none">View Issues &rarr;</a>
+    <span id="run-status" style="font-size:.82rem;color:#8b949e"></span>
+  </div>
+  <div class="server-row">
+    <label>Part 3 server:</label>
+    <select id="funcServerSelect" onchange="syncServer('funcServerSelect')"><option value="">— select for Discord checks —</option></select>
+    <span class="server-hint">optional &mdash; skips Part 3 if not selected</span>
+  </div>
+  <div class="run-summary" id="run-summary" style="display:none">
+    <div class="rs"><div class="rs-num c-ok" id="r-pass">0</div><div class="rs-lbl">Passed</div></div>
+    <div class="rs"><div class="rs-num c-fail" id="r-fail">0</div><div class="rs-lbl">Failed</div></div>
+    <div class="rs"><div class="rs-num c-warn" id="r-warn">0</div><div class="rs-lbl">Warnings</div></div>
+    <div class="rs"><div class="rs-num c-skip" id="r-skip">0</div><div class="rs-lbl">Skipped</div></div>
+    <div class="rs"><div class="rs-num" id="r-ms" style="color:#f0f6fc">—</div><div class="rs-lbl">Avg ms</div></div>
+  </div>
+  <div class="progress"><div class="progress-bar" id="prog"></div></div>
+  <div class="results-wrap" id="results-wrap">
+    <table class="results-table">
+      <thead><tr><th>Check</th><th>Area</th><th>Result</th><th>ms</th><th>Detail</th></tr></thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Part 1 ── -->
+<div class="section-label">&#x1f5a5;&#xfe0f; Part 1 &mdash; Server (Flask :5000)</div>
+<div class="part-run-bar">
+  <div class="part-run-head">
+    <button class="btn-part btn-part-server" id="p1-btn" onclick="runPart(1)">&#x25B6; Run Part 1</button>
+    <button class="btn-reset-sm" onclick="resetPart(1)">Reset</button>
+    <span class="part-status" id="p1-status"></span>
+    <span class="part-stats" id="p1-stats">
+      <span id="p1-pass" class="c-ok">0</span> passed &nbsp;
+      <span id="p1-fail" class="c-fail">0</span> failed &nbsp;
+      <span id="p1-warn" class="c-warn">0</span> warnings
+    </span>
+  </div>
+  <div class="progress" id="p1-prog-wrap" style="display:none"><div class="progress-bar" id="p1-prog"></div></div>
+  <div class="results-wrap" id="p1-results">
+    <table class="results-table">
+      <thead><tr><th>Check</th><th>Area</th><th>Result</th><th>ms</th><th>Detail</th></tr></thead>
+      <tbody id="p1-body"></tbody>
+    </table>
+  </div>
+</div>
+<div class="grid">
+  <a class="card" href="server_step1_connectivity.html">
+    <div class="card-head"><span class="badge badge-server">Server</span><span class="card-title">Step 1 &mdash; Connectivity</span><span class="step-num">1/5</span></div>
+    <p class="card-desc">Ping the Flask server, measure response time, check HTTP status &amp; headers.</p>
+  </a>
+  <a class="card" href="server_step2_auth.html">
+    <div class="card-head"><span class="badge badge-server">Server</span><span class="card-title">Step 2 &mdash; Auth Endpoints</span><span class="step-num">2/5</span></div>
+    <p class="card-desc">Verify /login, /register, /auth/discord, /auth/google return expected responses.</p>
+  </a>
+  <a class="card" href="server_step3_api.html">
+    <div class="card-head"><span class="badge badge-server">Server</span><span class="card-title">Step 3 &mdash; Core API</span><span class="step-num">3/5</span></div>
+    <p class="card-desc">Hit dashboard events, server health, scripts versions and other JSON endpoints.</p>
+  </a>
+  <a class="card" href="server_step4_servers.html">
+    <div class="card-head"><span class="badge badge-server">Server</span><span class="card-title">Step 4 &mdash; Server Management</span><span class="step-num">4/5</span></div>
+    <p class="card-desc">Check /servers, /dashboard, server list API and configuration endpoints.</p>
+  </a>
+  <a class="card" href="server_step5_bots.html">
+    <div class="card-head"><span class="badge badge-server">Server</span><span class="card-title">Step 5 &mdash; Bot Management API</span><span class="step-num">5/5</span></div>
+    <p class="card-desc">Verify bot list, available cogs, script availability &amp; GitHub connectivity.</p>
+  </a>
+</div>
+
+<!-- ── Part 2 ── -->
+<div class="section-label">&#x1f916; Part 2 &mdash; Bots</div>
+<div class="part-run-bar">
+  <div class="part-run-head">
+    <button class="btn-part btn-part-bots" id="p2-btn" onclick="runPart(2)">&#x25B6; Run Part 2</button>
+    <button class="btn-reset-sm" onclick="resetPart(2)">Reset</button>
+    <span class="part-status" id="p2-status"></span>
+    <span class="part-stats" id="p2-stats">
+      <span id="p2-pass" class="c-ok">0</span> passed &nbsp;
+      <span id="p2-fail" class="c-fail">0</span> failed &nbsp;
+      <span id="p2-warn" class="c-warn">0</span> warnings
+    </span>
+  </div>
+  <div class="progress" id="p2-prog-wrap" style="display:none"><div class="progress-bar" id="p2-prog"></div></div>
+  <div class="results-wrap" id="p2-results">
+    <table class="results-table">
+      <thead><tr><th>Check</th><th>Area</th><th>Result</th><th>ms</th><th>Detail</th></tr></thead>
+      <tbody id="p2-body"></tbody>
+    </table>
+  </div>
+</div>
+<div class="grid">
+  <a class="card" href="bots_step1_manager.html">
+    <div class="card-head"><span class="badge badge-bot">Bots</span><span class="card-title">Step 1 &mdash; Manager Health</span><span class="step-num">1/3</span></div>
+    <p class="card-desc">Check bot_manager_direct.py on port 5001 (optional — only if not using webapp bots).</p>
+  </a>
+  <a class="card" href="bots_step2_status.html">
+    <div class="card-head"><span class="badge badge-bot">Bots</span><span class="card-title">Step 2 &mdash; Bot Instance Status</span><span class="step-num">2/3</span></div>
+    <p class="card-desc">List all bots from both Flask and bot_manager, show running/stopped state.</p>
+  </a>
+  <a class="card" href="bots_step3_load.html">
+    <div class="card-head"><span class="badge badge-bot">Bots</span><span class="card-title">Step 3 &mdash; Load Test</span><span class="step-num">3/3</span></div>
+    <p class="card-desc">Fire concurrent requests at both servers, measure throughput and error rate.</p>
+  </a>
+</div>
+
+<!-- ── Part 3 ── -->
+<div class="section-label">&#x1f52c; Part 3 &mdash; Discord Function Tests</div>
+<div class="part-run-bar">
+  <div class="part-run-head">
+    <button class="btn-part btn-part-func" id="p3-btn" onclick="runPart(3)">&#x25B6; Run Part 3</button>
+    <button class="btn-reset-sm" onclick="resetPart(3)">Reset</button>
+    <label style="font-size:.8rem;color:#8b949e;white-space:nowrap;margin-left:6px">Server:</label>
+    <select id="p3ServerSelect" onchange="syncServer('p3ServerSelect')"><option value="">— select —</option></select>
+    <span class="part-status" id="p3-status"></span>
+    <span class="part-stats" id="p3-stats">
+      <span id="p3-pass" class="c-ok">0</span> passed &nbsp;
+      <span id="p3-fail" class="c-fail">0</span> failed &nbsp;
+      <span id="p3-warn" class="c-warn">0</span> warnings
+    </span>
+  </div>
+  <div class="progress" id="p3-prog-wrap" style="display:none"><div class="progress-bar" id="p3-prog"></div></div>
+  <div class="results-wrap" id="p3-results">
+    <table class="results-table">
+      <thead><tr><th>Check</th><th>Area</th><th>Result</th><th>ms</th><th>Detail</th></tr></thead>
+      <tbody id="p3-body"></tbody>
+    </table>
+  </div>
+</div>
+<div class="grid">
+  <a class="card func-card" href="func_step1_config.html">
+    <div class="card-head"><span class="badge badge-func">Func</span><span class="card-title">Step 1 &mdash; Config Verification</span><span class="step-num">1/8</span></div>
+    <p class="card-desc">Verify server name, guild ID and bot tokens are present in local config.</p>
+  </a>
+  <a class="card func-card" href="func_step2_guild.html">
+    <div class="card-head"><span class="badge badge-func">Func</span><span class="card-title">Step 2 &mdash; Guild Presence</span><span class="step-num">2/8</span></div>
+    <p class="card-desc">Confirm the bot can see the target Discord guild and fetch its metadata.</p>
+  </a>
+  <a class="card func-card" href="func_step3_channels.html">
+    <div class="card-head"><span class="badge badge-func">Func</span><span class="card-title">Step 3 &mdash; Channel Audit</span><span class="step-num">3/8</span></div>
+    <p class="card-desc">Compare configured channels against live Discord state and fix any missing ones.</p>
+  </a>
+  <a class="card func-card" href="func_step4_permissions.html">
+    <div class="card-head"><span class="badge badge-func">Func</span><span class="card-title">Step 4 &mdash; Bot Permissions</span><span class="step-num">4/8</span></div>
+    <p class="card-desc">Check guild &amp; channel permission bits — flag missing critical permissions.</p>
+  </a>
+  <a class="card func-card" href="func_step5_scripts.html">
+    <div class="card-head"><span class="badge badge-func">Func</span><span class="card-title">Step 5 &mdash; Installed Scripts</span><span class="step-num">5/8</span></div>
+    <p class="card-desc">List cogs and scripts installed on each bot for this guild.</p>
+  </a>
+  <a class="card func-card" href="func_step6_commands.html">
+    <div class="card-head"><span class="badge badge-func">Func</span><span class="card-title">Step 6 &mdash; Slash Commands</span><span class="step-num">6/8</span></div>
+    <p class="card-desc">List all slash commands registered with Discord for this guild.</p>
+  </a>
+  <a class="card func-card" href="func_step7_assets.html">
+    <div class="card-head"><span class="badge badge-func">Func</span><span class="card-title">Step 7 &mdash; Assets</span><span class="step-num">7/8</span></div>
+    <p class="card-desc">Compare configured emojis, stickers and soundboard sounds against live Discord state.</p>
+  </a>
+  <a class="card func-card" href="func_step8_roles.html">
+    <div class="card-head"><span class="badge badge-func">Func</span><span class="card-title">Step 8 &mdash; Roles</span><span class="step-num">8/8</span></div>
+    <p class="card-desc">Compare configured roles against live Discord guild roles and flag mismatches.</p>
+  </a>
+</div>
+
+<!-- ── Issues ── -->
+<div class="section-label">&#x1f4cb; Issues Log</div>
+<div class="grid" style="margin-top:10px">
+  <a class="card" href="issues.html">
+    <div class="card-head"><span class="badge badge-issues">Issues</span><span class="card-title">Noted Issues</span></div>
+    <p class="card-desc">Record, tag and export findings from all test steps. Persists in localStorage.</p>
+  </a>
+</div>
+
+<div id="quick-ping" style="margin-top:20px;background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px 16px">
+  <div style="font-weight:600;font-size:.85rem;color:#f0f6fc;margin-bottom:8px">Quick Ping</div>
+  <div class="ping-row" id="ping-results">
+    <span class="ping-badge" id="p5000">Flask :5000 — checking…</span>
+    <span class="ping-badge" id="p5001">BotMgr :5001 — checking…</span>
+  </div>
+</div>
+
+<footer>All tests run locally &mdash; no data leaves your machine</footer>
+
+<script>
+const F=window.location.origin;
+const B='http://127.0.0.1:5001';
+const GATED=[200,302,303,401,403,404];
+
+const P1_CHECKS=[
+  ['Server reachable',        'Connectivity',   '/',                          [200,302,303], F, 'auth'],
+  ['Login page',              'Connectivity',   '/login',                     [200],         F, ''],
+  ['Register page',           'Connectivity',   '/register',                  [200],         F, ''],
+  ['404 handling',            'Connectivity',   '/nonexistent_xyz',           [404],         F, ''],
+  ['Logout endpoint',         'Auth',           '/logout',                    [200,302,303], F, 'auth'],
+  ['Discord OAuth redirect',  'Auth',           '/auth/discord',              [302,303],     F, 'auth'],
+  ['Google OAuth redirect',   'Auth',           '/auth/google',               [302,303],     F, 'auth'],
+  ['Server health API',       'Core API',       '/api/dashboard/server-health',[200,302,401],F, 'auth'],
+  ['Dashboard events',        'Core API',       '/api/dashboard/events',      GATED,         F, 'auth'],
+  ['Script versions',         'Core API',       '/api/scripts/versions?path=Casino/blackjack/blackjack.py', GATED, F, 'auth'],
+  ['About page',              'Core API',       '/about',                     [200],         F, ''],
+  ['Feedback page',           'Core API',       '/feedback',                  [200],         F, ''],
+  ['Servers page',            'Server Mgmt',    '/servers',                   [200,302,303], F, 'auth'],
+  ['Dashboard page',          'Server Mgmt',    '/dashboard',                 [200,302,303], F, 'auth'],
+  ['Server list API',         'Server Mgmt',    '/api/servers/list',          GATED,         F, 'auth'],
+  ['Setup page',              'Server Mgmt',    '/setup',                     [200,302,303], F, 'auth'],
+];
+
+const P2_CHECKS=[
+  ['Bots page',               'Bot Mgmt',       '/bots',                      [200,302,303], F, 'auth'],
+  ['Bot list API',            'Bot Mgmt',       '/api/bots/list',             GATED,         F, 'auth'],
+  ['Available cogs',          'Bot Mgmt',       '/api/bots/available-cogs',   GATED,         F, 'auth'],
+  ['Available scripts',       'Bot Mgmt',       '/api/bots/available-scripts',GATED,         F, 'auth'],
+  ['GitHub connectivity',     'Bot Mgmt',       '/api/bots/test-github',      GATED,         F, 'auth'],
+  ['Scripts page',            'Bot Mgmt',       '/scripts',                   [200,302,303], F, 'auth'],
+];
+
+const P3_CHECKS=[
+  {label:'Config Verification', area:'Func Config',   step:'config'},
+  {label:'Guild Presence',      area:'Func Guild',    step:'guild'},
+  {label:'Channel Audit',       area:'Func Channels', step:'channels'},
+  {label:'Bot Permissions',     area:'Func Perms',    step:'permissions'},
+  {label:'Slash Commands',      area:'Func Commands', step:'commands'},
+  {label:'Assets',              area:'Func Assets',   step:'assets'},
+  {label:'Roles',               area:'Func Roles',    step:'roles'},
+];
+
+// ── Server selector (shared state) ───────────────────────────────────────────
+async function loadServers(){
+  const selectors=['funcServerSelect','p3ServerSelect'];
+  let servers=[];
+  try{
+    const r=await fetch(F+'/api/servers/list',{redirect:'manual',signal:AbortSignal.timeout(5000)});
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){
+      selectors.forEach(id=>{document.getElementById(id).innerHTML='<option value="">— Please log in first —</option>';});
+      if(!document.getElementById('_loginBtn')){const first=document.getElementById(selectors[0]);if(first){const a=document.createElement('a');a.id='_loginBtn';a.href=F+'/login?next='+encodeURIComponent(window.location.pathname);a.textContent='Log in';a.style.cssText='margin-left:8px;background:#238636;color:#fff;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;text-decoration:none;display:inline-block;';first.parentNode.insertBefore(a,first.nextSibling);const b=document.createElement('button');b.id='_refreshBtn';b.textContent='↻ Refresh';b.onclick=loadServers;b.style.cssText='margin-left:8px;background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 14px;font-size:.875rem;font-weight:600;cursor:pointer;';a.parentNode.insertBefore(b,a.nextSibling);}}
+      return;
+    }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    servers=data.servers||data||[];
+  }catch(e){
+    selectors.forEach(id=>{document.getElementById(id).innerHTML='<option value="">— Flask unreachable —</option>';});
+    return;
+  }
+  const saved=localStorage.getItem('func_test_server_id');
+  selectors.forEach(id=>{
+    const sel=document.getElementById(id);
+    sel.innerHTML='<option value="">— select —</option>';
+    servers.forEach(s=>{
+      const opt=document.createElement('option');
+      opt.value=s.server_id||s.id||s.name;
+      opt.textContent=s.name||(s.server_id||s.id);
+      sel.appendChild(opt);
+    });
+    if(saved) for(let i=0;i<sel.options.length;i++) if(sel.options[i].value===saved){sel.selectedIndex=i;break;}
+  });
+}
+
+function syncServer(sourceId){
+  const v=document.getElementById(sourceId).value;
+  if(v) localStorage.setItem('func_test_server_id',v);
+  ['funcServerSelect','p3ServerSelect'].forEach(id=>{
+    if(id!==sourceId) document.getElementById(id).value=v;
+  });
+}
+
+function getSelectedServer(){
+  return document.getElementById('funcServerSelect').value;
+}
+
+// ── Issue logger ──────────────────────────────────────────────────────────────
+function autoLogIssue(title,description,code,url,sev,area){
+  const issues=JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  const areaMap={'Connectivity':'server-connectivity','Auth':'server-auth','Core API':'server-api',
+    'Server Mgmt':'server-mgmt','Bot Mgmt':'server-bots-api','Bot Manager':'bots-manager',
+    'Func Config':'func-config','Func Guild':'func-guild','Func Channels':'func-channels',
+    'Func Perms':'func-perms','Func Commands':'func-commands','Func Assets':'func-assets','Func Roles':'func-roles'};
+  if(issues.find(i=>i.title===title&&i.url===url&&(Date.now()-new Date(i.created).getTime())<300000)) return;
+  issues.unshift({id:Date.now()+Math.random(),title,severity:sev,area:areaMap[area]||'other',
+    description,steps:'',code:String(code||''),url,created:new Date().toISOString(),auto:true});
+  localStorage.setItem('stress_test_issues',JSON.stringify(issues));
+}
+
+// ── Row helpers (parameterised by tbody id) ───────────────────────────────────
+function addRowTo(tbodyId,label,area,state,ms,detail){
+  const tbody=document.getElementById(tbodyId);
+  const cls={ok:'c-ok',fail:'c-fail',warn:'c-warn',skip:'c-skip',pend:'c-pend'}[state];
+  const dcls={ok:'d-ok',fail:'d-fail',warn:'d-warn',skip:'d-skip',pend:'d-pend'}[state];
+  const text={ok:'OK',fail:'FAIL',warn:'WARN',skip:'Skip',pend:'…'}[state];
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td>${label}</td><td><span class="area-tag">${area}</span></td>
+    <td><span class="chip ${cls}"><span class="dot ${dcls}"></span>${text}</span></td>
+    <td style="color:#8b949e">${ms!==null?ms+'ms':'—'}</td>
+    <td style="font-size:.75rem;color:#8b949e;max-width:260px;word-break:break-all">${detail}</td>`;
+  tbody.appendChild(tr);
+  return tr;
+}
+
+function updateRow(tr,state,ms,detail){
+  const cls={ok:'c-ok',fail:'c-fail',warn:'c-warn',skip:'c-skip',pend:'c-pend'}[state];
+  const dcls={ok:'d-ok',fail:'d-fail',warn:'d-warn',skip:'d-skip',pend:'d-pend'}[state];
+  const text={ok:'OK',fail:'FAIL',warn:'WARN',skip:'Skip',pend:'…'}[state];
+  tr.cells[2].innerHTML=`<span class="chip ${cls}"><span class="dot ${dcls}"></span>${text}</span>`;
+  tr.cells[3].textContent=ms!==null?ms+'ms':'—';
+  tr.cells[4].textContent=detail;
+}
+
+// ── HTTP check (Parts 1 & 2) ──────────────────────────────────────────────────
+async function runHttpCheck(check,tbodyId,counters){
+  const [label,area,path,codes,base,note]=check;
+  const tr=addRowTo(tbodyId,label,area,'pend',null,'testing…');
+  const optional=note==='optional';
+  try{
+    const t0=performance.now();
+    const resp=await fetch(base+path,{method:'GET',redirect:'manual',signal:AbortSignal.timeout(5000)});
+    const ms=Math.round(performance.now()-t0);
+    const isRedir=resp.type==='opaqueredirect'||[301,302,303].includes(resp.status);
+    const ok=codes.includes(resp.status)||isRedir;
+    counters.ms.push(ms);
+    if(resp.status===500){
+      updateRow(tr,'fail',ms,'500 Server Error');
+      autoLogIssue(`${label} — 500 Error`,'Server returned 500',500,path,'critical',area);
+      counters.fail++;
+    } else if(ok){
+      updateRow(tr,'ok',ms,isRedir?'redirect':'status '+resp.status);
+      counters.pass++;
+    } else if(optional){
+      updateRow(tr,'skip',ms,'not running (optional)');
+      counters.skip++;
+    } else {
+      updateRow(tr,'warn',ms,'unexpected '+resp.status);
+      autoLogIssue(`${label} — unexpected ${resp.status}`,`Expected ${codes.join('/')}, got ${resp.status}`,resp.status,path,'medium',area);
+      counters.warn++;
+    }
+  }catch(e){
+    if(optional){updateRow(tr,'skip',null,'not running (optional)');counters.skip++;}
+    else{
+      updateRow(tr,'fail',null,e.message.includes('fetch')||e.message.includes('Failed')?'Unreachable':e.message);
+      autoLogIssue(`${label} — Unreachable`,e.message,'ERR_CONN',path,'high',area);
+      counters.fail++;
+    }
+  }
+}
+
+// ── Discord func check (Part 3) ───────────────────────────────────────────────
+async function runFuncCheck(check,tbodyId,counters,sid){
+  const {label,area,step}=check;
+  const tr=addRowTo(tbodyId,label,area,'pend',null,'checking…');
+  const url=`${F}/api/func-test/${step}/${encodeURIComponent(sid)}`;
+  try{
+    const t0=performance.now();
+    const r=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(12000)});
+    const ms=Math.round(performance.now()-t0);
+    counters.ms.push(ms);
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){
+      updateRow(tr,'skip',ms,'login required');counters.skip++;return;
+    }
+    if(!r.ok){
+      let errText='HTTP '+r.status;
+      try{const e=await r.clone().json();errText=e.error||errText;}catch(x){}
+      updateRow(tr,'fail',ms,errText);
+      autoLogIssue(`${label} — ${errText}`,errText,r.status,url,'high',area);
+      counters.fail++;return;
+    }
+    const d=await r.json();
+    let state='ok',detail='';
+    if(step==='config'){
+      if(!d.ok){state='fail';detail=d.error||'config error';}
+      else if(!d.bots||d.bots.length===0){state='warn';detail='no bots configured';}
+      else detail=`${d.bots.length} bot(s), guild ${d.guild_id||'?'}`;
+    }else if(step==='guild'){
+      if(!d.ok){state='fail';detail=d.error||`Discord ${d.discord_status||'error'}`;}
+      else detail=d.guild?.name||'OK';
+    }else if(step==='channels'){
+      if(!d.ok){state='fail';detail=d.error||'error';}
+      else if((d.missing||[]).length>0){
+        state='warn';detail=`${d.missing.length} missing channel(s)`;
+        autoLogIssue(`${label} — missing channels`,`${d.missing.length} configured channel(s) not found on Discord`,0,url,'high',area);
+      }else detail=`${(d.matched||[]).length} channel(s) matched`;
+    }else if(step==='permissions'){
+      if(!d.ok){state='fail';detail=d.error||'error';}
+      else if((d.critical_missing||[]).length>0){
+        state='fail';detail=`missing critical: ${d.critical_missing.join(', ')}`;
+        autoLogIssue(`${label} — critical permissions missing`,d.critical_missing.join(', '),0,url,'critical',area);
+      }else if((d.missing||[]).length>0){state='warn';detail=`${d.missing.length} permission(s) missing`;}
+      else detail='all permissions OK';
+    }else if(step==='commands'){
+      if(!d.ok){state='warn';detail=d.error||'no commands or error';}
+      else if(d.total===0){state='warn';detail='no slash commands registered';}
+      else detail=`${d.total} command(s) registered`;
+    }else if(step==='assets'){
+      if(!d.ok){state='fail';detail=d.error||'error';}
+      else{
+        const me=(d.emojis?.missing||[]).length,ms2=(d.stickers?.missing||[]).length,ms3=(d.soundboard?.missing||[]).length;
+        const tot=me+ms2+ms3;
+        if(tot>0){
+          state='warn';detail=`${tot} asset(s) missing`;
+          autoLogIssue(`${label} — missing assets`,`${me} emoji, ${ms2} sticker(s), ${ms3} soundboard missing`,0,url,'medium',area);
+        }else detail='all assets present';
+      }
+    }else if(step==='roles'){
+      if(!d.ok){state='fail';detail=d.error||'error';}
+      else if((d.missing||[]).length>0){state='warn';detail=`${d.missing.length} role(s) missing`;}
+      else detail=`${(d.matched||[]).length} role(s) matched`;
+    }else{
+      if(d.ok===false){state='fail';detail=d.error||'failed';}else detail='OK';
+    }
+    updateRow(tr,state,ms,detail);
+    if(state==='ok')counters.pass++;else if(state==='warn')counters.warn++;else counters.fail++;
+  }catch(e){
+    updateRow(tr,'fail',null,e.message.includes('fetch')||e.message.includes('Failed')?'Unreachable':e.message);
+    autoLogIssue(`${label} — Unreachable`,e.message,'ERR_CONN',url,'high',area);
+    counters.fail++;
+  }
+}
+
+// ── Part runner ───────────────────────────────────────────────────────────────
+async function runPart(part){
+  const btnId=`p${part}-btn`,bodyId=`p${part}-body`,progId=`p${part}-prog`,
+        progWrapId=`p${part}-prog-wrap`,resultsId=`p${part}-results`,
+        statusId=`p${part}-status`,statsId=`p${part}-stats`;
+  const btn=document.getElementById(btnId);
+  btn.disabled=true;
+  document.getElementById(bodyId).innerHTML='';
+  document.getElementById(resultsId).classList.add('show');
+  document.getElementById(progWrapId).style.display='block';
+  document.getElementById(statsId).style.display='none';
+  document.getElementById(statusId).textContent='Running…';
+
+  const progBar=document.getElementById(progId);
+  progBar.style.width='0';progBar.style.background='#238636';
+
+  const counters={pass:0,fail:0,warn:0,skip:0,ms:[]};
+
+  const setP=(done,total)=>{
+    progBar.style.width=Math.round(done/total*100)+'%';
+    if(done===total) progBar.style.background=counters.fail>0?'#f85149':'#56d364';
+  };
+  const updStats=()=>{
+    document.getElementById(`p${part}-pass`).textContent=counters.pass;
+    document.getElementById(`p${part}-fail`).textContent=counters.fail;
+    document.getElementById(`p${part}-warn`).textContent=counters.warn;
+  };
+
+  if(part===1){
+    const checks=P1_CHECKS;
+    for(let i=0;i<checks.length;i++){
+      await runHttpCheck(checks[i],bodyId,counters);
+      setP(i+1,checks.length);
+      document.getElementById(statusId).textContent=`${i+1} / ${checks.length}`;
+      await new Promise(r=>setTimeout(r,40));
+    }
+  }else if(part===2){
+    const checks=P2_CHECKS;
+    for(let i=0;i<checks.length;i++){
+      await runHttpCheck(checks[i],bodyId,counters);
+      setP(i+1,checks.length);
+      document.getElementById(statusId).textContent=`${i+1} / ${checks.length}`;
+      await new Promise(r=>setTimeout(r,40));
+    }
+  }else if(part===3){
+    const sid=document.getElementById('p3ServerSelect').value;
+    if(!sid){
+      document.getElementById(statusId).textContent='No server selected';
+      btn.disabled=false;return;
+    }
+    const checks=P3_CHECKS;
+    for(let i=0;i<checks.length;i++){
+      await runFuncCheck(checks[i],bodyId,counters,sid);
+      setP(i+1,checks.length);
+      document.getElementById(statusId).textContent=`${i+1} / ${checks.length}`;
+      await new Promise(r=>setTimeout(r,60));
+    }
+  }
+
+  updStats();
+  document.getElementById(statsId).style.display='flex';
+  document.getElementById(statusId).textContent=`Done`;
+  btn.disabled=false;
+}
+
+function resetPart(part){
+  document.getElementById(`p${part}-body`).innerHTML='';
+  document.getElementById(`p${part}-results`).classList.remove('show');
+  document.getElementById(`p${part}-prog-wrap`).style.display='none';
+  document.getElementById(`p${part}-prog`).style.cssText='width:0;background:#238636';
+  document.getElementById(`p${part}-status`).textContent='';
+  document.getElementById(`p${part}-stats`).style.display='none';
+  document.getElementById(`p${part}-btn`).disabled=false;
+}
+
+// ── Global Run All ────────────────────────────────────────────────────────────
+let gPass=0,gFail=0,gWarn=0,gSkip=0,gMs=[];
+
+function addRowGlobal(label,area,state,ms,detail){
+  return addRowTo('results-body',label,area,state,ms,detail);
+}
+
+function updGlobalSummary(){
+  document.getElementById('r-pass').textContent=gPass;
+  document.getElementById('r-fail').textContent=gFail;
+  document.getElementById('r-warn').textContent=gWarn;
+  document.getElementById('r-skip').textContent=gSkip;
+  if(gMs.length) document.getElementById('r-ms').textContent=Math.round(gMs.reduce((a,b)=>a+b,0)/gMs.length)+'ms';
+}
+
+function setGlobalProgress(done,total){
+  const bar=document.getElementById('prog');
+  bar.style.width=Math.round(done/total*100)+'%';
+  if(done===total) bar.style.background=gFail>0?'#f85149':'#56d364';
+}
+
+async function runAll(){
+  gPass=0;gFail=0;gWarn=0;gSkip=0;gMs=[];
+  document.getElementById('results-body').innerHTML='';
+  document.getElementById('run-summary').style.display='flex';
+  document.getElementById('results-wrap').classList.add('show');
+  document.getElementById('runAllBtn').disabled=true;
+  document.getElementById('run-status').textContent='Running…';
+  updGlobalSummary();
+
+  const sid=getSelectedServer();
+  const funcChecks=sid?P3_CHECKS:[];
+  const allHttpChecks=[...P1_CHECKS,...P2_CHECKS];
+  const total=allHttpChecks.length+funcChecks.length;
+
+  const gCounters={
+    get pass(){return gPass;},set pass(v){gPass=v;},
+    get fail(){return gFail;},set fail(v){gFail=v;},
+    get warn(){return gWarn;},set warn(v){gWarn=v;},
+    get skip(){return gSkip;},set skip(v){gSkip=v;},
+    ms:gMs
+  };
+
+  for(let i=0;i<allHttpChecks.length;i++){
+    await runHttpCheck(allHttpChecks[i],'results-body',gCounters);
+    setGlobalProgress(i+1,total);
+    document.getElementById('run-status').textContent=`${i+1} / ${total}`;
+    updGlobalSummary();
+    await new Promise(r=>setTimeout(r,40));
+  }
+
+  if(funcChecks.length===0){
+    addRowTo('results-body','Part 3 — Discord checks','Func','skip',null,'no server selected');
+    gSkip++;updGlobalSummary();
+    setGlobalProgress(total,total);
+  }else{
+    for(let i=0;i<funcChecks.length;i++){
+      await runFuncCheck(funcChecks[i],'results-body',gCounters,sid);
+      setGlobalProgress(allHttpChecks.length+i+1,total);
+      document.getElementById('run-status').textContent=`${allHttpChecks.length+i+1} / ${total}`;
+      updGlobalSummary();
+      await new Promise(r=>setTimeout(r,60));
+    }
+  }
+
+  const issues=JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  const newIssues=issues.filter(i=>(Date.now()-new Date(i.created).getTime())<10000).length;
+  document.getElementById('run-status').textContent=
+    `Done — ${gPass} passed, ${gFail} failed, ${gWarn} warnings${newIssues?` — ${newIssues} issue(s) logged`:''}`;
+  document.getElementById('runAllBtn').disabled=false;
+}
+
+function resetAll(){
+  gPass=0;gFail=0;gWarn=0;gSkip=0;gMs=[];
+  document.getElementById('results-body').innerHTML='';
+  document.getElementById('run-summary').style.display='none';
+  document.getElementById('results-wrap').classList.remove('show');
+  document.getElementById('run-status').textContent='';
+  document.getElementById('prog').style.cssText='width:0;background:#238636';
+  document.getElementById('runAllBtn').disabled=false;
+}
+
+// ── Quick ping ────────────────────────────────────────────────────────────────
+async function ping(id,url,label){
+  const el=document.getElementById(id);
+  try{
+    const t0=performance.now();
+    const r=await fetch(url,{signal:AbortSignal.timeout(3000),redirect:'follow'});
+    const ms=Math.round(performance.now()-t0);
+    el.textContent=`${label} — ${r.status} (${ms}ms)`;
+    el.style.background=r.ok?'#1a3d26':'#2a1f1f';
+    el.style.color=r.ok?'#56d364':'#f85149';
+  }catch(e){
+    el.textContent=`${label} — unreachable`;
+    el.style.background='#2a1f1f';el.style.color='#f85149';
+  }
+}
+
+loadServers();
+ping('p5000','http://127.0.0.1:5000/','Flask :5000');
+ping('p5001','http://127.0.0.1:5001/api/status','BotMgr :5001');
+</script>
+</body>
+</html>

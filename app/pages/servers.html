@@ -1,0 +1,2902 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Apply saved theme before first paint to prevent flash -->
+    <script>
+    (function(){
+        var s=localStorage.getItem('appTheme')||'dark';
+        var r=s==='system'?(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):s;
+        document.documentElement.setAttribute('data-theme',r);
+        document.documentElement.setAttribute('data-theme-pref',s);
+    })();
+    </script>
+    <title>Servers - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ── Shared navbar ─────────────────────────────────────────── */
+        .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover { background: #36393f; color: #fff; }
+        .navbar-links a.active { background: #36393f; color: #fff; }
+        
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .user-menu { position: relative; }
+        .user-btn {
+            background: none; border: none; color: #7289da; font-weight: 700; font-size: 14px;
+            cursor: pointer; display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 6px; transition: background .2s;
+        }
+        .user-btn:hover { background: #36393f; }
+        .user-avatar {
+            width: 30px; height: 30px; border-radius: 50%; background: #7289da;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700; color: #fff;
+        }
+        .user-chevron { font-size: 10px; color: #b9bbbe; transition: transform .2s; }
+        .user-btn.open .user-chevron { transform: rotate(180deg); }
+        .user-dropdown {
+            position: absolute; top: calc(100% + 6px); right: 0;
+            background: #2f3136; border-radius: 8px; min-width: 200px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5); border: 1px solid #40444b;
+            opacity: 0; pointer-events: none;
+            transform: translateY(-6px); transition: opacity .15s, transform .15s; z-index: 200;
+        }
+        .user-dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+        .user-dropdown-info { padding: 14px 16px 10px; border-bottom: 1px solid #40444b; }
+        .user-dropdown-info .ud-name  { color: #fff; font-weight: 600; font-size: 14px; }
+        .user-dropdown a {
+            display: block; padding: 10px 16px; color: #b9bbbe; text-decoration: none;
+            font-size: 14px; font-weight: 500; transition: background .15s, color .15s;
+        }
+        .user-dropdown a:hover { background: #36393f; color: #fff; }
+        .ud-logout { color: #f04747 !important; border-top: 1px solid #40444b; margin-top: 4px; }
+        .ud-logout:hover { background: rgba(240,71,71,.1) !important; color: #f04747 !important; }
+
+        /* ── Layout ─────────────────────────────────────────────────── */
+        .container { max-width: 1300px; margin: 36px auto; padding: 0 24px; }
+
+        .page-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 28px;
+        }
+        .page-title { font-size: 1.8em; font-weight: 700; color: #fff; }
+        .page-count  { color: #72767d; font-size: 14px; margin-top: 4px; }
+
+        .btn {
+            background: #7289da; color: #fff; border: none;
+            padding: 10px 20px; border-radius: 6px; cursor: pointer;
+            font-size: 13px; font-weight: 600; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: background .2s, transform .1s;
+        }
+        .btn:hover  { background: #5b6eae; }
+        .btn:active { transform: scale(.98); }
+        .btn-success { background: #43b581; }
+        .btn-success:hover { background: #3ca374; }
+        .btn-danger  { background: #f04747; }
+        .btn-danger:hover  { background: #d84040; }
+        .btn-ghost {
+            background: transparent; border: 1px solid #40444b; color: #b9bbbe;
+            padding: 8px 14px; font-size: 12px;
+        }
+        .btn-ghost:hover { background: #40444b; color: #fff; border-color: #40444b; }
+
+        /* ── Server accordion cards ──────────────────────────────────── */
+        .server-card {
+            background: #2f3136; border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.3); margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .server-summary {
+            display: flex; align-items: center; gap: 18px;
+            padding: 20px 24px; cursor: pointer;
+            transition: background .15s;
+        }
+        .server-summary:hover { background: #36393f; }
+
+        .server-icon {
+            width: 52px; height: 52px; border-radius: 50%;
+            object-fit: cover; border: 3px solid #7289da; flex-shrink: 0;
+        }
+        .server-icon-placeholder {
+            width: 52px; height: 52px; border-radius: 50%; background: #7289da;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 700; flex-shrink: 0;
+        }
+
+        .server-summary-info { flex: 1; }
+        .server-summary-name { font-size: 1.1em; font-weight: 700; color: #fff; }
+        .server-summary-meta { display: flex; gap: 16px; margin-top: 5px; flex-wrap: wrap; }
+        .meta-chip {
+            font-size: 12px; color: #72767d;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .meta-chip b { color: #b9bbbe; }
+
+        .status-pill {
+            padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 700;
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .status-pill.done     { background: rgba(67,181,129,.15); color: #43b581; }
+        .status-pill.pending  { background: rgba(250,166,26,.15);  color: #faa61a; }
+        .status-pill.updating { background: rgba(114,137,218,.15); color: #7289da; }
+
+        .chevron-icon {
+            color: #72767d; font-size: 12px; transition: transform .2s; flex-shrink: 0;
+        }
+        .server-card.open .chevron-icon { transform: rotate(180deg); }
+
+        /* ── Detail panel ────────────────────────────────────────────── */
+        .server-detail {
+            display: none; border-top: 1px solid #40444b; padding: 24px;
+        }
+        .server-card.open .server-detail { display: block; }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px; margin-bottom: 24px;
+        }
+
+        .detail-section { background: #36393f; border-radius: 8px; padding: 18px; }
+        .detail-section-title {
+            font-size: 11px; font-weight: 700; color: #72767d;
+            text-transform: uppercase; letter-spacing: .8px; margin-bottom: 14px;
+        }
+
+        /* Info rows */
+        .info-row {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding: 7px 0; border-bottom: 1px solid #40444b; font-size: 13px;
+        }
+        .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .info-row .label { color: #72767d; flex-shrink: 0; margin-right: 12px; }
+        .info-row .value { color: #fff; font-weight: 500; text-align: right; word-break: break-all; }
+        .info-row .value.mono { font-family: monospace; font-size: 12px; }
+
+        /* Roles */
+        .tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag {
+            padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+        }
+        .tag-role  { background: rgba(114,137,218,.2); color: #7289da; }
+        .tag-cog   { background: rgba(67,181,129,.15); color: #43b581; }
+        .tag-empty { color: #72767d; font-size: 13px; }
+
+        /* Category tree */
+        .category-tree { display: flex; flex-direction: column; gap: 8px; }
+        .cat-item { background: #2f3136; border-radius: 6px; overflow: hidden; }
+        .cat-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px; font-size: 13px; font-weight: 700; color: #b9bbbe;
+        }
+        .cat-private-badge {
+            font-size: 10px; background: rgba(250,166,26,.15); color: #faa61a;
+            padding: 2px 7px; border-radius: 8px; font-weight: 700;
+        }
+        .channel-list { padding: 4px 12px 10px 28px; display: flex; flex-direction: column; gap: 4px; }
+        .channel-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #72767d; }
+        .channel-item .ch-name { color: #b9bbbe; }
+        .channel-item .ch-private { font-size: 10px; color: #faa61a; }
+        .no-channels { color: #4f545c; font-size: 12px; padding: 4px 0 8px 0; }
+
+        /* Bots */
+        .bot-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px solid #40444b; font-size: 13px;
+        }
+        .bot-row:last-child { border-bottom: none; }
+        .bot-row .bot-name { color: #fff; font-weight: 600; }
+        .bot-row .bot-token { color: #72767d; font-size: 11px; font-family: monospace; }
+
+        /* Inline edit modals shared */
+        .edit-modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8);
+            align-items: center; justify-content: center; z-index: 300; padding: 20px;
+        }
+        .edit-modal-box {
+            background: #2f3136; border-radius: 14px; padding: 32px;
+            max-width: 560px; width: 95%; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+            position: relative; max-height: 88vh; overflow-y: auto;
+        }
+        .edit-modal-title { color: #fff; font-size: 1.2em; font-weight: 700; margin-bottom: 24px; }
+        .edit-field { margin-bottom: 18px; }
+        .edit-field label { display: block; color: #b9bbbe; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+        .edit-field input[type=text], .edit-field select {
+            width: 100%; padding: 9px 12px; background: #40444b; border: 1px solid #202225;
+            border-radius: 6px; color: #fff; font-size: 13px; box-sizing: border-box;
+        }
+        .edit-field input[type=text]:focus, .edit-field select:focus { outline: none; border-color: #7289da; }
+        .edit-field select option { background: #36393f; }
+        .edit-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .edit-toggle input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+        .edit-toggle span { color: #b9bbbe; font-size: 13px; }
+        .edit-modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+        .edit-modal-actions button { flex: 1; padding: 11px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; transition: background .15s; }
+        .edit-btn-cancel { background: transparent; color: #72767d; border: 1px solid #40444b !important; }
+        .edit-btn-save   { background: #43b581; color: #fff; }
+        .edit-btn-save:hover   { background: #3ca374; }
+        .edit-section-divider { border: none; border-top: 1px solid #40444b; margin: 20px 0; }
+        /* Roles manage */
+        .role-manage-row {
+            display: flex; align-items: center; gap: 10px; padding: 8px 0;
+            border-bottom: 1px solid #40444b;
+        }
+        .role-manage-row:last-child { border-bottom: none; }
+        .role-manage-actions { display: flex; gap: 6px; margin-left: auto; }
+        .perm-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .perm-chip {
+            display: flex; align-items: center; gap: 5px; padding: 4px 10px;
+            background: #40444b; border-radius: 10px; font-size: 11px; color: #b9bbbe; cursor: pointer;
+            border: 1px solid transparent; user-select: none;
+        }
+        .perm-chip.active { background: rgba(114,137,218,.2); color: #7289da; border-color: #7289da; }
+
+        /* Clickable asset summary rows */
+        .asset-view-row {
+            cursor: pointer; border-radius: 4px;
+            transition: background .12s, padding-left .12s;
+        }
+        .asset-view-row:hover { background: rgba(114,137,218,.08); padding-left: 6px; }
+
+        /* Role list */
+        .role-list { display: flex; flex-direction: column; gap: 4px; }
+        .role-row {
+            display: flex; align-items: center; gap: 9px;
+            padding: 7px 10px; border-radius: 6px; cursor: pointer;
+            transition: background .12s; font-size: 13px;
+        }
+        .role-row:hover { background: #2f3136; }
+        .role-dot {
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+            border: 2px solid rgba(255,255,255,.15);
+        }
+        .role-name { color: #fff; font-weight: 600; flex: 1; }
+        .role-hoist-badge {
+            font-size: 10px; color: #7289da;
+            background: rgba(114,137,218,.15); padding: 1px 6px; border-radius: 8px;
+        }
+        .role-perm-count { font-size: 11px; color: #72767d; }
+
+        /* Assets modal sections */
+        .asset-section { margin-bottom: 24px; }
+        .asset-section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .asset-section-label {
+            display: flex; align-items: center; gap: 8px;
+            font-weight: 700; font-size: 13px; color: #b9bbbe;
+        }
+        .asset-count-badge {
+            background: #40444b; color: #dcddde;
+            font-size: 11px; font-weight: 700;
+            padding: 2px 8px; border-radius: 10px;
+        }
+        .asset-items {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            min-height: 36px; padding: 8px; border-radius: 6px;
+            background: #2c2f33; border: 1px dashed #40444b;
+            margin-bottom: 10px;
+        }
+        .asset-items.has-items { border-style: solid; }
+        .asset-tag {
+            display: flex; align-items: center; gap: 6px;
+            background: #40444b; color: #dcddde;
+            padding: 5px 12px; border-radius: 14px;
+            font-size: 12px; font-weight: 600;
+        }
+        .asset-tag button {
+            background: none; border: none; color: #72767d;
+            cursor: pointer; font-size: 15px; line-height: 1;
+            padding: 0; transition: color .1s;
+        }
+        .asset-tag button:hover { color: #f04747; }
+        .asset-empty {
+            color: #4f545c; font-size: 12px; padding: 4px 0;
+            width: 100%; text-align: center;
+        }
+        .asset-input-row { display: flex; gap: 8px; }
+        .asset-input-row input {
+            flex: 1; padding: 9px 12px;
+            background: #40444b; border: 1px solid #202225;
+            border-radius: 6px; color: #fff; font-size: 13px;
+        }
+        .asset-input-row input:focus { outline: none; border-color: #7289da; }
+        .asset-add-btn {
+            background: #5865f2; color: #fff; border: none;
+            padding: 9px 18px; border-radius: 6px; font-size: 13px;
+            font-weight: 700; cursor: pointer; white-space: nowrap;
+            transition: background .15s;
+        }
+        .asset-add-btn:hover { background: #4752c4; }
+
+        /* Action bar */
+        .detail-actions {
+            display: flex; gap: 10px; flex-wrap: wrap;
+            padding-top: 20px; border-top: 1px solid #40444b;
+        }
+
+        /* Empty state */
+        .empty-page {
+            text-align: center; padding: 80px 20px;
+            background: #2f3136; border-radius: 10px;
+        }
+        .empty-page-icon { font-size: 56px; margin-bottom: 16px; opacity: .5; }
+        .empty-page h2 { color: #b9bbbe; margin-bottom: 8px; }
+        .empty-page p  { color: #72767d; font-size: 14px; margin-bottom: 24px; }
+
+        /* Alert */
+        .alert { padding: 14px 18px; border-radius: 8px; margin-bottom: 24px; font-weight: 500; }
+        .alert-success { background: #43b581; }
+        /* Draft banner */
+        .draft-notice { display:none; align-items:center; justify-content:space-between; background:#3c4048; border:1px solid #5865f2; border-radius:6px; padding:10px 16px; margin-bottom:16px; font-size:13px; }
+        .draft-notice.show { display:flex; }
+        .draft-notice a { color:#5865f2; font-weight:600; text-decoration:none; margin-left:12px; }
+        .draft-notice a:hover { text-decoration:underline; }
+        .draft-notice-dismiss { background:none; border:none; color:#72767d; cursor:pointer; font-size:16px; padding:0 4px; }
+        .draft-notice-dismiss:hover { color:#ed4245; }
+    /* ── Light theme overrides ── */
+    [data-theme="light"] body{background:#f2f3f5;color:#060607;}
+    [data-theme="light"] .navbar{background:#fff;box-shadow:0 1px 0 #d4d7dc;}
+    [data-theme="light"] .navbar-brand{color:#5865f2;}
+    [data-theme="light"] .navbar-links a{color:#4e5058;}
+    [data-theme="light"] .navbar-links a:hover,[data-theme="light"] .navbar-links a.active{background:#e3e5e8;color:#060607;}
+    [data-theme="light"] .user-btn{color:#5865f2;}
+    [data-theme="light"] .user-btn:hover{background:#e3e5e8;}
+    [data-theme="light"] .user-avatar{background:#5865f2;}
+    [data-theme="light"] .user-chevron{color:#80848e;}
+    [data-theme="light"] .user-dropdown{background:#fff;border-color:#c7ccd1;box-shadow:0 8px 24px rgba(0,0,0,.15);}
+    [data-theme="light"] .user-dropdown-info{border-color:#e3e5e8;}
+    [data-theme="light"] .user-dropdown-info .ud-name{color:#060607;}
+    [data-theme="light"] .user-dropdown a,[data-theme="light"] .user-dropdown button{color:#4e5058;}
+    [data-theme="light"] .user-dropdown a:hover,[data-theme="light"] .user-dropdown button:hover{background:#f2f3f5;color:#060607;}
+    [data-theme="light"] .ud-logout{color:#da373c!important;}
+    [data-theme="light"] .page-title,[data-theme="light"] .server-summary-name{color:#060607;}
+    [data-theme="light"] .server-card{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.1);}
+    [data-theme="light"] .server-summary:hover{background:#f2f3f5;}
+    [data-theme="light"] .server-detail{border-color:#d4d7dc;}
+    [data-theme="light"] .detail-section{background:#f2f3f5;}
+    [data-theme="light"] .info-row{border-color:#d4d7dc;}
+    [data-theme="light"] .info-row .value{color:#060607;}
+    [data-theme="light"] .info-row .label{color:#80848e;}
+    [data-theme="light"] .cat-item{background:#ebedef;}
+    [data-theme="light"] .cat-header{color:#4e5058;}
+    [data-theme="light"] .channel-item .ch-name{color:#4e5058;}
+    [data-theme="light"] .bot-row{border-color:#d4d7dc;}
+    [data-theme="light"] .bot-row .bot-name{color:#060607;}
+    [data-theme="light"] .detail-actions{border-color:#d4d7dc;}
+    [data-theme="light"] .empty-page{background:#fff;}
+    [data-theme="light"] .empty-page h2{color:#4e5058;}
+    [data-theme="light"] .btn-ghost{border-color:#c7ccd1;color:#4e5058;}
+    [data-theme="light"] .btn-ghost:hover{background:#e3e5e8;color:#060607;}
+    [data-theme="light"] .meta-chip b{color:#4e5058;}
+        .alert-error   { background: #f04747; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-left">
+        <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+        <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+        <div class="navbar-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('servers_page') }}" class="active">Servers</a>
+            <a href="{{ url_for('bots_page') }}">Bots</a>
+            <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+        </div>
+    </div>
+    <div class="user-menu">
+        <button class="user-btn" id="userNavBtn">
+            <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+            {{ username }}
+            <span class="user-chevron">▼</span>
+        </button>
+        <div class="user-dropdown" id="userNavDropdown">
+            <div class="user-dropdown-info">
+                <div class="ud-name">{{ username }}</div>
+            </div>
+            <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+            <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+            <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+        </div>
+    </div>
+</nav>
+
+{% if is_free_plan %}
+<div style="background:#1e2023;border-bottom:1px solid #40444b;padding:9px 30px;
+            display:flex;align-items:center;justify-content:space-between;gap:16px;">
+    <span style="color:#b9bbbe;font-size:13px;">
+        <strong style="color:#fff;">Free plan</strong> — bots run on your PC.
+        Upgrade for cloud hosting and more capacity.
+    </span>
+    <a href="/subscriptions" style="background:#7289da;color:#fff;text-decoration:none;
+       padding:5px 12px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap;">
+        See Plans
+    </a>
+</div>
+{% endif %}
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Draft notice (shown via JS when a draft exists in localStorage) -->
+    <div class="draft-notice" id="draftNotice">
+        <span>📝 You have an unfinished server setup draft.
+            <a href="/setup" id="draftNoticeLink">Continue draft</a>
+        </span>
+        <button class="draft-notice-dismiss" onclick="dismissDraftNotice()" title="Discard draft">✕</button>
+    </div>
+
+    <div class="page-header">
+        <div>
+            <div class="page-title">🖥️ Servers</div>
+            <div class="page-count">{{ owned_server_count }}/{{ server_limit }} servers</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-ghost" onclick="document.getElementById('importFileInput').click()">
+                📥 Import Config
+            </button>
+            <button class="btn btn-ghost" onclick="openDiscordImportModal()">
+                📡 Import from Discord
+            </button>
+            <button class="btn btn-success" onclick="openNewServerModal()">➕ New Server</button>
+        </div>
+    </div>
+    <input type="file" id="importFileInput" accept=".json" style="display:none"
+           onchange="handleImportFile(this)">
+
+    <!-- Discord Import Modal -->
+    <div id="discordImportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:#2f3136;border-radius:12px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.5);">
+            <h3 style="margin:0 0 6px;color:#fff;font-size:18px;">📡 Import from Discord</h3>
+            <p style="margin:0 0 20px;color:#b9bbbe;font-size:13px;">Enter your server's Guild ID and a bot token that is already a member of the server. The existing roles and channel structure will be read and pre-filled in the setup form.</p>
+
+            <label style="display:block;margin-bottom:6px;color:#dcddde;font-size:13px;font-weight:600;">Guild ID</label>
+            <input id="discordImportGuildId" type="text" placeholder="e.g. 123456789012345678"
+                   style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:6px;border:1px solid #40444b;background:#36393f;color:#dcddde;font-size:14px;margin-bottom:14px;">
+
+            <label style="display:block;margin-bottom:6px;color:#dcddde;font-size:13px;font-weight:600;">Bot Token</label>
+            <input id="discordImportToken" type="password" placeholder="Bot token (kept only in your session)"
+                   style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:6px;border:1px solid #40444b;background:#36393f;color:#dcddde;font-size:14px;margin-bottom:20px;">
+
+            <div id="discordImportError" style="display:none;color:#f04747;font-size:13px;margin-bottom:12px;"></div>
+
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn btn-ghost" onclick="closeDiscordImportModal()">Cancel</button>
+                <button class="btn btn-success" id="discordImportBtn" onclick="submitDiscordImport()">Import</button>
+            </div>
+        </div>
+    </div>
+
+    {% if servers %}
+        {% for server in servers %}
+        <div class="server-card" id="card-{{ server.server_id }}">
+
+            <!-- Summary row (click to expand) -->
+            <div class="server-summary" onclick="toggleCard('{{ server.server_id }}')">
+                {% if server.icon_path %}
+                    <img src="/{{ server.icon_path }}" class="server-icon" alt="icon">
+                {% else %}
+                    <div class="server-icon-placeholder">{{ server.server_name[0]|upper }}</div>
+                {% endif %}
+
+                <div class="server-summary-info">
+                    <div class="server-summary-name">{{ server.server_name }}</div>
+                    <div class="server-summary-meta">
+                        <span class="meta-chip">🆔 <b>{{ server.guild_id }}</b></span>
+                        <span class="meta-chip">👥 <b>{{ server.custom_roles|length }}</b> roles</span>
+                        <span class="meta-chip">📁 <b>{{ server.categories|length }}</b> categories</span>
+                        <span class="meta-chip">🤖 <b>{{ server.discord_bots|length }}</b> bots</span>
+                        {% if server.installed_cogs %}
+                            <span class="meta-chip">📦 <b>{{ server.installed_cogs|length }}</b> cogs</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if server.setup_running or server.update_running %}
+                    <span class="status-pill updating">🔄 Updating</span>
+                {% elif server.setup_completed %}
+                    <span class="status-pill done">✅ Setup done</span>
+                {% else %}
+                    <span class="status-pill pending">⏳ Not set up</span>
+                {% endif %}
+
+                <span class="chevron-icon">▼</span>
+            </div>
+
+            <!-- Detail panel -->
+            <div class="server-detail">
+                <div class="detail-grid">
+
+                    <!-- Server info -->
+                    <div class="detail-section">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                            <div class="detail-section-title" style="margin:0;">Server Info</div>
+                            {% if server.owner == session.user_id or 'edit_server' in server.get('user_permissions', []) %}
+                            <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;"
+                                    onclick="openServerInfoModal('{{ server.server_id }}')">Edit</button>
+                            {% endif %}
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Name</span>
+                            <span class="value">{{ server.server_name }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Guild ID</span>
+                            <span class="value mono">{{ server.guild_id }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Owner</span>
+                            <span class="value">{{ server.owner }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Created</span>
+                            <span class="value">{{ server.created_at[:10] if server.created_at else '—' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Setup</span>
+                            <span class="value">
+                                {% if server.setup_running or server.update_running %}
+                                    <span style="color:#7289da;">🔄 Updating...</span>
+                                {% elif server.setup_completed %}
+                                    <span style="color:#43b581;">✅ Complete</span>
+                                {% else %}
+                                    <span style="color:#faa61a;">⏳ Pending</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Welcome</span>
+                            <span class="value">{{ server.welcome_template or 'None' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Bots</span>
+                            <span class="value" style="color:#72767d;">{{ server.discord_bots|length }} attached</span>
+                        </div>
+                    </div>
+
+                    <!-- Community -->
+                    {% set cs = server.get('community_settings', {}) %}
+                    <div class="detail-section">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                            <div class="detail-section-title" style="margin:0;">Community</div>
+                            {% if server.owner == session.user_id or 'edit_server' in server.get('user_permissions', []) %}
+                            <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;"
+                                    onclick="openCommunityModal('{{ server.server_id }}')">Edit</button>
+                            {% endif %}
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Community</span>
+                            <span class="value">
+                                {% if server.community_server %}
+                                    <span style="color:#43b581;">✅ Yes</span>
+                                {% else %}
+                                    No
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if server.vanity_url %}
+                        <div class="info-row">
+                            <span class="label">Vanity URL</span>
+                            <span class="value mono">discord.gg/{{ server.vanity_url }}</span>
+                        </div>
+                        {% endif %}
+                        {% if cs %}
+                        <div class="info-row">
+                            <span class="label">Verification</span>
+                            <span class="value">{{ cs.get('verification_level', '—') | replace('_', ' ') | title }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Filter</span>
+                            <span class="value">{{ cs.get('content_filter', '—') | replace('_', ' ') | title }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Roles -->
+                    <div class="detail-section">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                            <div class="detail-section-title" style="margin:0;">Custom Roles (<span class="role-count-{{ server.server_id }}">{{ server.custom_roles|length }}</span>)</div>
+                            {% if server.owner == session.user_id or 'edit_server' in server.get('user_permissions', []) %}
+                            <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;"
+                                    onclick="openRolesModal('{{ server.server_id }}')">Manage</button>
+                            {% endif %}
+                        </div>
+                        {% if server.custom_roles %}
+                            <div class="role-list">
+                                {% for role in server.custom_roles %}
+                                    {% set rname  = role.name  if role is mapping else role %}
+                                    {% set rcolor = role.color if role is mapping else '#99aab5' %}
+                                    {% set rhoist = role.hoist if role is mapping else false %}
+                                    {% set rperms = role.permissions if role is mapping else [] %}
+                                    <div class="role-row" onclick="openRolePopup(this)"
+                                         data-role-name="{{ rname }}"
+                                         data-role-color="{{ rcolor }}"
+                                         data-role-hoist="{{ 'true' if rhoist else 'false' }}"
+                                         data-role-perms='{{ rperms|tojson }}'>
+                                        <span class="role-dot" style="background:{{ rcolor }};"></span>
+                                        <span class="role-name">{{ rname }}</span>
+                                        {% if rhoist %}
+                                            <span class="role-hoist-badge">hoisted</span>
+                                        {% endif %}
+                                        <span class="role-perm-count">
+                                            {{ rperms|length }} perm{{ 's' if rperms|length != 1 else '' }}
+                                        </span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <span class="tag-empty">No custom roles defined</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Moderation -->
+                    <div class="detail-section">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                            <div class="detail-section-title" style="margin:0;">Moderation</div>
+                            {% if server.owner == session.user_id or 'edit_server' in server.get('user_permissions', []) %}
+                            <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;"
+                                    onclick="openModerationModal('{{ server.server_id }}')">Edit</button>
+                            {% endif %}
+                        </div>
+                        {% if server.moderator_users %}
+                            <div class="tags-wrap">
+                                {% for mod in server.moderator_users %}
+                                    <span class="tag" style="background:#2c2f33;border:1px solid #40444b;color:#b9bbbe;">🛡️ {{ mod }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <span class="tag-empty">No moderators assigned</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Assets summary -->
+                    {% set sa = server.get('server_assets', {}) %}
+                    {% set emoji_list    = sa.get('emoji', []) %}
+                    {% set sticker_list  = sa.get('stickers', []) %}
+                    {% set sound_list    = sa.get('soundboard', []) %}
+                    <div class="detail-section">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                            <div class="detail-section-title" style="margin:0;">Assets</div>
+                            {% if server.get('owner') == session.user_id or 'edit_server' in server.get('user_permissions', []) %}
+                            <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;"
+                                    onclick="openAssetsModal('{{ server.server_id }}')">Manage</button>
+                            {% endif %}
+                        </div>
+
+                        <div class="info-row{% if emoji_list %} asset-view-row{% endif %}"
+                             {% if emoji_list %}onclick="viewAssets('😀 Custom Emoji','emoji',this)" data-items='{{ emoji_list|tojson }}'{% endif %}>
+                            <span class="label">😀 Emoji</span>
+                            <span class="value" style="{% if emoji_list %}color:#7289da;{% endif %}">
+                                {{ emoji_list|length }}{% if emoji_list %} <span style="font-size:10px;opacity:.7;">▶</span>{% endif %}
+                            </span>
+                        </div>
+
+                        <div class="info-row{% if sticker_list %} asset-view-row{% endif %}"
+                             {% if sticker_list %}onclick="viewAssets('🎨 Stickers','stickers',this)" data-items='{{ sticker_list|tojson }}'{% endif %}>
+                            <span class="label">🎨 Stickers</span>
+                            <span class="value" style="{% if sticker_list %}color:#7289da;{% endif %}">
+                                {{ sticker_list|length }}{% if sticker_list %} <span style="font-size:10px;opacity:.7;">▶</span>{% endif %}
+                            </span>
+                        </div>
+
+                        <div class="info-row{% if sound_list %} asset-view-row{% endif %}"
+                             {% if sound_list %}onclick="viewAssets('🔊 Soundboard','soundboard',this)" data-items='{{ sound_list|tojson }}'{% endif %}>
+                            <span class="label">🔊 Soundboard</span>
+                            <span class="value" style="{% if sound_list %}color:#7289da;{% endif %}">
+                                {{ sound_list|length }}{% if sound_list %} <span style="font-size:10px;opacity:.7;">▶</span>{% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Categories & Channels — full width -->
+                <div class="detail-section" style="margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                        <div class="detail-section-title" style="margin:0;">Categories &amp; Channels{% if server.categories %} ({{ server.categories|length }}){% endif %}</div>
+                        {% if server.owner == session.user_id or 'edit_server' in server.get('user_permissions', []) %}
+                        <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;"
+                                onclick="openChannelsModal('{{ server.server_id }}')">Manage</button>
+                        {% endif %}
+                    </div>
+                {% if server.categories %}
+                    <div class="category-tree">
+                        {% for cat in server.categories %}
+                        <div class="cat-item">
+                            <div class="cat-header">
+                                📁 {{ cat.name }}
+                                {% if cat.private %}
+                                    <span class="cat-private-badge">🔒 Private</span>
+                                {% endif %}
+                            </div>
+                            <div class="channel-list">
+                                {% set has_ch = namespace(v=false) %}
+                                {% for ch in cat.get('textChannels', []) %}
+                                    {% set has_ch.v = true %}
+                                    <div class="channel-item">
+                                        <span style="color:#72767d;">#</span>
+                                        <span class="ch-name">{{ ch.name }}</span>
+                                        {% if ch.get('private') %}
+                                            <span class="ch-private">🔒</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                                {% for ch in cat.get('voiceChannels', []) %}
+                                    {% set has_ch.v = true %}
+                                    <div class="channel-item">
+                                        <span style="color:#72767d;">🔊</span>
+                                        <span class="ch-name">{{ ch.name }}</span>
+                                        {% if ch.get('private') %}
+                                            <span class="ch-private">🔒</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                                {% if not has_ch.v %}
+                                    <div class="no-channels">No channels defined</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <span class="tag-empty" style="font-size:12px;">No categories defined yet — click Manage to add channels live.</span>
+                {% endif %}
+                </div>
+
+                <!-- Collaborators (owner only) -->
+                {% if server.owner == session.user_id %}
+                <div class="detail-section" style="margin-bottom:20px;" id="collab-{{ server.server_id }}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                        <div class="detail-section-title" style="margin:0;">Collaborators</div>
+                        <button class="btn" style="padding:6px 14px;font-size:12px;"
+                                onclick="openInviteModal('{{ server.server_id }}','{{ server.server_name }}')">
+                            ➕ Invite
+                        </button>
+                    </div>
+                    {% set collabs = server.get('collaborators', {}) %}
+                    {% if collabs %}
+                        {% for collab_user, perms in collabs.items() %}
+                        {% set perm_list = perms if perms is sequence and perms is not string and perms is not mapping else perms.get('permissions', []) %}
+                        {% set discord_tag = perms.get('discord_username', '') if perms is mapping else '' %}
+                        <div style="display:flex;align-items:center;justify-content:space-between;
+                                    padding:10px 0;border-bottom:1px solid #40444b;font-size:13px;">
+                            <div>
+                                <span style="color:#fff;font-weight:600;">{{ collab_user }}</span>
+                                {% if discord_tag %}
+                                    <span style="color:#5865f2;font-size:11px;margin-left:6px;">🎮 {{ discord_tag }}</span>
+                                {% endif %}
+                                <div style="color:#72767d;font-size:11px;margin-top:3px;">
+                                    {{ perm_list | join(', ') }}
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn btn-ghost"
+                                        style="padding:5px 10px;font-size:11px;"
+                                        onclick="editCollaborator('{{ server.server_id }}','{{ collab_user }}',{{ perm_list|tojson }})">
+                                    Edit
+                                </button>
+                                <button class="btn btn-danger"
+                                        style="padding:5px 10px;font-size:11px;"
+                                        onclick="removeCollaborator('{{ server.server_id }}','{{ collab_user }}',this)">
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="color:#72767d;font-size:13px;">No collaborators yet. Invite someone!</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Action bar -->
+                <div class="detail-actions">
+                    {% if not server.setup_completed and (server.owner == session.user_id or 'edit_server' in server.get('user_permissions', [])) %}
+                    <button class="btn btn-success" onclick="runSetupFor('{{ server.server_id }}', this)">
+                        🚀 Run Setup
+                    </button>
+                    {% endif %}
+                    <a href="{{ url_for('server_overview', server_id=server.server_id) }}"
+                       class="btn btn-ghost" title="Server overview">
+                        📊 Overview
+                    </a>
+                    <button class="btn btn-ghost" title="Open Deployment Inspector for this server"
+                            onclick="inspectServer('{{ server.server_id }}')">
+                        🔬 Inspect
+                    </button>
+                    <a href="{{ url_for('members_page', server_id=server.server_id) }}"
+                       class="btn btn-ghost" title="View server members">
+                        👥 Members
+                    </a>
+                    <button class="btn btn-ghost" title="Manage server assets (emoji, stickers, soundboard)"
+                            onclick="openAssetsModal('{{ server.server_id }}')">
+                        🖼️ Assets
+                    </button>
+                    {% if server.owner == session.user_id or 'edit_server' in server.get('user_permissions', []) %}
+                    <button class="btn btn-ghost" title="Community settings (verification, content filter)"
+                            onclick="openCommunityModal('{{ server.server_id }}')">
+                        🌐 Community
+                    </button>
+                    {% endif %}
+                    <a href="{{ url_for('integrations_page', server_id=server.server_id) }}"
+                       class="btn btn-ghost" title="Manage webhooks">
+                        🔗 Integrations
+                    </a>
+                    <a href="{{ url_for('export_server_config', server_id=server.server_id) }}"
+                       class="btn btn-ghost" title="Download server config as JSON">
+                        ⬇️ Download Setup
+                    </a>
+                    <a href="{{ url_for('roles_page', server_id=server.server_id) }}"
+                       class="btn btn-ghost" title="Manage server roles">
+                        🎭 Roles
+                    </a>
+                    {% if server.owner == session.user_id %}
+                    <a href="{{ url_for('server_settings', server_id=server.server_id) }}"
+                       class="btn btn-ghost" title="Server settings">
+                        ⚙️ Settings
+                    </a>
+                    <a href="{{ url_for('collaborators_page', server_id=server.server_id) }}"
+                       class="btn btn-ghost" title="Manage collaborators">
+                        👤 Collaborators
+                    </a>
+                    <form method="POST" action="{{ url_for('delete_server', server_id=server.server_id) }}"
+                          onsubmit="return confirm('Delete {{ server.server_name }}? This cannot be undone.');">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+                    </form>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+        {% endfor %}
+
+    {% else %}
+        <div class="empty-page">
+            <div class="empty-page-icon">🖥️</div>
+            <h2>No servers yet</h2>
+            <p>Create your first server configuration to get started.</p>
+            <a href="{{ url_for('setup') }}" class="btn btn-success">🚀 Create First Server</a>
+        </div>
+    {% endif %}
+
+</div>
+
+<!-- Setup progress modal (reused from setup.html flow) -->
+<div id="setupModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+     align-items:center; justify-content:center; z-index:300; padding:20px;">
+    <div style="background:#2f3136; border-radius:12px; padding:32px 30px; max-width:520px;
+                width:92%; box-shadow:0 8px 40px rgba(0,0,0,.6);">
+        <div id="setupModalContent" style="text-align:center;">
+            <div style="font-size:42px; margin-bottom:16px;">⚙️</div>
+            <h2 style="color:#7289da; margin-bottom:10px;">Running Setup</h2>
+            <p style="color:#72767d; font-size:13px; margin-bottom:20px;">
+                The bot is configuring your Discord server...
+            </p>
+            <div id="srvLogBox" style="
+                background:#1e2124; border-radius:8px; padding:14px 16px;
+                font-family:'Courier New',monospace; font-size:12px; line-height:1.7;
+                max-height:260px; overflow-y:auto; margin-bottom:16px;
+                border:1px solid #40444b; text-align:left;">
+                <span style="color:#72767d;">Waiting for script to start...</span>
+            </div>
+            <p id="srvStatus" style="color:#b9bbbe; font-size:13px;">Starting...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── Navbar dropdown ────────────────────────────────────────────
+    (function() {
+        var btn = document.getElementById('userNavBtn');
+        var dd  = document.getElementById('userNavDropdown');
+        if (!btn || !dd) return;
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            btn.classList.toggle('open');
+            dd.classList.toggle('open');
+        });
+        document.addEventListener('click', function() {
+            btn.classList.remove('open');
+            dd.classList.remove('open');
+        });
+        var hb = document.getElementById("navHamburger");
+    var nl = document.querySelector(".navbar-links");
+    if (hb && nl) {
+        hb.addEventListener("click", function(e) { e.stopPropagation(); nl.classList.toggle("mobile-open"); });
+        document.addEventListener("click", function() { nl.classList.remove("mobile-open"); });
+    }
+})();
+
+    // ── Accordion ──────────────────────────────────────────────────
+    function toggleCard(serverId) {
+        const card = document.getElementById('card-' + serverId);
+        const wasOpen = card.classList.contains('open');
+        card.classList.toggle('open');
+        if (!wasOpen) loadServerHealth(serverId, false);
+    }
+
+    // ── Live Status ────────────────────────────────────────────────
+    const _healthLoaded = new Set();
+
+    async function loadServerHealth(serverId, force) {
+        if (_healthLoaded.has(serverId) && !force) return;
+        const el = document.getElementById('health-content-' + serverId);
+        if (!el) return;
+        el.innerHTML = '<span style="font-size:12px;">Loading…</span>';
+        try {
+            const data = await fetch('/api/dashboard/server-health').then(r => r.json());
+            const s = Array.isArray(data) ? data.find(x => x.server_id === serverId) : null;
+            if (!s) {
+                el.innerHTML = '<span style="font-size:12px;">No data — bot may be offline</span>';
+                return;
+            }
+            _healthLoaded.add(serverId);
+            const botStatus = s.local_bots_total === 0
+                ? `<span style="color:#72767d">No local bots</span>`
+                : s.local_bots_online > 0
+                    ? `<span style="color:#43b581">🟢 ${s.local_bots_online}/${s.local_bots_total} online</span>`
+                    : `<span style="color:#f04747">🔴 All bots offline</span>`;
+            const syncAge = s.last_sync ? _timeAgo(s.last_sync) : 'Never';
+            const setupBadge = s.setup_completed
+                ? `<span style="color:#43b581">✅ Complete</span>`
+                : `<span style="color:#faa61a">⏳ Pending</span>`;
+            let html = `
+                <div class="info-row"><span class="label">Bot status</span><span class="value">${botStatus}</span></div>
+                <div class="info-row"><span class="label">Members</span><span class="value">${s.member_count ?? '—'}</span></div>
+                <div class="info-row"><span class="label">Last sync</span><span class="value">${syncAge}</span></div>
+                <div class="info-row"><span class="label">Setup</span><span class="value">${setupBadge}</span></div>`;
+            if (s.pending_commands)
+                html += `<div class="info-row"><span class="label">Pending</span><span class="value"><span style="color:#faa61a">⏳ ${s.pending_commands} commands</span></span></div>`;
+            if (s.failed_commands)
+                html += `<div class="info-row"><span class="label">Failed</span><span class="value"><span style="color:#f04747">❌ ${s.failed_commands} commands</span></span></div>`;
+            el.innerHTML = html;
+        } catch {
+            el.innerHTML = '<span style="color:#f04747;font-size:12px;">Could not load status</span>';
+        }
+    }
+
+    function _timeAgo(iso) {
+        const d = Math.floor((Date.now() - new Date(iso)) / 1000);
+        if (d < 60) return 'just now';
+        if (d < 3600) return Math.floor(d / 60) + 'm ago';
+        if (d < 86400) return Math.floor(d / 3600) + 'h ago';
+        return Math.floor(d / 86400) + 'd ago';
+    }
+
+    function inspectServer(serverId) {
+        localStorage.setItem('func_test_server_id', serverId);
+        window.open('/stress-tests/', '_blank');
+    }
+
+    // ── Run setup from Servers page ────────────────────────────────
+    function runSetupFor(serverId, btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Checking...';
+
+        // Check if the bot is in the guild first — it may have left after a previous setup
+        fetch('/api/update/invite', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({server_id: serverId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.in_guild) {
+                // Bot is in — run setup directly
+                doRunSetup(serverId, btn);
+            } else {
+                // Need to invite first
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Run Setup';
+                showSetupInvitePrompt(serverId, data.invite_url, data.bot_name || 'the bot', btn);
+            }
+        })
+        .catch(() => {
+            // If check fails, try running anyway
+            doRunSetup(serverId, btn);
+        });
+    }
+
+    function showSetupInvitePrompt(serverId, inviteUrl, botName, triggerBtn) {
+        // Reuse the setupModal div but swap content for invite step
+        const modal = document.getElementById('setupModal');
+        modal.style.display = 'flex';
+        document.getElementById('setupModalContent').innerHTML = `
+            <div style="text-align:center;">
+                <div style="font-size:48px;margin-bottom:14px;">🤖</div>
+                <h2 style="color:#7289da;margin-bottom:10px;">Invite ${botName}</h2>
+                <p style="color:#b9bbbe;line-height:1.7;margin-bottom:8px;">
+                    <strong>${botName}</strong> needs to join your server before setup can run.
+                </p>
+                <p style="color:#72767d;font-size:13px;margin-bottom:24px;">
+                    Click the button below, authorize the bot in Discord, then click Continue.
+                </p>
+                <button onclick="window.open('${inviteUrl}','_blank')"
+                        style="width:100%;background:#7289da;color:#fff;border:none;padding:13px;
+                               border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;">
+                    🔗 Open Discord Invite
+                </button>
+                <button id="srvInviteContinue"
+                        onclick="verifySrvBotJoined('${serverId}')"
+                        style="width:100%;background:#43b581;color:#fff;border:none;padding:13px;
+                               border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;">
+                    ✅ Bot has joined — Continue
+                </button>
+                <button onclick="document.getElementById('setupModal').style.display='none';"
+                        style="width:100%;background:transparent;color:#72767d;border:1px solid #40444b;
+                               padding:10px;border-radius:6px;font-size:13px;cursor:pointer;">
+                    Cancel
+                </button>
+            </div>`;
+    }
+
+    function verifySrvBotJoined(serverId) {
+        const btn = document.getElementById('srvInviteContinue');
+        btn.disabled = true;
+        btn.textContent = '⏳ Verifying...';
+        fetch('/api/update/invite', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({server_id: serverId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.in_guild) {
+                doRunSetup(serverId, null);
+            } else {
+                btn.disabled = false;
+                btn.textContent = '✅ Bot has joined — Continue';
+                alert('Bot is not in the server yet. Please accept the Discord invite first.');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.textContent = '✅ Bot has joined — Continue';
+        });
+    }
+
+    function doRunSetup(serverId, btn) {
+        if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Starting...'; }
+
+        // Show the log modal
+        const modal = document.getElementById('setupModal');
+        document.getElementById('setupModalContent').innerHTML = `
+            <div style="font-size:42px;margin-bottom:16px;">⚙️</div>
+            <h2 style="color:#7289da;margin-bottom:10px;">Setting Up Your Server</h2>
+            <p style="color:#72767d;font-size:13px;margin-bottom:20px;">The bot is configuring your Discord server...</p>
+            <div id="srvLogBox" style="background:#1e2124;border-radius:8px;padding:14px 16px;
+                 font-family:'Courier New',monospace;font-size:12px;line-height:1.7;
+                 max-height:260px;overflow-y:auto;margin-bottom:16px;border:1px solid #40444b;text-align:left;">
+                <span style="color:#72767d;">Waiting for script to start...</span>
+            </div>
+            <p id="srvStatus" style="color:#b9bbbe;font-size:13px;">Starting...</p>`;
+        modal.style.display = 'flex';
+
+        fetch('/api/setup/run', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({server_id: serverId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (btn) { btn.disabled = false; btn.innerHTML = '🚀 Run Setup'; }
+            if (data.error) {
+                modal.style.display = 'none';
+                showToast('❌ ' + data.error, 'error', 0);
+                return;
+            }
+            pollSetupLog(serverId, modal);
+        })
+        .catch(() => {
+            if (btn) { btn.disabled = false; btn.innerHTML = '🚀 Run Setup'; }
+            modal.style.display = 'none';
+            showToast('❌ Network error', 'error', 5000);
+        });
+    }
+
+    function pollSetupLog(serverId, modal) {
+        let polls = 0;
+        let seenLines = 0;
+        const logInterval = setInterval(() => {
+            fetch('/api/setup/log/' + serverId).then(r => r.json()).then(d => {
+                const box = document.getElementById('srvLogBox');
+                if (box && d.lines && d.lines.length > seenLines) {
+                    if (seenLines === 0) box.innerHTML = '';
+                    for (let i = seenLines; i < d.lines.length; i++) {
+                        const line = d.lines[i];
+                        const color = line.startsWith('❌') ? '#f04747'
+                                    : line.startsWith('✅') ? '#43b581'
+                                    : line.startsWith('⚠️') ? '#faa61a'
+                                    : '#dcddde';
+                        box.innerHTML += `<div style="color:${color};">${escapeHtml(line)}</div>`;
+                    }
+                    seenLines = d.lines.length;
+                    box.scrollTop = box.scrollHeight;
+                }
+            }).catch(() => {});
+
+            fetch('/api/setup/status/' + serverId).then(r => r.json()).then(status => {
+                polls++;
+                const statusEl = document.getElementById('srvStatus');
+                if (status.setup_completed) {
+                    clearInterval(logInterval);
+                    if (statusEl) statusEl.innerHTML = '<span style="color:#43b581;">✅ Setup complete!</span>';
+                    setTimeout(() => { if (modal) modal.style.display = 'none'; location.reload(); }, 2000);
+                } else if (status.setup_error) {
+                    clearInterval(logInterval);
+                    if (statusEl) statusEl.innerHTML = `<span style="color:#f04747;">❌ ${escapeHtml(status.setup_error)}</span>`;
+                } else if (polls >= 90) {
+                    clearInterval(logInterval);
+                    if (statusEl) statusEl.textContent = '⏱️ Taking longer than expected…';
+                } else {
+                    if (statusEl) statusEl.textContent = 'Running… (' + (polls * 3) + 's)';
+                }
+            }).catch(() => {});
+        }, 3000);
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Toast system (same as setup.html) ────────────────────────────────────
+    function showToast(message, type, duration) {
+        let toast = document.getElementById('bgToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'bgToast';
+            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;align-items:center;gap:12px;background:#2f3136;border-radius:8px;padding:14px 18px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:280px;max-width:380px;border-left:4px solid #7289da;animation:toastIn .25s ease;';
+            document.head.insertAdjacentHTML('beforeend', '<style>@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}</style>');
+            document.body.appendChild(toast);
+        }
+        const colors = {info:'#7289da',success:'#43b581',error:'#f04747'};
+        const icons  = {info:'⚙️',success:'✅',error:'❌'};
+        toast.style.borderLeftColor = colors[type] || colors.info;
+        toast.innerHTML = `<span style="font-size:20px;flex-shrink:0;">${icons[type]||'⚙️'}</span><span style="color:#fff;font-size:14px;font-weight:500;flex:1;">${message}</span><button onclick="this.closest('#bgToast').remove()" style="background:none;border:none;color:#72767d;font-size:18px;cursor:pointer;padding:0;line-height:1;">×</button>`;
+        if (toast._timer) clearTimeout(toast._timer);
+        if (duration > 0) toast._timer = setTimeout(() => toast.remove(), duration);
+    }
+
+    function pollToast(serverId, type) {
+        const statusUrl = type === 'setup'
+            ? '/api/setup/status/' + serverId
+            : '/api/update/status/' + serverId;
+        let polls = 0;
+        const interval = setInterval(() => {
+            polls++;
+            fetch(statusUrl).then(r => r.json()).then(status => {
+                const done  = type === 'setup' ? status.setup_completed : status.update_complete;
+                const err   = type === 'setup' ? status.setup_error     : status.update_error;
+                const label = type === 'setup' ? 'Setup'                : 'Update';
+                if (done) {
+                    clearInterval(interval);
+                    localStorage.removeItem('bgJob');
+                    showToast(`${label} complete! Your server is ready.`, 'success', 6000);
+                    setTimeout(() => location.reload(), 2000);
+                } else if (err) {
+                    clearInterval(interval);
+                    localStorage.removeItem('bgJob');
+                    showToast(`${label} failed: ${err}`, 'error', 0);
+                } else if (polls >= 90) {
+                    clearInterval(interval);
+                    localStorage.removeItem('bgJob');
+                    showToast(`${label} is taking longer than expected.`, 'error', 0);
+                }
+            }).catch(() => {});
+        }, 3000);
+    }
+
+    // Open first card by default if only one server
+    document.addEventListener('DOMContentLoaded', () => {
+        const cards = document.querySelectorAll('.server-card');
+
+        // If URL has a #server_id hash, open and scroll to that card
+        const hash = location.hash.slice(1);
+        if (hash) {
+            const target = document.getElementById('card-' + hash);
+            if (target) {
+                target.classList.add('open');
+                setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+            }
+        } else if (cards.length === 1) {
+            cards[0].classList.add('open');
+        }
+
+        // Show draft notice if one exists
+        const DRAFT_KEY = 'serverSetupDraft';
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (raw) {
+            try {
+                const draft = JSON.parse(raw);
+                const notice = document.getElementById('draftNotice');
+                const link   = document.getElementById('draftNoticeLink');
+                if (draft.server_name) link.textContent = 'Continue "' + draft.server_name + '"';
+                notice.classList.add('show');
+            } catch {}
+        }
+    });
+
+    function dismissDraftNotice() {
+        localStorage.removeItem('serverSetupDraft');
+        document.getElementById('draftNotice').classList.remove('show');
+    }
+</script>
+
+<!-- Invite Modal -->
+<div id="inviteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+     align-items:center;justify-content:center;z-index:300;padding:20px;">
+    <div style="background:#2f3136;border-radius:12px;padding:30px;max-width:460px;width:90%;
+                box-shadow:0 12px 40px rgba(0,0,0,.5);position:relative;">
+        <button onclick="document.getElementById('inviteModal').style.display='none'"
+                style="position:absolute;top:14px;right:16px;background:none;border:none;
+                       color:#72767d;font-size:22px;cursor:pointer;">×</button>
+        <h2 style="color:#7289da;margin-bottom:6px;">➕ Invite Collaborator</h2>
+        <p id="inviteServerName" style="color:#72767d;font-size:13px;margin-bottom:20px;"></p>
+
+        <p style="color:#b9bbbe;font-size:13px;margin-bottom:12px;font-weight:600;">Permissions to grant:</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px;">
+            <label style="display:flex;align-items:center;gap:10px;color:#b9bbbe;font-size:14px;cursor:pointer;">
+                <input type="checkbox" value="view_server" class="inv-perm" checked> 👁️ View server configuration
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;color:#b9bbbe;font-size:14px;cursor:pointer;">
+                <input type="checkbox" value="edit_server" class="inv-perm"> ✏️ Edit server configuration
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;color:#b9bbbe;font-size:14px;cursor:pointer;">
+                <input type="checkbox" value="view_bots" class="inv-perm" checked> 🤖 View bots
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;color:#b9bbbe;font-size:14px;cursor:pointer;">
+                <input type="checkbox" value="edit_bots" class="inv-perm"> ⚙️ Manage bots
+            </label>
+        </div>
+
+        <div id="inviteLinkBox" style="display:none;margin-bottom:16px;">
+            <p style="color:#b9bbbe;font-size:13px;margin-bottom:8px;">Share this link:</p>
+            <div style="display:flex;gap:8px;">
+                <input id="inviteLinkInput" type="text" readonly
+                       style="flex:1;padding:10px 12px;background:#40444b;border:1px solid #202225;
+                              border-radius:5px;color:#fff;font-size:13px;font-family:monospace;">
+                <button onclick="copyInviteLink()"
+                        style="background:#7289da;color:#fff;border:none;padding:10px 16px;
+                               border-radius:5px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
+                    Copy
+                </button>
+            </div>
+        </div>
+
+        <button id="genInviteBtn" onclick="generateInvite()"
+                style="width:100%;background:#43b581;color:#fff;border:none;padding:13px;
+                       border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;">
+            🔗 Generate Invite Link
+        </button>
+    </div>
+</div>
+
+<!-- Edit Collaborator Modal -->
+<div id="editCollabModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+     align-items:center;justify-content:center;z-index:300;padding:20px;">
+    <div style="background:#2f3136;border-radius:12px;padding:30px;max-width:420px;width:90%;
+                box-shadow:0 12px 40px rgba(0,0,0,.5);position:relative;">
+        <button onclick="document.getElementById('editCollabModal').style.display='none'"
+                style="position:absolute;top:14px;right:16px;background:none;border:none;
+                       color:#72767d;font-size:22px;cursor:pointer;">×</button>
+        <h2 style="color:#7289da;margin-bottom:6px;">Edit Permissions</h2>
+        <p id="editCollabName" style="color:#72767d;font-size:13px;margin-bottom:20px;"></p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px;">
+            <label style="display:flex;align-items:center;gap:10px;color:#b9bbbe;font-size:14px;cursor:pointer;">
+                <input type="checkbox" value="view_server" class="edit-perm"> 👁️ View server configuration
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;color:#b9bbbe;font-size:14px;cursor:pointer;">
+                <input type="checkbox" value="edit_server" class="edit-perm"> ✏️ Edit server configuration
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;color:#b9bbbe;font-size:14px;cursor:pointer;">
+                <input type="checkbox" value="view_bots" class="edit-perm"> 🤖 View bots
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;color:#b9bbbe;font-size:14px;cursor:pointer;">
+                <input type="checkbox" value="edit_bots" class="edit-perm"> ⚙️ Manage bots
+            </label>
+        </div>
+        <div style="display:flex;gap:10px;">
+            <button onclick="document.getElementById('editCollabModal').style.display='none'"
+                    style="flex:1;background:transparent;color:#72767d;border:1px solid #40444b;
+                           padding:11px;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>
+            <button onclick="saveCollaborator()"
+                    style="flex:1;background:#43b581;color:#fff;border:none;padding:11px;
+                           border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Assets Modal -->
+<div id="assetsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);
+     align-items:center;justify-content:center;z-index:300;padding:20px;">
+    <div style="background:#2f3136;border-radius:14px;padding:32px;max-width:560px;width:90%;
+                box-shadow:0 20px 60px rgba(0,0,0,.6);position:relative;max-height:88vh;overflow-y:auto;">
+        <button onclick="document.getElementById('assetsModal').style.display='none'"
+                style="position:absolute;top:16px;right:18px;background:none;border:none;
+                       color:#72767d;font-size:24px;cursor:pointer;line-height:1;">×</button>
+
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;gap:12px;">
+            <div>
+                <h2 style="color:#fff;font-size:1.25em;font-weight:700;margin-bottom:4px;">🖼️ Server Assets</h2>
+                <p id="assetsModalServerName" style="color:#72767d;font-size:13px;margin:0;"></p>
+            </div>
+            <button id="assetsSyncBtn" onclick="syncAssetsFromDiscord()"
+                    style="flex-shrink:0;background:#5865f2;color:#fff;border:none;
+                           padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;
+                           cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s;"
+                    title="Pull current assets from your live Discord server">
+                🔄 Sync from Discord
+            </button>
+        </div>
+        <div id="assetsSyncStatus" style="display:none;margin-bottom:16px;padding:10px 14px;
+             border-radius:8px;font-size:13px;font-weight:500;"></div>
+
+        <!-- Emoji -->
+        <div class="asset-section">
+            <div class="asset-section-header">
+                <span class="asset-section-label">😀 Custom Emoji <span class="asset-count-badge" id="emojiCount">0</span></span>
+            </div>
+            <div class="asset-items" id="emojiList"></div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <label style="background:#40444b;color:#b9bbbe;border:1px solid #202225;border-radius:6px;
+                                  padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+                                  transition:border-color .15s;" title="PNG, JPG, GIF or WebP">
+                        📁 Choose Image
+                        <input type="file" id="emojiFileInput" accept="image/png,image/jpeg,image/gif,image/webp"
+                               style="display:none;" onchange="onAssetFileChange('emoji',this)">
+                    </label>
+                    <span id="emojiFileName" style="color:#72767d;font-size:12px;flex:1;overflow:hidden;
+                                                    text-overflow:ellipsis;white-space:nowrap;">No file selected</span>
+                </div>
+                <div class="asset-input-row">
+                    <input id="emojiInput" type="text" placeholder="Name (e.g. party)">
+                    <button class="asset-add-btn" onclick="addAssetItem('emoji')">+ Add</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stickers -->
+        <div class="asset-section">
+            <div class="asset-section-header">
+                <span class="asset-section-label">🎨 Stickers <span class="asset-count-badge" id="stickersCount">0</span></span>
+            </div>
+            <div class="asset-items" id="stickersList"></div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <label style="background:#40444b;color:#b9bbbe;border:1px solid #202225;border-radius:6px;
+                                  padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+                                  transition:border-color .15s;" title="PNG or GIF">
+                        📁 Choose Image
+                        <input type="file" id="stickersFileInput" accept="image/png,image/gif"
+                               style="display:none;" onchange="onAssetFileChange('stickers',this)">
+                    </label>
+                    <span id="stickersFileName" style="color:#72767d;font-size:12px;flex:1;overflow:hidden;
+                                                       text-overflow:ellipsis;white-space:nowrap;">No file selected</span>
+                </div>
+                <div class="asset-input-row">
+                    <input id="stickersInput" type="text" placeholder="Name (e.g. wave)">
+                    <button class="asset-add-btn" onclick="addAssetItem('stickers')">+ Add</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Soundboard -->
+        <div class="asset-section">
+            <div class="asset-section-header">
+                <span class="asset-section-label">🔊 Soundboard <span class="asset-count-badge" id="soundboardCount">0</span></span>
+            </div>
+            <div class="asset-items" id="soundboardList"></div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <label style="background:#40444b;color:#b9bbbe;border:1px solid #202225;border-radius:6px;
+                                  padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+                                  transition:border-color .15s;" title="MP3, OGG or WAV · max ~512 KB">
+                        📁 Choose Audio
+                        <input type="file" id="soundboardFileInput" accept="audio/mpeg,audio/ogg,audio/wav"
+                               style="display:none;" onchange="onAssetFileChange('soundboard',this)">
+                    </label>
+                    <span id="soundboardFileName" style="color:#72767d;font-size:12px;flex:1;overflow:hidden;
+                                                         text-overflow:ellipsis;white-space:nowrap;">No file selected</span>
+                </div>
+                <div class="asset-input-row">
+                    <input id="soundboardInput" type="text" placeholder="Name (e.g. airhorn)">
+                    <button class="asset-add-btn" onclick="addAssetItem('soundboard')">+ Add</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px;">
+            <button onclick="document.getElementById('assetsModal').style.display='none'"
+                    style="flex:1;background:transparent;color:#72767d;border:1px solid #40444b;
+                           padding:12px;border-radius:8px;font-size:13px;cursor:pointer;
+                           transition:border-color .15s;">Cancel</button>
+            <button onclick="saveAssets()"
+                    style="flex:2;background:#43b581;color:#fff;border:none;padding:12px;
+                           border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;
+                           transition:background .15s;">
+                💾 Save Assets
+            </button>
+        </div>
+        <button onclick="pushAssetsToDiscord()"
+                style="width:100%;margin-top:8px;background:#5865f2;color:#fff;border:none;
+                       padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;
+                       transition:background .15s;" title="Save first, then upload everything to your live Discord server">
+            🚀 Save &amp; Push to Discord Now
+        </button>
+    </div>
+</div>
+
+<!-- ── Server Info Edit Modal ──────────────────────────────────── -->
+<div id="serverInfoModal" class="edit-modal-overlay">
+    <div class="edit-modal-box">
+        <button onclick="document.getElementById('serverInfoModal').style.display='none'"
+                style="position:absolute;top:16px;right:18px;background:none;border:none;color:#72767d;font-size:24px;cursor:pointer;">×</button>
+        <div class="edit-modal-title">⚙️ Server Settings</div>
+
+        <div class="edit-field">
+            <label>Server Name</label>
+            <input id="si-name" type="text" maxlength="100" placeholder="My Server">
+        </div>
+        <div class="edit-field">
+            <label>Welcome Message</label>
+            <select id="si-welcome">
+                <option value="yes">Yes — send welcome message on join</option>
+                <option value="no">No</option>
+            </select>
+        </div>
+
+        <div id="si-status" style="display:none;margin-top:14px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;"></div>
+        <div class="edit-modal-actions">
+            <button class="edit-btn-cancel" onclick="document.getElementById('serverInfoModal').style.display='none'">Cancel</button>
+            <button class="edit-btn-save" onclick="saveServerInfo()">💾 Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Community Settings Modal ──────────────────────────────── -->
+<div id="communityModal" class="edit-modal-overlay">
+    <div class="edit-modal-box">
+        <button onclick="document.getElementById('communityModal').style.display='none'"
+                style="position:absolute;top:16px;right:18px;background:none;border:none;color:#72767d;font-size:24px;cursor:pointer;">×</button>
+        <div class="edit-modal-title">🌐 Community Settings</div>
+
+        <div class="edit-field">
+            <label class="edit-toggle">
+                <input type="checkbox" id="cm-community">
+                <span>Community Server (enables rules channel, server discovery, etc.)</span>
+            </label>
+        </div>
+        <div class="edit-field">
+            <label>Verification Level</label>
+            <select id="cm-verification">
+                <option value="none">None</option>
+                <option value="low">Low — verified email</option>
+                <option value="medium">Medium — registered 5+ min</option>
+                <option value="high">High — member 10+ min</option>
+                <option value="very_high">Highest — phone verified</option>
+            </select>
+        </div>
+        <div class="edit-field">
+            <label>Content Filter</label>
+            <select id="cm-content-filter">
+                <option value="disabled">Disabled</option>
+                <option value="no_role">Members without a role</option>
+                <option value="all_members">All members</option>
+            </select>
+        </div>
+        <div class="edit-field">
+            <label>Vanity URL <span style="color:#72767d;font-weight:400;font-size:11px;">(requires Community + boost level)</span></label>
+            <input id="cm-vanity" type="text" maxlength="32" placeholder="e.g. my-server">
+        </div>
+
+        <div id="cm-status" style="display:none;margin-top:14px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;"></div>
+        <div class="edit-modal-actions">
+            <button class="edit-btn-cancel" onclick="document.getElementById('communityModal').style.display='none'">Cancel</button>
+            <button class="edit-btn-save" onclick="saveCommunitySettings()">💾 Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Roles Management Modal ──────────────────────────────────── -->
+<div id="rolesModal" class="edit-modal-overlay">
+    <div class="edit-modal-box" style="max-width:640px;">
+        <button onclick="document.getElementById('rolesModal').style.display='none'; location.reload();"
+                style="position:absolute;top:16px;right:18px;background:none;border:none;color:#72767d;font-size:24px;cursor:pointer;">×</button>
+
+        <!-- List view -->
+        <div id="roles-list-view">
+            <div class="edit-modal-title">🎭 Custom Roles</div>
+            <div style="background:rgba(250,166,26,.08);border:1px solid rgba(250,166,26,.3);border-radius:8px;
+                        padding:10px 14px;margin-bottom:16px;font-size:12px;color:#faa61a;line-height:1.5;">
+                ⚠️ <strong>Deleting a role here only removes it from the DiscordForge config.</strong>
+                The role still exists on your Discord server and must be deleted manually in
+                <strong>Server Settings → Roles</strong>.
+            </div>
+            <div id="roles-list-body" style="margin-bottom:20px;"></div>
+            <button onclick="openRoleEditForm(null)"
+                    style="width:100%;background:#5865f2;color:#fff;border:none;padding:10px;
+                           border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+                ➕ Add New Role
+            </button>
+            <div id="roles-list-status" style="display:none;margin-top:14px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;"></div>
+        </div>
+
+        <!-- Edit form view -->
+        <div id="roles-edit-view" style="display:none;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+                <button onclick="showRolesListView()"
+                        style="background:none;border:none;color:#7289da;font-size:13px;cursor:pointer;font-weight:700;">← Back</button>
+                <div class="edit-modal-title" id="role-edit-title" style="margin:0;">Edit Role</div>
+            </div>
+            <div class="edit-field">
+                <label>Role Name</label>
+                <input id="re-name" type="text" maxlength="50" placeholder="e.g. Member">
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:18px;align-items:flex-end;">
+                <div class="edit-field" style="flex:1;margin:0;">
+                    <label>Color</label>
+                    <input id="re-color" type="color" value="#99aab5"
+                           style="width:100%;height:38px;padding:2px;border:1px solid #202225;
+                                  border-radius:6px;background:#40444b;cursor:pointer;">
+                </div>
+                <label class="edit-toggle" style="flex:1;padding-bottom:2px;">
+                    <input type="checkbox" id="re-hoist">
+                    <span>Show separately in member list</span>
+                </label>
+            </div>
+            <div class="edit-field">
+                <label>Permissions</label>
+                <div style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap;">
+                    <button onclick="applyRoleTemplate('read-only')"  style="background:#40444b;color:#b9bbbe;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Read-only</button>
+                    <button onclick="applyRoleTemplate('member')"     style="background:#40444b;color:#b9bbbe;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Member</button>
+                    <button onclick="applyRoleTemplate('contributor')" style="background:#40444b;color:#b9bbbe;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Contributor</button>
+                    <button onclick="applyRoleTemplate('moderator')"  style="background:#40444b;color:#b9bbbe;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Moderator</button>
+                    <button onclick="clearRolePerms()" style="background:rgba(240,71,71,.15);color:#f04747;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Clear</button>
+                </div>
+                <div class="perm-grid" id="re-perms"></div>
+            </div>
+            <div class="edit-modal-actions">
+                <button class="edit-btn-cancel" onclick="showRolesListView()">Cancel</button>
+                <button class="edit-btn-save" onclick="saveRoleEdit()">Save Role</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Moderation Edit Modal ───────────────────────────────────── -->
+<div id="moderationModal" class="edit-modal-overlay">
+    <div class="edit-modal-box">
+        <button onclick="document.getElementById('moderationModal').style.display='none'"
+                style="position:absolute;top:16px;right:18px;background:none;border:none;color:#72767d;font-size:24px;cursor:pointer;">×</button>
+        <div class="edit-modal-title">🛡️ Moderation Settings</div>
+
+        <div class="edit-field">
+            <label>Moderator Users</label>
+            <div id="mod-users-list" style="display:flex;flex-wrap:wrap;gap:8px;min-height:36px;
+                 padding:8px;background:#2c2f33;border-radius:6px;border:1px solid #40444b;margin-bottom:8px;"></div>
+            <div style="display:flex;gap:8px;">
+                <input id="mod-user-input" type="text" placeholder="Discord username"
+                       style="flex:1;padding:8px 12px;background:#40444b;border:1px solid #202225;
+                              border-radius:6px;color:#fff;font-size:13px;">
+                <button onclick="addModUser()"
+                        style="background:#5865f2;color:#fff;border:none;padding:8px 16px;
+                               border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Add</button>
+            </div>
+        </div>
+
+        <div id="mod-status" style="display:none;margin-top:14px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;"></div>
+        <div class="edit-modal-actions">
+            <button class="edit-btn-cancel" onclick="document.getElementById('moderationModal').style.display='none'">Cancel</button>
+            <button class="edit-btn-save" onclick="saveModerationSettings()">💾 Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Channels & Categories Modal ────────────────────────────── -->
+<div id="channelsModal" class="edit-modal-overlay">
+    <div class="edit-modal-box" style="max-width:680px;max-height:88vh;display:flex;flex-direction:column;">
+        <button onclick="document.getElementById('channelsModal').style.display='none'"
+                style="position:absolute;top:16px;right:18px;background:none;border:none;color:#72767d;font-size:24px;cursor:pointer;">×</button>
+        <div class="edit-modal-title">📋 Channels &amp; Categories</div>
+
+        <div style="background:rgba(88,101,242,.1);border:1px solid rgba(88,101,242,.3);border-radius:8px;
+                    padding:10px 14px;margin-bottom:16px;font-size:12px;color:#8ea1e1;line-height:1.5;flex-shrink:0;">
+            ⚡ Changes are applied <strong>live to your Discord server</strong> immediately.
+        </div>
+
+        <div id="ch-loading" style="text-align:center;padding:32px;color:#72767d;font-size:13px;">Loading channels from Discord…</div>
+        <div id="ch-error"   style="display:none;background:rgba(240,71,71,.1);border:1px solid rgba(240,71,71,.3);
+                                    border-radius:8px;padding:10px 14px;color:#f04747;font-size:13px;margin-bottom:12px;"></div>
+
+        <div id="ch-body" style="display:none;overflow-y:auto;flex:1;padding-right:4px;"></div>
+
+        <div id="ch-footer" style="display:none;padding-top:16px;border-top:1px solid #40444b;flex-shrink:0;margin-top:12px;">
+            <button onclick="chAddCategory()"
+                    style="background:#5865f2;color:#fff;border:none;padding:9px 18px;border-radius:8px;
+                           font-size:13px;font-weight:700;cursor:pointer;">➕ Add Category</button>
+        </div>
+    </div>
+</div>
+
+<!-- Asset View Popup (read-only, per category) -->
+<div id="assetViewPopup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);
+     align-items:center;justify-content:center;z-index:300;padding:20px;">
+    <div style="background:#2f3136;border-radius:14px;padding:28px;max-width:560px;width:95%;
+                box-shadow:0 20px 60px rgba(0,0,0,.6);position:relative;max-height:85vh;
+                display:flex;flex-direction:column;">
+        <button onclick="document.getElementById('assetViewPopup').style.display='none'"
+                style="position:absolute;top:14px;right:16px;background:none;border:none;
+                       color:#72767d;font-size:22px;cursor:pointer;line-height:1;">×</button>
+        <h2 id="assetViewTitle" style="color:#fff;font-size:1.1em;font-weight:700;margin-bottom:20px;flex-shrink:0;"></h2>
+        <div id="assetViewGrid" style="overflow-y:auto;flex:1;"></div>
+    </div>
+</div>
+
+<!-- Role Detail Popup -->
+<div id="rolePopup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+     align-items:center;justify-content:center;z-index:300;padding:20px;">
+    <div style="background:#2f3136;border-radius:12px;padding:28px;max-width:420px;width:90%;
+                box-shadow:0 16px 48px rgba(0,0,0,.6);position:relative;">
+        <button onclick="document.getElementById('rolePopup').style.display='none'"
+                style="position:absolute;top:14px;right:16px;background:none;border:none;
+                       color:#72767d;font-size:22px;cursor:pointer;line-height:1;">×</button>
+
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <span id="rolePopupDot" style="width:20px;height:20px;border-radius:50%;
+                  display:inline-block;border:3px solid rgba(255,255,255,.2);flex-shrink:0;"></span>
+            <h2 id="rolePopupName" style="color:#fff;font-size:1.15em;font-weight:700;margin:0;"></h2>
+            <span id="rolePopupHoist" style="display:none;font-size:11px;color:#7289da;
+                  background:rgba(114,137,218,.15);padding:2px 8px;border-radius:8px;">hoisted</span>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <div style="font-size:11px;font-weight:700;color:#72767d;text-transform:uppercase;
+                        letter-spacing:.8px;margin-bottom:10px;">Permissions</div>
+            <div id="rolePopupPerms" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let _inviteServerId = null;
+    let _editCollabServerId = null;
+    let _editCollabUser = null;
+
+    function openInviteModal(serverId, serverName) {
+        _inviteServerId = serverId;
+        document.getElementById('inviteServerName').textContent = serverName;
+        document.getElementById('inviteLinkBox').style.display = 'none';
+        document.getElementById('genInviteBtn').style.display = 'block';
+        document.getElementById('genInviteBtn').textContent = '🔗 Generate Invite Link';
+        document.getElementById('inviteModal').style.display = 'flex';
+    }
+
+    function generateInvite() {
+        const perms = [...document.querySelectorAll('.inv-perm:checked')].map(cb => cb.value);
+        if (!perms.length) { alert('Select at least one permission.'); return; }
+
+        const btn = document.getElementById('genInviteBtn');
+        btn.textContent = '⏳ Generating...';
+        btn.disabled = true;
+
+        fetch('/api/invites/create', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({server_id: _inviteServerId, permissions: perms})
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.textContent = '🔗 Generate New Link';
+            if (data.success) {
+                const fullUrl = window.location.origin + data.invite_url;
+                document.getElementById('inviteLinkInput').value = fullUrl;
+                document.getElementById('inviteLinkBox').style.display = 'block';
+            } else {
+                alert('❌ ' + (data.error || 'Failed'));
+            }
+        })
+        .catch(() => { btn.disabled = false; btn.textContent = '🔗 Generate Invite Link'; });
+    }
+
+    function copyInviteLink() {
+        const input = document.getElementById('inviteLinkInput');
+        const copy = () => {
+            showToast('🔗 Invite link copied!', 'success', 3000);
+            document.getElementById('inviteModal').style.display = 'none';
+        };
+        navigator.clipboard.writeText(input.value).then(copy)
+            .catch(() => { input.select(); document.execCommand('copy'); copy(); });
+    }
+
+    function editCollaborator(serverId, username, currentPerms) {
+        _editCollabServerId = serverId;
+        _editCollabUser = username;
+        document.getElementById('editCollabName').textContent = 'Editing: ' + username;
+        document.querySelectorAll('.edit-perm').forEach(cb => {
+            cb.checked = currentPerms.includes(cb.value);
+        });
+        document.getElementById('editCollabModal').style.display = 'flex';
+    }
+
+    function saveCollaborator() {
+        const perms = [...document.querySelectorAll('.edit-perm:checked')].map(cb => cb.value);
+        fetch(`/api/collaborators/${_editCollabServerId}/update`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({username: _editCollabUser, permissions: perms})
+        })
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('editCollabModal').style.display = 'none';
+            if (d.success) { showToast(d.message, 'success', 3000); setTimeout(() => location.reload(), 1000); }
+            else alert('❌ ' + d.error);
+        });
+    }
+
+    function removeCollaborator(serverId, username, btn) {
+        if (!confirm(`Remove ${username} as a collaborator?`)) return;
+        btn.disabled = true;
+        fetch(`/api/collaborators/${serverId}/remove`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({username})
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { showToast(d.message, 'success', 3000); setTimeout(() => location.reload(), 800); }
+            else { alert('❌ ' + d.error); btn.disabled = false; }
+        });
+    }
+
+    // ── Shared edit modal helpers ──────────────────────────────────
+    let _editServerId = null;
+
+    function _showStatus(elId, msg, ok) {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        el.style.display = 'block';
+        el.style.background = ok ? 'rgba(67,181,129,.15)' : 'rgba(240,71,71,.15)';
+        el.style.color = ok ? '#43b581' : '#f04747';
+        el.textContent = msg;
+    }
+
+    function _fetchEditData(serverId, cb) {
+        fetch(`/api/server/${serverId}/edit-data`)
+            .then(r => r.json())
+            .then(cb)
+            .catch(() => cb(null));
+    }
+
+    function _patchSection(section, data, statusEl, onSuccess) {
+        fetch(`/api/server/${_editServerId}/patch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ section, data })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                _showStatus(statusEl, '✅ Saved!', true);
+                setTimeout(() => {
+                    document.getElementById(statusEl).style.display = 'none';
+                    if (onSuccess) onSuccess();
+                }, 1200);
+            } else {
+                _showStatus(statusEl, '❌ ' + (d.error || 'Save failed'), false);
+            }
+        })
+        .catch(() => _showStatus(statusEl, '❌ Could not reach server', false));
+    }
+
+    // ── Server Info modal ──────────────────────────────────────────
+    function openServerInfoModal(serverId) {
+        _editServerId = serverId;
+        document.getElementById('si-status').style.display = 'none';
+        document.getElementById('serverInfoModal').style.display = 'flex';
+
+        _fetchEditData(serverId, d => {
+            if (!d) return;
+            document.getElementById('si-name').value    = d.info.server_name || '';
+            document.getElementById('si-welcome').value = d.info.welcome_template || 'no';
+        });
+    }
+
+    function saveServerInfo() {
+        _patchSection('info', {
+            server_name:      document.getElementById('si-name').value.trim(),
+            welcome_template: document.getElementById('si-welcome').value,
+        }, 'si-status', () => {
+            document.getElementById('serverInfoModal').style.display = 'none';
+            showToast('✅ Server settings updated', 'success', 1500);
+            setTimeout(() => location.reload(), 1600);
+        });
+    }
+
+    // ── Community modal ────────────────────────────────────────────
+    let _cmWasCommunity = false;
+
+    function openCommunityModal(serverId) {
+        _editServerId = serverId;
+        document.getElementById('cm-status').style.display = 'none';
+        document.getElementById('communityModal').style.display = 'flex';
+
+        _fetchEditData(serverId, d => {
+            if (!d) return;
+            _cmWasCommunity = !!d.info.community_server;
+            document.getElementById('cm-community').checked      = _cmWasCommunity;
+            document.getElementById('cm-vanity').value           = d.info.vanity_url || '';
+            const cs = d.community_settings || {};
+            document.getElementById('cm-verification').value     = cs.verification_level || 'medium';
+            document.getElementById('cm-content-filter').value   = cs.content_filter    || 'all_members';
+        });
+    }
+
+    function saveCommunitySettings() {
+        const nowCommunity = document.getElementById('cm-community').checked;
+        if (_cmWasCommunity && !nowCommunity) {
+            if (!confirm(
+                'Disable Community on your Discord server?\n\n' +
+                'This will remove the Community feature, unset the rules and updates channels, ' +
+                'and may disable forum channels. This cannot be undone from DiscordForge.\n\n' +
+                'Are you sure?'
+            )) return;
+        }
+        _patchSection('community', {
+            community_server:   nowCommunity,
+            vanity_url:         document.getElementById('cm-vanity').value.trim(),
+            verification_level: document.getElementById('cm-verification').value,
+            content_filter:     document.getElementById('cm-content-filter').value,
+        }, 'cm-status', () => {
+            document.getElementById('communityModal').style.display = 'none';
+            showToast('✅ Community settings updated', 'success', 1500);
+            setTimeout(() => location.reload(), 1600);
+        });
+    }
+
+    // ── Roles modal ────────────────────────────────────────────────
+    const ROLE_PERMISSIONS = [
+        { key: 'send_messages',       label: 'Send Messages',      group: 'Text' },
+        { key: 'read_messages',       label: 'Read Messages',      group: 'Text' },
+        { key: 'manage_messages',     label: 'Manage Messages',    group: 'Text' },
+        { key: 'embed_links',         label: 'Embed Links',        group: 'Text' },
+        { key: 'attach_files',        label: 'Attach Files',       group: 'Text' },
+        { key: 'add_reactions',       label: 'Add Reactions',      group: 'Text' },
+        { key: 'mention_everyone',    label: 'Mention @everyone',  group: 'Text' },
+        { key: 'use_external_emojis', label: 'External Emojis',    group: 'Text' },
+        { key: 'connect',             label: 'Connect',            group: 'Voice' },
+        { key: 'speak',               label: 'Speak',              group: 'Voice' },
+        { key: 'mute_members',        label: 'Mute Members',       group: 'Voice' },
+        { key: 'deafen_members',      label: 'Deafen Members',     group: 'Voice' },
+        { key: 'move_members',        label: 'Move Members',       group: 'Voice' },
+        { key: 'change_nickname',     label: 'Change Nickname',    group: 'General' },
+        { key: 'manage_nicknames',    label: 'Manage Nicknames',   group: 'General' },
+        { key: 'view_audit_log',      label: 'View Audit Log',     group: 'General' },
+        { key: 'kick_members',        label: 'Kick Members',       group: 'Moderation' },
+        { key: 'ban_members',         label: 'Ban Members',        group: 'Moderation' },
+        { key: 'manage_roles',        label: 'Manage Roles',       group: 'Moderation' },
+        { key: 'manage_channels',     label: 'Manage Channels',    group: 'Moderation' },
+    ];
+    const ROLE_TEMPLATES = {
+        'read-only':   ['read_messages','add_reactions','use_external_emojis','connect'],
+        'member':      ['read_messages','send_messages','embed_links','attach_files','add_reactions','use_external_emojis','change_nickname','connect','speak'],
+        'contributor': ['read_messages','send_messages','embed_links','attach_files','add_reactions','use_external_emojis','change_nickname','mention_everyone','connect','speak'],
+        'moderator':   ['read_messages','send_messages','embed_links','attach_files','add_reactions','use_external_emojis','change_nickname','manage_nicknames','view_audit_log','manage_messages','connect','speak','mute_members','deafen_members','move_members','kick_members','ban_members'],
+    };
+
+    let _rolesData = [];
+    let _editRoleIdx = null;
+
+    function openRolesModal(serverId) {
+        _editServerId = serverId;
+        document.getElementById('rolesModal').style.display = 'flex';
+        document.getElementById('roles-list-status').style.display = 'none';
+        showRolesListView();
+
+        _fetchEditData(serverId, d => {
+            if (!d) return;
+            _rolesData = d.roles || [];
+            renderRolesList();
+        });
+    }
+
+    function renderRolesList() {
+        const body = document.getElementById('roles-list-body');
+        if (!_rolesData.length) {
+            body.innerHTML = '<div style="color:#72767d;font-size:13px;padding:12px 0;">No custom roles yet.</div>';
+            return;
+        }
+        body.innerHTML = _rolesData.map((r, i) => {
+            const name  = typeof r === 'string' ? r : r.name;
+            const color = typeof r === 'object' ? (r.color || '#99aab5') : '#99aab5';
+            const perms = typeof r === 'object' ? (r.permissions || []) : [];
+            return `<div class="role-manage-row">
+                <span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;border:2px solid rgba(255,255,255,.15);"></span>
+                <span style="color:#fff;font-weight:600;font-size:13px;flex:1;">${name}</span>
+                <span style="color:#72767d;font-size:11px;">${perms.length} perm${perms.length !== 1 ? 's' : ''}</span>
+                <div class="role-manage-actions">
+                    <button onclick="openRoleEditForm(${i})"
+                            style="background:#40444b;color:#b9bbbe;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Edit</button>
+                    <button onclick="deleteRole(${i})"
+                            style="background:rgba(240,71,71,.15);color:#f04747;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Delete</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function showRolesListView() {
+        document.getElementById('roles-list-view').style.display = 'block';
+        document.getElementById('roles-edit-view').style.display = 'none';
+    }
+
+    function buildPermGrid(activePerms) {
+        const grid = document.getElementById('re-perms');
+        const groups = {};
+        ROLE_PERMISSIONS.forEach(p => {
+            if (!groups[p.group]) groups[p.group] = [];
+            groups[p.group].push(p);
+        });
+        grid.innerHTML = Object.entries(groups).map(([grp, perms]) =>
+            `<div style="width:100%;color:#72767d;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-top:8px;margin-bottom:2px;">${grp}</div>` +
+            perms.map(p =>
+                `<span class="perm-chip ${activePerms.includes(p.key) ? 'active' : ''}"
+                       onclick="togglePerm(this,'${p.key}')">${p.label}</span>`
+            ).join('')
+        ).join('');
+    }
+
+    function togglePerm(el, key) {
+        el.classList.toggle('active');
+    }
+
+    function getSelectedPerms() {
+        return [...document.querySelectorAll('#re-perms .perm-chip.active')].map(el => {
+            const onclick = el.getAttribute('onclick');
+            const m = onclick.match(/'([^']+)'\)$/);
+            return m ? m[1] : null;
+        }).filter(Boolean);
+    }
+
+    function applyRoleTemplate(tpl) {
+        const perms = ROLE_TEMPLATES[tpl] || [];
+        document.querySelectorAll('#re-perms .perm-chip').forEach(el => {
+            const onclick = el.getAttribute('onclick');
+            const m = onclick.match(/'([^']+)'\)$/);
+            if (m) el.classList.toggle('active', perms.includes(m[1]));
+        });
+    }
+
+    function clearRolePerms() {
+        document.querySelectorAll('#re-perms .perm-chip').forEach(el => el.classList.remove('active'));
+    }
+
+    function openRoleEditForm(idx) {
+        _editRoleIdx = idx;
+        document.getElementById('roles-list-view').style.display = 'none';
+        document.getElementById('roles-edit-view').style.display = 'block';
+        document.getElementById('role-edit-title').textContent = idx === null ? 'New Role' : 'Edit Role';
+
+        let name = '', color = '#99aab5', hoist = false, perms = [];
+        if (idx !== null && _rolesData[idx]) {
+            const r = _rolesData[idx];
+            name  = typeof r === 'string' ? r : (r.name || '');
+            color = typeof r === 'object' ? (r.color || '#99aab5') : '#99aab5';
+            hoist = typeof r === 'object' ? !!r.hoist : false;
+            perms = typeof r === 'object' ? (r.permissions || []) : [];
+        }
+        document.getElementById('re-name').value  = name;
+        document.getElementById('re-color').value = color;
+        document.getElementById('re-hoist').checked = hoist;
+        buildPermGrid(perms);
+    }
+
+    function saveRoleEdit() {
+        const name = document.getElementById('re-name').value.trim();
+        if (!name) { alert('Role name is required'); return; }
+        const role = {
+            name,
+            color:       document.getElementById('re-color').value,
+            hoist:       document.getElementById('re-hoist').checked,
+            permissions: getSelectedPerms(),
+        };
+        if (_editRoleIdx === null) {
+            _rolesData.push(role);
+        } else {
+            _rolesData[_editRoleIdx] = role;
+        }
+        _commitRoles(() => showRolesListView());
+    }
+
+    function deleteRole(idx) {
+        if (!confirm(`Delete role "${typeof _rolesData[idx] === 'string' ? _rolesData[idx] : _rolesData[idx].name}"?`)) return;
+        _rolesData.splice(idx, 1);
+        _commitRoles(() => renderRolesList());
+    }
+
+    function _commitRoles(onSuccess) {
+        fetch(`/api/server/${_editServerId}/patch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ section: 'roles', data: { custom_roles: _rolesData } })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                renderRolesList();
+                // Update the count badge in the card header
+                document.querySelectorAll(`.role-count-${_editServerId}`).forEach(el => el.textContent = _rolesData.length);
+                showToast('✅ Roles updated', 'success', 2500);
+                if (onSuccess) onSuccess();
+            } else {
+                _showStatus('roles-list-status', '❌ ' + (d.error || 'Save failed'), false);
+            }
+        })
+        .catch(() => _showStatus('roles-list-status', '❌ Could not reach server', false));
+    }
+
+    // ── Moderation modal ────────────────────────────────────────────
+    let _modUsers = [];
+
+    function openModerationModal(serverId) {
+        _editServerId = serverId;
+        document.getElementById('mod-status').style.display = 'none';
+        document.getElementById('mod-user-input').value = '';
+        document.getElementById('moderationModal').style.display = 'flex';
+
+        _fetchEditData(serverId, d => {
+            if (!d) return;
+            _modUsers = (d.moderation.moderator_users || []).slice();
+            renderModUsers();
+        });
+    }
+
+    function renderModUsers() {
+        const list = document.getElementById('mod-users-list');
+        if (!_modUsers.length) {
+            list.innerHTML = '<span style="color:#4f545c;font-size:12px;">No moderators assigned</span>';
+            return;
+        }
+        list.innerHTML = _modUsers.map((u, i) =>
+            `<span style="background:#40444b;color:#dcddde;padding:5px 12px;border-radius:12px;
+                          font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;">
+                🛡️ ${u}
+                <button onclick="removeModUser(${i})"
+                        style="background:none;border:none;color:#72767d;cursor:pointer;font-size:14px;line-height:1;">×</button>
+            </span>`
+        ).join('');
+    }
+
+    function addModUser() {
+        const input = document.getElementById('mod-user-input');
+        const val = input.value.trim();
+        if (!val || _modUsers.includes(val)) { input.value = ''; return; }
+        _modUsers.push(val);
+        renderModUsers();
+        input.value = '';
+        input.focus();
+    }
+
+    function removeModUser(idx) {
+        _modUsers.splice(idx, 1);
+        renderModUsers();
+    }
+
+    document.getElementById('mod-user-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addModUser();
+    });
+
+    function saveModerationSettings() {
+        _patchSection('moderation', {
+            moderator_users: _modUsers,
+        }, 'mod-status', () => {
+            document.getElementById('moderationModal').style.display = 'none';
+            showToast('✅ Moderation settings updated', 'success', 1500);
+            setTimeout(() => location.reload(), 1600);
+        });
+    }
+
+    // ── Assets modal ───────────────────────────────────────────────
+    let _assetsServerId = null;
+    let _assetsData = { emoji: [], stickers: [], soundboard: [] };
+    let _pendingFiles = { emoji: null, stickers: null, soundboard: null };
+
+    function onAssetFileChange(key, input) {
+        const fileNameMap = { emoji: 'emojiFileName', stickers: 'stickersFileName', soundboard: 'soundboardFileName' };
+        const nameInputMap = { emoji: 'emojiInput', stickers: 'stickersInput', soundboard: 'soundboardInput' };
+        const file = input.files[0];
+        if (!file) { _pendingFiles[key] = null; document.getElementById(fileNameMap[key]).textContent = 'No file selected'; return; }
+        document.getElementById(fileNameMap[key]).textContent = file.name;
+        const nameEl = document.getElementById(nameInputMap[key]);
+        if (!nameEl.value) nameEl.value = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+        const reader = new FileReader();
+        reader.onload = e => { _pendingFiles[key] = { dataUrl: e.target.result, fileName: file.name }; };
+        reader.readAsDataURL(file);
+    }
+
+    function openAssetsModal(serverId) {
+        _assetsServerId = serverId;
+        _pendingFiles = { emoji: null, stickers: null, soundboard: null };
+        ['emojiFileInput','stickersFileInput','soundboardFileInput'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = '';
+        });
+        ['emojiFileName','stickersFileName','soundboardFileName'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.textContent = 'No file selected';
+        });
+        const modal = document.getElementById('assetsModal');
+        document.getElementById('assetsModalServerName').textContent = 'Loading…';
+        document.getElementById('assetsSyncStatus').style.display = 'none';
+        document.getElementById('assetsSyncBtn').disabled = false;
+        document.getElementById('assetsSyncBtn').innerHTML = '🔄 Sync from Discord';
+        modal.style.display = 'flex';
+
+        fetch(`/api/server/${serverId}/assets`)
+            .then(r => r.json())
+            .then(d => {
+                _assetsData = Object.assign({ emoji: [], stickers: [], soundboard: [] }, d.assets || {});
+                document.getElementById('assetsModalServerName').textContent = 'Server: ' + serverId;
+                renderAssetsList('emoji');
+                renderAssetsList('stickers');
+                renderAssetsList('soundboard');
+            })
+            .catch(() => {
+                document.getElementById('assetsModalServerName').textContent = '⚠️ Failed to load assets';
+            });
+    }
+
+    function renderAssetsList(key) {
+        const countMap = { emoji: 'emojiCount', stickers: 'stickersCount', soundboard: 'soundboardCount' };
+        const listMap  = { emoji: 'emojiList',  stickers: 'stickersList',  soundboard: 'soundboardList'  };
+        const items = _assetsData[key] || [];
+
+        document.getElementById(countMap[key]).textContent = items.length;
+        const list = document.getElementById(listMap[key]);
+        if (items.length) {
+            list.classList.add('has-items');
+            list.innerHTML = items.map((item, i) => {
+                const name = assetName(item);
+                let thumb = '';
+                if (key === 'emoji') {
+                    const url = emojiImgUrl(item);
+                    thumb = url
+                        ? `<img src="${url}" style="width:18px;height:18px;object-fit:contain;border-radius:3px;" onerror="this.style.display='none'">`
+                        : `<span style="font-size:14px;">😀</span>`;
+                } else if (key === 'stickers') {
+                    const url = stickerImgUrl(item);
+                    thumb = url
+                        ? `<img src="${url}" style="width:18px;height:18px;object-fit:contain;border-radius:3px;" onerror="this.style.display='none'">`
+                        : `<span style="font-size:14px;">🎨</span>`;
+                } else {
+                    const emoji = typeof item === 'object' ? (item.emoji_name || '🔊') : '🔊';
+                    thumb = `<span style="font-size:14px;">${emoji}</span>`;
+                }
+                return `<span class="asset-tag">
+                    ${thumb}
+                    ${name}
+                    <button onclick="removeAssetItem('${key}',${i})" title="Remove">×</button>
+                </span>`;
+            }).join('');
+        } else {
+            list.classList.remove('has-items');
+            list.innerHTML = '<span class="asset-empty">Nothing added yet</span>';
+        }
+    }
+
+    function addAssetItem(key) {
+        const inputMap    = { emoji: 'emojiInput', stickers: 'stickersInput', soundboard: 'soundboardInput' };
+        const fileInpMap  = { emoji: 'emojiFileInput', stickers: 'stickersFileInput', soundboard: 'soundboardFileInput' };
+        const fileNameMap = { emoji: 'emojiFileName', stickers: 'stickersFileName', soundboard: 'soundboardFileName' };
+        const pf = _pendingFiles[key];
+        if (!pf) { showToast('⚠️ Select a file first', 'error', 2200); return; }
+        const input = document.getElementById(inputMap[key]);
+        const val = input.value.trim();
+        if (!val) { showToast('⚠️ Enter a name', 'error', 2200); return; }
+        if (!_assetsData[key]) _assetsData[key] = [];
+        const exists = _assetsData[key].some(item => assetName(item).toLowerCase() === val.toLowerCase());
+        if (!exists) {
+            _assetsData[key].push({ name: val, file_data: pf.dataUrl, file_name: pf.fileName });
+            renderAssetsList(key);
+        }
+        input.value = '';
+        document.getElementById(fileInpMap[key]).value = '';
+        document.getElementById(fileNameMap[key]).textContent = 'No file selected';
+        _pendingFiles[key] = null;
+        input.focus();
+    }
+
+    function removeAssetItem(key, idx) {
+        _assetsData[key].splice(idx, 1);
+        renderAssetsList(key);
+    }
+
+    function saveAssets() {
+        const btn = document.querySelector('#assetsModal button[onclick="saveAssets()"]');
+        btn.textContent = '⏳ Saving…';
+        btn.disabled = true;
+
+        fetch(`/api/server/${_assetsServerId}/assets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assets: _assetsData })
+        })
+        .then(r => r.json())
+        .then(d => {
+            btn.disabled = false;
+            btn.textContent = '💾 Save Assets';
+            if (d.ok) {
+                showToast('✅ Assets saved!', 'success', 1500);
+                document.getElementById('assetsModal').style.display = 'none';
+                setTimeout(() => location.reload(), 1600);
+            } else {
+                alert('❌ ' + (d.error || 'Failed to save'));
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.textContent = '💾 Save Assets';
+            alert('❌ Could not reach server');
+        });
+    }
+
+    function syncAssetsFromDiscord() {
+        const btn    = document.getElementById('assetsSyncBtn');
+        const status = document.getElementById('assetsSyncStatus');
+
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Syncing…';
+        status.style.display = 'none';
+
+        fetch(`/api/server/${_assetsServerId}/assets/live`)
+            .then(r => r.json())
+            .then(d => {
+                btn.disabled = false;
+                btn.innerHTML = '🔄 Sync from Discord';
+
+                if (!d.bot_online) {
+                    status.style.display = 'block';
+                    status.style.background = 'rgba(240,71,71,.15)';
+                    status.style.color = '#f04747';
+                    status.textContent = '⚠️ ' + (d.error || 'Bot is offline or not in the server');
+                    return;
+                }
+                if (d.error) {
+                    status.style.display = 'block';
+                    status.style.background = 'rgba(240,71,71,.15)';
+                    status.style.color = '#f04747';
+                    status.textContent = '❌ ' + d.error;
+                    return;
+                }
+
+                _assetsData = Object.assign({ emoji: [], stickers: [], soundboard: [] }, d.assets);
+                renderAssetsList('emoji');
+                renderAssetsList('stickers');
+                renderAssetsList('soundboard');
+
+                const total = _assetsData.emoji.length + _assetsData.stickers.length + _assetsData.soundboard.length;
+                status.style.display = 'block';
+                status.style.background = 'rgba(67,181,129,.15)';
+                status.style.color = '#43b581';
+                status.textContent = `✅ Synced from Discord — ${total} asset${total !== 1 ? 's' : ''} found. Save to apply.`;
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerHTML = '🔄 Sync from Discord';
+                status.style.display = 'block';
+                status.style.background = 'rgba(240,71,71,.15)';
+                status.style.color = '#f04747';
+                status.textContent = '❌ Could not reach server';
+            });
+    }
+
+    // Enter-key support for asset inputs
+    ['emojiInput','stickersInput','soundboardInput'].forEach((id, i) => {
+        const keys = ['emoji','stickers','soundboard'];
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') addAssetItem(keys[i]); });
+    });
+
+    // ── Helpers for asset items (string or rich object) ────────────
+    function assetName(item) {
+        return typeof item === 'string' ? item : (item.name || '—');
+    }
+
+    function emojiImgUrl(item) {
+        if (typeof item !== 'object') return null;
+        if (item.file_data) return item.file_data;
+        if (!item.id) return null;
+        return `https://cdn.discordapp.com/emojis/${item.id}.${item.animated ? 'gif' : 'png'}?size=64`;
+    }
+
+    function stickerImgUrl(item) {
+        if (typeof item !== 'object') return null;
+        if (item.file_data) return item.file_data;
+        if (!item.id) return null;
+        const ext = item.format_type === 4 ? 'gif' : 'png';
+        return `https://cdn.discordapp.com/stickers/${item.id}.${ext}?size=128`;
+    }
+
+    function pushAssetsToDiscord() {
+        const status = document.getElementById('assetsSyncStatus');
+        status.style.display = 'block';
+        status.style.background = 'rgba(88,101,242,.15)';
+        status.style.color = '#7289da';
+        status.textContent = '⏳ Saving and pushing to Discord…';
+
+        fetch(`/api/server/${_assetsServerId}/assets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assets: _assetsData })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.ok) throw new Error(d.error || 'Save failed');
+            return fetch(`/api/server/${_assetsServerId}/assets/push`, { method: 'POST' });
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                const rawLog = (d.log || '').replace(/\n?---[^\n]*---\n?/, '').trim();
+                const hasErrors = rawLog.includes('❌');
+                const isEmpty = !rawLog;
+                if (hasErrors) {
+                    status.style.background = 'rgba(240,71,71,.15)';
+                    status.style.color = '#f04747';
+                    status.innerHTML = '<strong>⚠️ Upload finished with errors</strong><br><pre style="margin:4px 0 0;font-size:11px;white-space:pre-wrap;color:#dcddde;">'
+                        + rawLog.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre>';
+                } else if (isEmpty) {
+                    status.style.background = 'rgba(240,173,78,.15)';
+                    status.style.color = '#faa61a';
+                    status.textContent = '⚠️ Nothing new to upload (assets may already exist on Discord).';
+                } else {
+                    status.style.background = 'rgba(67,181,129,.15)';
+                    status.style.color = '#43b581';
+                    status.innerHTML = '<strong>✅ Pushed to Discord</strong><br><pre style="margin:4px 0 0;font-size:11px;white-space:pre-wrap;color:#dcddde;">'
+                        + rawLog.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre>';
+                    setTimeout(() => location.reload(), 3000);
+                }
+            } else {
+                status.style.background = 'rgba(240,71,71,.15)';
+                status.style.color = '#f04747';
+                status.textContent = '❌ ' + (d.error || 'Push failed');
+            }
+        })
+        .catch(e => {
+            status.style.background = 'rgba(240,71,71,.15)';
+            status.style.color = '#f04747';
+            status.textContent = '❌ ' + e.message;
+        });
+    }
+
+    // ── Asset view popup (read-only per-category) ──────────────────
+    function viewAssets(title, key, el) {
+        let items = [];
+        try { items = JSON.parse(el.dataset.items || '[]'); } catch {}
+
+        document.getElementById('assetViewTitle').textContent = title + ' — ' + items.length + ' item' + (items.length !== 1 ? 's' : '');
+
+        const grid = document.getElementById('assetViewGrid');
+
+        if (key === 'emoji') {
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = 'repeat(auto-fill,minmax(100px,1fr))';
+            grid.style.gap = '10px';
+            grid.innerHTML = items.map(item => {
+                const name = assetName(item);
+                const url  = emojiImgUrl(item);
+                return `<div style="background:#40444b;border-radius:10px;padding:12px 8px;
+                                    display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;">
+                    ${url
+                        ? `<img src="${url}" alt="${name}"
+                               style="width:48px;height:48px;object-fit:contain;border-radius:6px;"
+                               onerror="this.style.display='none';this.nextSibling.style.display='block';">
+                           <span style="display:none;font-size:32px;">😀</span>`
+                        : `<span style="font-size:32px;">😀</span>`
+                    }
+                    <span style="color:#dcddde;font-size:11px;font-weight:600;
+                                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;"
+                          title="${name}">:${name}:</span>
+                </div>`;
+            }).join('');
+
+        } else if (key === 'stickers') {
+            grid.style.display = 'flex';
+            grid.style.flexDirection = 'column';
+            grid.style.gap = '10px';
+            grid.innerHTML = items.map(item => {
+                const name = assetName(item);
+                const desc = typeof item === 'object' ? (item.description || '') : '';
+                const url  = stickerImgUrl(item);
+                return `<div style="background:#40444b;border-radius:10px;padding:12px 14px;
+                                    display:flex;align-items:center;gap:14px;">
+                    ${url
+                        ? `<img src="${url}" alt="${name}"
+                               style="width:56px;height:56px;object-fit:contain;border-radius:8px;flex-shrink:0;"
+                               onerror="this.style.display='none'">`
+                        : `<span style="font-size:36px;flex-shrink:0;">🎨</span>`
+                    }
+                    <div style="overflow:hidden;">
+                        <div style="color:#fff;font-weight:700;font-size:14px;margin-bottom:3px;">${name}</div>
+                        ${desc ? `<div style="color:#72767d;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${desc}</div>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+
+        } else {
+            // soundboard
+            grid.style.display = 'flex';
+            grid.style.flexDirection = 'column';
+            grid.style.gap = '8px';
+            grid.innerHTML = items.map(item => {
+                const name    = assetName(item);
+                const emoji   = typeof item === 'object' ? (item.emoji_name || '🔊') : '🔊';
+                const soundId = typeof item === 'object' ? item.sound_id : null;
+                const playBtn = soundId
+                    ? `<button onclick="playDiscordSound('${soundId}')"
+                               style="background:#5865f2;color:#fff;border:none;padding:5px 12px;
+                                      border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;
+                                      flex-shrink:0;transition:background .15s;"
+                               onmouseover="this.style.background='#4752c4'"
+                               onmouseout="this.style.background='#5865f2'">▶ Play</button>`
+                    : '';
+                return `<div style="background:#40444b;border-radius:10px;padding:10px 14px;
+                                    display:flex;align-items:center;gap:12px;">
+                    <span style="font-size:22px;flex-shrink:0;">${emoji}</span>
+                    <span style="color:#fff;font-weight:600;font-size:13px;flex:1;">${name}</span>
+                    ${playBtn}
+                </div>`;
+            }).join('');
+        }
+
+        document.getElementById('assetViewPopup').style.display = 'flex';
+    }
+
+    function playDiscordSound(soundId) {
+        // Discord soundboard sounds can be previewed via the API audio endpoint
+        const url = `https://cdn.discordapp.com/soundboard-sounds/${soundId}`;
+        try {
+            const audio = new Audio(url);
+            audio.volume = 0.5;
+            audio.play().catch(() => {
+                showToast('⚠️ Browser blocked autoplay — try allowing audio on this page', 'error', 4000);
+            });
+        } catch {
+            showToast('⚠️ Could not play sound', 'error', 3000);
+        }
+    }
+
+    // ── Role popup ─────────────────────────────────────────────────
+    function openRolePopup(el) {
+        const name  = el.dataset.roleName  || '—';
+        const color = el.dataset.roleColor || '#99aab5';
+        const hoist = el.dataset.roleHoist === 'true';
+        let perms = [];
+        try { perms = JSON.parse(el.dataset.rolePerms || '[]'); } catch {}
+
+        document.getElementById('rolePopupDot').style.background = color;
+        document.getElementById('rolePopupName').textContent = name;
+        document.getElementById('rolePopupHoist').style.display = hoist ? 'inline-block' : 'none';
+
+        const permsEl = document.getElementById('rolePopupPerms');
+        if (perms.length) {
+            permsEl.innerHTML = perms.map(p =>
+                `<span style="background:#40444b;color:#dcddde;padding:4px 10px;
+                              border-radius:10px;font-size:12px;font-weight:500;">
+                    ${p.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
+                </span>`
+            ).join('');
+        } else {
+            permsEl.innerHTML = '<span style="color:#72767d;font-size:13px;">No permissions assigned</span>';
+        }
+        document.getElementById('rolePopup').style.display = 'flex';
+    }
+
+    // Close modals on backdrop click
+    ['inviteModal','editCollabModal','assetViewPopup','rolePopup'].forEach(id => {
+        document.getElementById(id).addEventListener('click', e => {
+            if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+        });
+    });
+    // Modals that reload on close so changes are visible immediately
+    ['assetsModal','serverInfoModal','moderationModal','communityModal'].forEach(id => {
+        document.getElementById(id).addEventListener('click', e => {
+            if (e.target === e.currentTarget) { e.currentTarget.style.display = 'none'; location.reload(); }
+        });
+    });
+    document.getElementById('rolesModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) { e.currentTarget.style.display = 'none'; location.reload(); }
+    });
+    document.getElementById('channelsModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+    });
+
+    // ── Channels & Categories modal ────────────────────────────────
+    let _chServerId  = null;
+    let _chData      = null;   // { categories, channels } from Discord
+
+    const CH_TYPES = { 0: { icon: '#', label: 'text' }, 2: { icon: '🔊', label: 'voice' }, 15: { icon: '📋', label: 'forum' } };
+
+    function openChannelsModal(serverId) {
+        _chServerId = serverId;
+        document.getElementById('channelsModal').style.display = 'flex';
+        document.getElementById('ch-loading').style.display = 'block';
+        document.getElementById('ch-body').style.display    = 'none';
+        document.getElementById('ch-footer').style.display  = 'none';
+        document.getElementById('ch-error').style.display   = 'none';
+        _chLoad();
+    }
+
+    function _chLoad() {
+        fetch(`/api/server/${_chServerId}/live-channels`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.error) { _chShowErr(d.error); return; }
+                _chData = d;
+                _chRender();
+            })
+            .catch(() => _chShowErr('Could not reach server'));
+    }
+
+    function _chShowErr(msg) {
+        document.getElementById('ch-loading').style.display = 'none';
+        const el = document.getElementById('ch-error');
+        el.textContent = '❌ ' + msg;
+        el.style.display = 'block';
+    }
+
+    function _chRender() {
+        document.getElementById('ch-loading').style.display = 'none';
+        document.getElementById('ch-footer').style.display  = 'block';
+        const body = document.getElementById('ch-body');
+        body.style.display = 'block';
+
+        const { categories, channels } = _chData;
+        const byParent = {};
+        channels.forEach(ch => {
+            const pid = ch.parent_id || '__none__';
+            if (!byParent[pid]) byParent[pid] = [];
+            byParent[pid].push(ch);
+        });
+
+        let html = '';
+
+        // Uncategorized channels (no parent)
+        const uncatChans = byParent['__none__'] || [];
+        if (uncatChans.length) {
+            html += `<div style="margin-bottom:8px;">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+                            color:#72767d;padding:4px 0 6px;">Uncategorized</div>`;
+            uncatChans.forEach(ch => { html += _chChannelRow(ch); });
+            html += '</div>';
+        }
+
+        // Each category + its channels
+        categories.forEach(cat => {
+            const kids = byParent[cat.id] || [];
+            html += `<div style="margin-bottom:12px;border:1px solid #40444b;border-radius:8px;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#36393f;">
+                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+                                 color:#b9bbbe;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                          title="${escapeHtml(cat.name)}">${escapeHtml(cat.name)}</span>
+                    <button onclick="chAddChannel('${cat.id}', 0)"
+                            style="${_chMiniBtn('#5865f2')}" title="Add text channel">+#</button>
+                    <button onclick="chAddChannel('${cat.id}', 2)"
+                            style="${_chMiniBtn('#5865f2')}" title="Add voice channel">+🔊</button>
+                    <button onclick="chAddChannel('${cat.id}', 15)"
+                            style="${_chMiniBtn('#5865f2')}" title="Add forum channel">+📋</button>
+                    <button onclick="chRename('${cat.id}', '${escapeHtml(cat.name).replace(/'/g,"\\\'")}')"
+                            style="${_chMiniBtn('#40444b')}" title="Rename category">✏️</button>
+                    <button onclick="chDelete('${cat.id}', '${escapeHtml(cat.name).replace(/'/g,"\\\'")}')"
+                            style="${_chMiniBtn('rgba(240,71,71,.2)')}" title="Delete category">🗑️</button>
+                </div>`;
+            if (kids.length) {
+                kids.forEach(ch => { html += _chChannelRow(ch, true); });
+            } else {
+                html += `<div style="padding:8px 14px;color:#72767d;font-size:12px;font-style:italic;">No channels</div>`;
+            }
+            html += '</div>';
+        });
+
+        body.innerHTML = html || '<div style="color:#72767d;font-size:13px;padding:12px 0;">No channels found on this server.</div>';
+    }
+
+    function _chMiniBtn(bg) {
+        return `background:${bg};color:#fff;border:none;border-radius:4px;padding:2px 7px;
+                font-size:11px;cursor:pointer;flex-shrink:0;white-space:nowrap;`;
+    }
+
+    function _chChannelRow(ch, indent) {
+        const t  = CH_TYPES[ch.type] || { icon: '?', label: 'unknown' };
+        const pl = indent ? '28px' : '14px';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px ${pl};border-top:1px solid #40444b;">
+            <span style="color:#72767d;font-size:13px;flex-shrink:0;">${t.icon}</span>
+            <span style="color:#dcddde;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                  title="${escapeHtml(ch.name)}">${escapeHtml(ch.name)}</span>
+            <button onclick="chRename('${ch.id}', '${escapeHtml(ch.name).replace(/'/g,"\\\'")}')"
+                    style="${_chMiniBtn('#40444b')}" title="Rename">✏️</button>
+            <button onclick="chDelete('${ch.id}', '${escapeHtml(ch.name).replace(/'/g,"\\\'")}')"
+                    style="${_chMiniBtn('rgba(240,71,71,.2)')}" title="Delete">🗑️</button>
+        </div>`;
+    }
+
+    function _chOp(body, onOk) {
+        fetch(`/api/server/${_chServerId}/live-channels/op`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok || d.channel) { onOk(d); _chLoad(); }
+            else _chShowErr(d.error || 'Operation failed');
+        })
+        .catch(() => _chShowErr('Could not reach server'));
+    }
+
+    function chAddCategory() {
+        const name = prompt('Category name:');
+        if (!name || !name.trim()) return;
+        _chOp({ op: 'create_category', name: name.trim() }, () => {});
+    }
+
+    function chAddChannel(parentId, type) {
+        const typeLabel = { 0: 'text channel', 2: 'voice channel', 15: 'forum channel' }[type] || 'channel';
+        const name = prompt(`New ${typeLabel} name:`);
+        if (!name || !name.trim()) return;
+        _chOp({ op: 'create_channel', name: name.trim(), type, parent_id: parentId }, () => {});
+    }
+
+    function chRename(channelId, currentName) {
+        const name = prompt('New name:', currentName);
+        if (!name || !name.trim() || name.trim() === currentName) return;
+        _chOp({ op: 'rename', channel_id: channelId, name: name.trim() }, () => {});
+    }
+
+    function chDelete(channelId, name) {
+        if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+        _chOp({ op: 'delete', channel_id: channelId }, () => {});
+    }
+
+    // ── Import config ──────────────────────────────────────────────
+    function handleImportFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+        input.value = '';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let data;
+            try {
+                data = JSON.parse(e.target.result);
+            } catch {
+                alert('❌ Invalid JSON file.');
+                return;
+            }
+            if (typeof data !== 'object' || Array.isArray(data)) {
+                alert('❌ File does not look like a server config.');
+                return;
+            }
+
+            fetch('/setup/import', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.ok) window.location.href = '/setup';
+                else alert('❌ Import failed: ' + (d.error || 'unknown error'));
+            })
+            .catch(() => alert('❌ Could not reach the server.'));
+        };
+        reader.readAsText(file);
+    }
+
+    // ── Import from Discord ────────────────────────────────────────
+    function openDiscordImportModal() {
+        document.getElementById('discordImportGuildId').value = '';
+        document.getElementById('discordImportToken').value   = '';
+        document.getElementById('discordImportError').style.display = 'none';
+        document.getElementById('discordImportBtn').disabled  = false;
+        document.getElementById('discordImportBtn').textContent = 'Import';
+        const modal = document.getElementById('discordImportModal');
+        modal.style.display = 'flex';
+    }
+
+    function closeDiscordImportModal() {
+        document.getElementById('discordImportModal').style.display = 'none';
+    }
+
+    function submitDiscordImport() {
+        const guildId  = document.getElementById('discordImportGuildId').value.trim();
+        const token    = document.getElementById('discordImportToken').value.trim();
+        const errEl    = document.getElementById('discordImportError');
+        const btn      = document.getElementById('discordImportBtn');
+
+        errEl.style.display = 'none';
+        if (!guildId || !token) {
+            errEl.textContent = 'Both Guild ID and Bot Token are required.';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Reading…';
+
+        fetch('/api/discord/import-guild', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ guild_id: guildId, bot_token: token })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                window.location.href = '/setup';
+            } else {
+                errEl.textContent = '❌ ' + (d.error || 'Unknown error');
+                errEl.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Import';
+            }
+        })
+        .catch(() => {
+            errEl.textContent = '❌ Could not reach the server.';
+            errEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Import';
+        });
+    }
+
+    // Close Discord import modal on backdrop click
+    document.getElementById('discordImportModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeDiscordImportModal();
+    });
+</script>
+
+<!-- ── New Server Modal ── -->
+<style>
+.nsm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;z-index:400;padding:20px;}
+.nsm-overlay.open{display:flex;}
+.nsm-box{background:#2f3136;border-radius:12px;padding:32px 28px;max-width:520px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.6);position:relative;}
+.nsm-close{position:absolute;top:14px;right:16px;background:none;border:none;color:#72767d;font-size:22px;cursor:pointer;}
+.nsm-close:hover{color:#fff;}
+.nsm-title{font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;}
+.nsm-subtitle{color:#72767d;font-size:13px;margin-bottom:24px;}
+.nsm-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.nsm-card{background:#36393f;border:2px solid #40444b;border-radius:10px;padding:22px 18px;cursor:pointer;transition:border-color .15s,background .15s;text-align:center;}
+.nsm-card:hover,.nsm-card.active{border-color:#7289da;background:#3a3d44;}
+.nsm-card-icon{font-size:32px;margin-bottom:10px;}
+.nsm-card-title{font-size:15px;font-weight:700;color:#fff;margin-bottom:6px;}
+.nsm-card-desc{font-size:12px;color:#72767d;line-height:1.5;}
+.nsm-existing{display:none;margin-top:20px;background:#36393f;border-radius:8px;padding:18px;border:1px solid #40444b;}
+.nsm-existing.show{display:block;}
+.nsm-existing-label{font-size:12px;font-weight:600;color:#b9bbbe;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+.nsm-existing input{width:100%;background:#2f3136;border:1px solid #40444b;border-radius:5px;color:#dcddde;padding:9px 12px;font-size:13px;outline:none;margin-bottom:12px;}
+.nsm-existing input:focus{border-color:#7289da;}
+.nsm-existing-btns{display:flex;gap:10px;flex-wrap:wrap;}
+.nsm-existing-btns button{flex:1;padding:10px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;}
+.nsm-btn-import{background:#5865f2;color:#fff;}
+.nsm-btn-import:hover{background:#4752c4;}
+.nsm-btn-connect{background:#43b581;color:#fff;}
+.nsm-btn-connect:hover{background:#3ca374;}
+.nsm-error{color:#f04747;font-size:12px;margin-top:8px;display:none;}
+</style>
+<div class="nsm-overlay" id="newServerModal">
+    <div class="nsm-box">
+        <button class="nsm-close" onclick="closeNewServerModal()">×</button>
+        <div class="nsm-title">Add a Server</div>
+        <div class="nsm-subtitle">Create a fresh server or connect one you already own</div>
+        <div class="nsm-cards">
+            <div class="nsm-card" onclick="window.location.href='{{ url_for('setup') }}'">
+                <div class="nsm-card-icon">✨</div>
+                <div class="nsm-card-title">Create New</div>
+                <div class="nsm-card-desc">Start from scratch with a guided setup wizard</div>
+            </div>
+            <div class="nsm-card" id="nsmExistingCard" onclick="toggleExistingPanel()">
+                <div class="nsm-card-icon">🔗</div>
+                <div class="nsm-card-title">Add Existing</div>
+                <div class="nsm-card-desc">Connect a Discord server you already own</div>
+            </div>
+        </div>
+        <div class="nsm-existing" id="nsmExistingPanel">
+            <div class="nsm-existing-label">Enter your Guild ID (Server ID)</div>
+            <input type="text" id="nsmGuildId" placeholder="e.g. 123456789012345678"
+                   oninput="document.getElementById('nsmError').style.display='none'">
+            <div class="nsm-existing-btns">
+                <button class="nsm-btn-import" onclick="nsmImportFromDiscord()">📥 Import from Discord</button>
+                <button class="nsm-btn-connect" onclick="nsmUseExisting()">📋 Use Existing Config</button>
+            </div>
+            <div class="nsm-error" id="nsmError"></div>
+            <p style="color:#72767d;font-size:11px;margin-top:10px;line-height:1.5;">
+                <strong style="color:#b9bbbe;">Import from Discord</strong> — fetches your server's live structure.<br>
+                <strong style="color:#b9bbbe;">Use Existing Config</strong> — loads saved config and runs an update (won't delete channels).
+            </p>
+        </div>
+    </div>
+</div>
+<script>
+function openNewServerModal(){document.getElementById('newServerModal').classList.add('open');}
+function closeNewServerModal(){
+    document.getElementById('newServerModal').classList.remove('open');
+    document.getElementById('nsmGuildId').value='';
+    document.getElementById('nsmError').style.display='none';
+    document.getElementById('nsmExistingPanel').classList.remove('show');
+    document.getElementById('nsmExistingCard').classList.remove('active');
+}
+function toggleExistingPanel(){
+    const p=document.getElementById('nsmExistingPanel'),c=document.getElementById('nsmExistingCard');
+    const s=p.classList.contains('show');
+    p.classList.toggle('show',!s);c.classList.toggle('active',!s);
+}
+function nsmImportFromDiscord(){
+    const g=document.getElementById('nsmGuildId').value.trim();
+    if(!g){nsmError('Please enter a Guild ID.');return;}
+    if(!/^\d{17,20}$/.test(g)){nsmError('Guild ID must be 17–20 digits.');return;}
+    fetch('/api/discord/import-guild',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({guild_id:g})})
+    .then(r=>r.json()).then(d=>{if(d.ok)window.location.href='{{ url_for("setup") }}';else nsmError(d.error||'Could not import. Is your bot in your server?');})
+    .catch(()=>nsmError('Network error.'));
+}
+function nsmUseExisting(){
+    const g=document.getElementById('nsmGuildId').value.trim();
+    if(!g){nsmError('Please enter a Guild ID.');return;}
+    if(!/^\d{17,20}$/.test(g)){nsmError('Guild ID must be 17–20 digits.');return;}
+    window.location.href='{{ url_for("setup") }}?guild_id='+encodeURIComponent(g);
+}
+function nsmError(m){const e=document.getElementById('nsmError');e.textContent=m;e.style.display='block';}
+document.getElementById('newServerModal').addEventListener('click',function(e){if(e.target===this)closeNewServerModal();});
+</script>
+
+
+    {% include 'footer.html' %}
+</body>
+</html>

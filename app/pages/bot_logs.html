@@ -1,0 +1,280 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Logs - {{ bot.bot_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            color: #7289da;
+            margin-bottom: 20px;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #7289da;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: color 0.3s;
+        }
+
+        .back-button:hover {
+            color: #5b6eae;
+        }
+
+        .logs-container {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 600px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .log-line {
+            color: #d4d4d4;
+            padding: 4px 0;
+        }
+
+        .log-line.error {
+            color: #f48771;
+        }
+
+        .log-line.warning {
+            color: #dcdcaa;
+        }
+
+        .log-line.success {
+            color: #4ec9b0;
+        }
+
+        .empty-logs {
+            text-align: center;
+            color: #72767d;
+            padding: 40px;
+        }
+    
+        /* ── Shared navbar ─────────────────────────────────────────── */
+        .navbar {
+            background-color: #2f3136;
+            padding: 0 30px;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover { background: #36393f; color: #fff; }
+        .navbar-links a.active { background: #36393f; color: #fff; }
+
+        /* Username dropdown */
+        
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .user-menu { position: relative; }
+        .user-btn {
+            background: none; border: none; color: #7289da;
+            font-weight: 700; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 6px; transition: background .2s;
+        }
+        .user-btn:hover { background: #36393f; }
+        .user-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #7289da; display: flex; align-items: center;
+            justify-content: center; font-size: 13px; font-weight: 700; color: #fff;
+        }
+        .user-chevron { font-size: 10px; color: #b9bbbe; transition: transform .2s; }
+        .user-btn.open .user-chevron { transform: rotate(180deg); }
+        .user-dropdown {
+            position: absolute; top: calc(100% + 6px); right: 0;
+            background: #2f3136; border-radius: 8px; min-width: 200px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5); border: 1px solid #40444b;
+            opacity: 0; pointer-events: none;
+            transform: translateY(-6px); transition: opacity .15s, transform .15s;
+            z-index: 200;
+        }
+        .user-dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+        .user-dropdown-info {
+            padding: 14px 16px 10px; border-bottom: 1px solid #40444b;
+        }
+        .user-dropdown-info .ud-name  { color: #fff; font-weight: 600; font-size: 14px; }
+        .user-dropdown-info .ud-email { color: #72767d; font-size: 12px; margin-top: 2px; }
+        .user-dropdown a, .user-dropdown button {
+            display: block; width: 100%; text-align: left;
+            padding: 10px 16px; color: #b9bbbe; text-decoration: none;
+            font-size: 14px; font-weight: 500; background: none; border: none;
+            cursor: pointer; transition: background .15s, color .15s;
+        }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: #36393f; color: #fff; }
+        .ud-logout { color: #f04747 !important; border-top: 1px solid #40444b; margin-top: 4px; }
+        .ud-logout:hover { background: rgba(240,71,71,.1) !important; color: #f04747 !important; }
+    /* ── Light theme overrides ── */
+    [data-theme="light"] body{background:#f2f3f5;color:#060607;}
+    [data-theme="light"] .navbar{background:#fff;box-shadow:0 1px 0 #d4d7dc;}
+    [data-theme="light"] .navbar-brand{color:#5865f2;}
+    [data-theme="light"] .navbar-links a{color:#4e5058;}
+    [data-theme="light"] .navbar-links a:hover,[data-theme="light"] .navbar-links a.active{background:#e3e5e8;color:#060607;}
+    [data-theme="light"] .user-btn{color:#5865f2;}
+    [data-theme="light"] .user-btn:hover{background:#e3e5e8;}
+    [data-theme="light"] .user-avatar{background:#5865f2;}
+    [data-theme="light"] .user-chevron{color:#80848e;}
+    [data-theme="light"] .user-dropdown{background:#fff;border-color:#c7ccd1;box-shadow:0 8px 24px rgba(0,0,0,.15);}
+    [data-theme="light"] .user-dropdown-info{border-color:#e3e5e8;}
+    [data-theme="light"] .user-dropdown-info .ud-name{color:#060607;}
+    [data-theme="light"] .user-dropdown a,[data-theme="light"] .user-dropdown button{color:#4e5058;}
+    [data-theme="light"] .user-dropdown a:hover,[data-theme="light"] .user-dropdown button:hover{background:#f2f3f5;color:#060607;}
+    [data-theme="light"] .ud-logout{color:#da373c!important;}
+    [data-theme="light"] h1{color:#5865f2;}
+    [data-theme="light"] .back-button{color:#5865f2;}
+    [data-theme="light"] .back-button:hover{color:#4752c4;}
+
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+            <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+            <div class="navbar-links">
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('servers_page') }}">Servers</a>
+                <a href="{{ url_for('bots_page') }}" class="active">Bots</a>
+                <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+                <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+            </div>
+        </div>
+        <div class="user-menu">
+            <button class="user-btn" id="userNavBtn">
+                <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+                {{ username }}
+                <span class="user-chevron">▼</span>
+            </button>
+            <div class="user-dropdown" id="userNavDropdown">
+                <div class="user-dropdown-info">
+                    <div class="ud-name">{{ username }}</div>
+                </div>
+                <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+                <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+                <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+            </div>
+        </div>
+    </nav>
+ 
+    <div class="container">
+        <a href="{{ url_for('bots_page') }}" class="back-button">← Back to Bots</a>
+ 
+        <h1>📋 Logs: {{ bot.bot_name }}</h1>
+ 
+        <div class="logs-container">
+            {% if logs %}
+                {% for log in logs %}
+                    <div class="log-line {% if 'error' in log.lower() %}error{% elif 'warning' in log.lower() %}warning{% elif 'success' in log.lower() or 'ready' in log.lower() %}success{% endif %}">
+                        {{ log|safe }}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-logs">
+                    <p>No logs available yet. Start the bot to see logs.</p>
+                </div>
+            {% endif %}
+        </div>
+ 
+        <div style="margin-top: 20px; text-align: center;">
+            <button class="btn-refresh" onclick="location.reload()">
+                🔄 Refresh Logs
+            </button>
+        </div>
+    </div>
+ 
+    <script>
+        // Auto-scroll to bottom
+        const logsContainer = document.querySelector('.logs-container');
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+ 
+        // Auto-refresh every 5 seconds
+        const refreshLogs = () => {
+            location.reload();
+        };
+ 
+        setInterval(refreshLogs, 5000);
+    </script>
+
+<script>
+(function() {
+    var btn = document.getElementById('userNavBtn');
+    var dd  = document.getElementById('userNavDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        btn.classList.toggle('open');
+        dd.classList.toggle('open');
+    });
+    dd.addEventListener('click', function(e) { e.stopPropagation(); });
+    document.addEventListener('click', function() {
+        btn.classList.remove('open');
+        dd.classList.remove('open');
+    });
+    var hb = document.getElementById("navHamburger");
+    var nl = document.querySelector(".navbar-links");
+    if (hb && nl) {
+        hb.addEventListener("click", function(e) { e.stopPropagation(); nl.classList.toggle("mobile-open"); });
+        document.addEventListener("click", function() { nl.classList.remove("mobile-open"); });
+    }
+})();
+</script>
+
+
+    {% include 'footer.html' %}
+</body>
+</html>

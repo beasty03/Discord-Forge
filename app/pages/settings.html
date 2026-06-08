@@ -1,0 +1,342 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — {{ server.server_name }} - DiscordForge</title>
+    <script>(function(){var t=localStorage.getItem('appTheme')||'dark';if(t==='system')t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3); position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a { color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px; padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s; }
+        .navbar-links a:hover, .navbar-links a.active { background: #36393f; color: #fff; }
+        .navbar-hamburger { display: none; background: none; border: none; color: #b9bbbe; font-size: 22px; cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1; }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links { display: none; width: 100%; flex-direction: column; gap: 0; padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3; }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .user-menu { position: relative; }
+        .user-btn { background: none; border: none; color: #7289da; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 6px; transition: background .2s; }
+        .user-btn:hover { background: #36393f; }
+        .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: #7289da; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
+        .user-chevron { font-size: 10px; color: #b9bbbe; transition: transform .2s; }
+        .user-btn.open .user-chevron { transform: rotate(180deg); }
+        .user-dropdown { position: absolute; top: calc(100% + 6px); right: 0; background: #2f3136; border-radius: 8px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,.5); border: 1px solid #40444b; opacity: 0; pointer-events: none; transform: translateY(-6px); transition: opacity .15s, transform .15s; z-index: 200; }
+        .user-dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+        .user-dropdown-info { padding: 14px 16px 10px; border-bottom: 1px solid #40444b; }
+        .user-dropdown-info .ud-name { color: #fff; font-weight: 600; font-size: 14px; }
+        .user-dropdown a, .user-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 16px; color: #b9bbbe; text-decoration: none; font-size: 14px; font-weight: 500; background: none; border: none; cursor: pointer; transition: background .15s, color .15s; }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: #36393f; color: #fff; }
+        .ud-logout { color: #f04747 !important; border-top: 1px solid #40444b; margin-top: 4px; }
+        .ud-logout:hover { background: rgba(240,71,71,.1) !important; color: #f04747 !important; }
+
+        .container { max-width: 680px; margin: 0 auto; padding: 36px 24px; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px; color: #7289da; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; transition: color .15s; }
+        .back-link:hover { color: #5b6eae; }
+        .page-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+        .page-subtitle { color: #72767d; font-size: 13px; margin-bottom: 28px; }
+
+        .section { background: #2f3136; border-radius: 10px; padding: 24px; margin-bottom: 20px; border: 1px solid #40444b; }
+        .section-title { font-size: 15px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+        .section.danger { border-color: rgba(240,71,71,.4); }
+        .section.danger .section-title { color: #f04747; }
+
+        .field { margin-bottom: 16px; }
+        .field:last-child { margin-bottom: 0; }
+        .field label { display: block; color: #b9bbbe; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+        .field input[type=text] {
+            width: 100%; background: #202225; border: 1px solid #40444b; border-radius: 6px;
+            color: #dcddde; padding: 10px 13px; font-size: 14px; outline: none; transition: border-color .15s;
+        }
+        .field input:focus { border-color: #7289da; }
+        .field-hint { color: #72767d; font-size: 11px; margin-top: 5px; }
+
+        .btn { padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: background .15s; }
+        .btn-primary { background: #7289da; color: #fff; }
+        .btn-primary:hover { background: #5b6eae; }
+        .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-danger { background: #f04747; color: #fff; }
+        .btn-danger:hover { background: #d84040; }
+
+        .danger-desc { color: #72767d; font-size: 13px; line-height: 1.6; margin-bottom: 14px; }
+        .danger-desc strong { color: #f04747; }
+
+        .form-footer { display: flex; justify-content: flex-end; margin-top: 20px; }
+
+        .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: #2f3136; border: 1px solid #40444b; border-radius: 8px; padding: 12px 18px; font-size: 13px; color: #dcddde; box-shadow: 0 6px 24px rgba(0,0,0,.5); transform: translateY(20px); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-color: #43b581; color: #43b581; }
+        .toast.error   { border-color: #f04747; color: #f04747; }
+        @media (max-width: 500px) {
+            .toast { right: 12px; left: 12px; bottom: 12px; }
+        }
+        /* ── Light theme ── */
+        [data-theme="light"] body { background: #f2f3f5; color: #060607; }
+        [data-theme="light"] .navbar { background: #fff; box-shadow: 0 1px 0 #d4d7dc; }
+        [data-theme="light"] .navbar-brand { color: #5865f2; }
+        [data-theme="light"] .navbar-links a { color: #4e5058; }
+        [data-theme="light"] .navbar-links a:hover, [data-theme="light"] .navbar-links a.active { background: #e3e5e8; color: #060607; }
+        [data-theme="light"] .user-btn { color: #5865f2; }
+        [data-theme="light"] .user-btn:hover { background: #e3e5e8; }
+        [data-theme="light"] .user-avatar { background: #5865f2; }
+        [data-theme="light"] .user-dropdown { background: #fff; border-color: #c7ccd1; }
+        [data-theme="light"] .user-dropdown-info { border-color: #e3e5e8; }
+        [data-theme="light"] .user-dropdown-info .ud-name { color: #060607; }
+        [data-theme="light"] .user-dropdown a, [data-theme="light"] .user-dropdown button { color: #4e5058; }
+        [data-theme="light"] .user-dropdown a:hover, [data-theme="light"] .user-dropdown button:hover { background: #f2f3f5; color: #060607; }
+        [data-theme="light"] .ud-logout { color: #da373c !important; }
+        [data-theme="light"] .section { background: #fff; border-color: #d4d7dc; }
+        [data-theme="light"] .section-title { color: #060607; }
+        [data-theme="light"] .section.danger { border-color: rgba(218,55,60,.4); }
+        [data-theme="light"] .section.danger .section-title { color: #da373c; }
+        [data-theme="light"] .field label { color: #4e5058; }
+        [data-theme="light"] .field input[type=text] { background: #e9eaec; border-color: #d4d7dc; color: #060607; }
+        [data-theme="light"] .field input:focus { border-color: #5865f2; }
+        [data-theme="light"] .field-hint { color: #80848e; }
+        [data-theme="light"] .btn-primary { background: #5865f2; }
+        [data-theme="light"] .btn-primary:hover { background: #4752c4; }
+        [data-theme="light"] .danger-desc { color: #4e5058; }
+        [data-theme="light"] .toast { background: #fff; border-color: #d4d7dc; color: #313338; }
+        [data-theme="light"] .toast.success { border-color: #248046; color: #248046; }
+        [data-theme="light"] .toast.error { border-color: #da373c; color: #da373c; }
+        [data-theme="light"] .page-title { color: #060607; }
+        [data-theme="light"] .page-subtitle { color: #80848e; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-left">
+        <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+        <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+        <div class="navbar-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('servers_page') }}" class="active">Servers</a>
+            <a href="{{ url_for('bots_page') }}">Bots</a>
+            <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+        </div>
+    </div>
+    <div class="user-menu">
+        <button class="user-btn" id="userNavBtn">
+            <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+            {{ username }}
+            <span class="user-chevron">▼</span>
+        </button>
+        <div class="user-dropdown" id="userNavDropdown">
+            <div class="user-dropdown-info"><div class="ud-name">{{ username }}</div></div>
+            <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+            <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+            <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <a class="back-link" href="{{ url_for('servers_page') }}">← Back to Servers</a>
+    <div class="page-title">⚙️ Settings — {{ server.server_name }}</div>
+    <div class="page-subtitle">Server owner settings</div>
+
+    <!-- Basic info -->
+    <div class="section">
+        <div class="section-title">📋 Basic Info</div>
+        <div class="field">
+            <label for="serverName">Server Name</label>
+            <input type="text" id="serverName" value="{{ server.server_name }}" maxlength="100" placeholder="My Discord Server">
+        </div>
+        <div class="field">
+            <label for="guildId">Guild ID</label>
+            <input type="text" id="guildId" value="{{ server.guild_id or '' }}" maxlength="30" placeholder="123456789012345678">
+            <div class="field-hint">Found in Discord: Server Settings → Widget, or right-click the server icon (Developer Mode).</div>
+        </div>
+        <div class="form-footer">
+            <button class="btn btn-primary" id="saveBtn" onclick="saveSettings()">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="section">
+        <div class="section-title">🔗 Quick Links</div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+            <a href="{{ url_for('edit_server', server_id=server.server_id) }}" style="color:#7289da;font-size:13px;font-weight:600;text-decoration:none;">✏️ Edit Full Config</a>
+            &nbsp;·&nbsp;
+            <a href="{{ url_for('roles_page', server_id=server.server_id) }}" style="color:#7289da;font-size:13px;font-weight:600;text-decoration:none;">🎭 Manage Roles</a>
+            &nbsp;·&nbsp;
+            <a href="{{ url_for('collaborators_page', server_id=server.server_id) }}" style="color:#7289da;font-size:13px;font-weight:600;text-decoration:none;">👤 Collaborators</a>
+        </div>
+    </div>
+
+    <!-- Invite URL generator -->
+    <div class="section">
+        <div class="section-title">🔗 Bot Invite URL Generator</div>
+        <div class="field">
+            <label for="appId">Bot Application ID</label>
+            <input type="text" id="appId" placeholder="e.g. 123456789012345678" maxlength="30">
+            <div class="field-hint">Discord Developer Portal → Your App → General Information → Application ID</div>
+        </div>
+        <div class="field">
+            <label>Permissions</label>
+            <div id="permsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:6px;">
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="8" style="accent-color:#7289da;"> Administrator</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="2" checked style="accent-color:#7289da;"> Kick Members</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="4" checked style="accent-color:#7289da;"> Ban Members</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="32" checked style="accent-color:#7289da;"> Manage Server</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="16" checked style="accent-color:#7289da;"> Manage Channels</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="268435456" checked style="accent-color:#7289da;"> Manage Roles</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="8192" checked style="accent-color:#7289da;"> Manage Messages</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="134217728" checked style="accent-color:#7289da;"> Manage Nicknames</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="2048" checked style="accent-color:#7289da;"> Send Messages</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#dcddde;cursor:pointer;"><input type="checkbox" class="perm-cb" value="128" checked style="accent-color:#7289da;"> View Audit Log</label>
+            </div>
+        </div>
+        <div class="field" id="inviteField" style="display:none;">
+            <label>Generated URL</label>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="inviteUrl" readonly style="flex:1;font-size:12px;font-family:monospace;">
+                <button class="btn btn-ghost" onclick="copyInviteUrl()" style="white-space:nowrap;">📋 Copy</button>
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateInviteUrl()" style="margin-top:4px;">Generate URL</button>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="section danger">
+        <div class="section-title">⚠️ Danger Zone</div>
+        <p class="danger-desc">
+            <strong>Delete this server</strong> — removes the server record, all associated data (members, commands, events, integrations), and the local bot installation directory.<br>
+            This action <strong>cannot be undone</strong>.
+        </p>
+        <button type="button" class="btn btn-danger" id="deleteShowBtn" onclick="showDeleteConfirm()">🗑️ Delete Server</button>
+        <div id="deleteConfirmPanel" style="display:none;margin-top:16px;background:#1a1c1f;border-radius:8px;padding:16px;border:1px solid rgba(240,71,71,.35);">
+            <p style="color:#f04747;font-size:13px;margin-bottom:10px;">
+                Type <strong>{{ server.server_name }}</strong> to confirm permanent deletion:
+            </p>
+            <input type="text" id="deleteNameInput" placeholder="Server name…"
+                   oninput="checkDeleteMatch()"
+                   style="width:100%;background:#202225;border:1px solid rgba(240,71,71,.5);border-radius:6px;color:#fff;padding:9px 12px;font-size:13px;outline:none;margin-bottom:10px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-danger" id="deleteConfirmBtn" disabled onclick="submitDelete()">🗑️ Permanently Delete</button>
+                <button type="button" class="btn" onclick="cancelDeleteConfirm()" style="background:#40444b;color:#b9bbbe;">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const SERVER_ID          = {{ server.server_id | tojson }};
+    const GUILD_ID           = {{ (server.guild_id or '') | tojson }};
+    const DELETE_SERVER_NAME = {{ server.server_name | tojson }};
+    const DELETE_ACTION_URL  = {{ url_for('delete_server', server_id=server.server_id) | tojson }};
+
+    function showDeleteConfirm() {
+        document.getElementById('deleteShowBtn').style.display = 'none';
+        document.getElementById('deleteConfirmPanel').style.display = 'block';
+        document.getElementById('deleteNameInput').focus();
+    }
+    function cancelDeleteConfirm() {
+        document.getElementById('deleteShowBtn').style.display = '';
+        document.getElementById('deleteConfirmPanel').style.display = 'none';
+        document.getElementById('deleteNameInput').value = '';
+        document.getElementById('deleteConfirmBtn').disabled = true;
+    }
+    function checkDeleteMatch() {
+        const v = document.getElementById('deleteNameInput').value;
+        document.getElementById('deleteConfirmBtn').disabled = v !== DELETE_SERVER_NAME;
+    }
+    function submitDelete() {
+        const f = document.createElement('form');
+        f.method = 'POST'; f.action = DELETE_ACTION_URL;
+        const tok = document.createElement('input');
+        tok.type = 'hidden'; tok.name = '_csrf_token';
+        tok.value = {{ csrf_token() | tojson }};
+        f.appendChild(tok);
+        document.body.appendChild(f); f.submit();
+    }
+
+    function generateInviteUrl() {
+        const appId = document.getElementById('appId').value.trim();
+        if (!appId) { showToast('Enter your Bot Application ID.', 'error'); return; }
+        let perms = 0;
+        document.querySelectorAll('.perm-cb:checked').forEach(cb => { perms |= parseInt(cb.value); });
+        let url = `https://discord.com/api/oauth2/authorize?client_id=${encodeURIComponent(appId)}&permissions=${perms}&scope=bot%20applications.commands`;
+        if (GUILD_ID) url += `&guild_id=${encodeURIComponent(GUILD_ID)}`;
+        document.getElementById('inviteUrl').value = url;
+        document.getElementById('inviteField').style.display = '';
+    }
+
+    function copyInviteUrl() {
+        const url = document.getElementById('inviteUrl').value;
+        if (!url) return;
+        navigator.clipboard.writeText(url).then(() => showToast('URL copied!', 'success'));
+    }
+
+    async function saveSettings() {
+        const btn      = document.getElementById('saveBtn');
+        const name     = document.getElementById('serverName').value.trim();
+        const guild_id = document.getElementById('guildId').value.trim();
+        if (!name) { showToast('Server name cannot be empty.', 'error'); return; }
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        const resp = await fetch('/api/settings/' + SERVER_ID, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({server_name: name, guild_id}),
+        });
+        const data = await resp.json();
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+        if (data.ok) {
+            showToast('Settings saved.', 'success');
+            document.title = 'Settings — ' + name + ' - DiscordForge';
+        } else {
+            showToast(data.error || 'Error saving settings.', 'error');
+        }
+    }
+
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast ' + (type || '');
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3500);
+    }
+</script>
+<script>
+(function() {
+    var btn = document.getElementById('userNavBtn');
+    var dd  = document.getElementById('userNavDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) { e.stopPropagation(); btn.classList.toggle('open'); dd.classList.toggle('open'); });
+    document.addEventListener('click', function() { btn.classList.remove('open'); dd.classList.remove('open'); });
+    var hb = document.getElementById('navHamburger');
+    var nl = document.querySelector('.navbar-links');
+    if (hb && nl) {
+        hb.addEventListener('click', function(e) { e.stopPropagation(); nl.classList.toggle('mobile-open'); });
+        document.addEventListener('click', function() { nl.classList.remove('mobile-open'); });
+    }
+})();
+</script>
+
+    {% include 'footer.html' %}
+</body>
+</html>

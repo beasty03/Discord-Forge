@@ -1,0 +1,2316 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Apply saved theme before first paint to prevent flash -->
+    <script>
+    (function(){
+        var s=localStorage.getItem('appTheme')||'dark';
+        var r=s==='system'?(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):s;
+        document.documentElement.setAttribute('data-theme',r);
+        document.documentElement.setAttribute('data-theme-pref',s);
+    })();
+    </script>
+    <title>Bot Management - DiscordForge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+                .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover { background: #36393f; color: #fff; }
+        .navbar-links a.active { background: #36393f; color: #fff; }
+        
+        .navbar-hamburger {
+            display: none; background: none; border: none;
+            color: #b9bbbe; font-size: 22px; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links {
+                display: none; width: 100%; flex-direction: column; gap: 0;
+                padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3;
+            }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .user-menu { position: relative; }
+        .user-btn {
+            background: none; border: none; color: #7289da;
+            font-weight: 700; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 6px; transition: background .2s;
+        }
+        .user-btn:hover { background: #36393f; }
+        .user-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #7289da; display: flex; align-items: center;
+            justify-content: center; font-size: 13px; font-weight: 700; color: #fff;
+        }
+        .user-chevron { font-size: 10px; color: #b9bbbe; transition: transform .2s; }
+        .user-btn.open .user-chevron { transform: rotate(180deg); }
+        .user-dropdown {
+            position: absolute; top: calc(100% + 6px); right: 0;
+            background: #2f3136; border-radius: 8px; min-width: 200px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5); border: 1px solid #40444b;
+            opacity: 0; pointer-events: none;
+            transform: translateY(-6px); transition: opacity .15s, transform .15s;
+            z-index: 200;
+        }
+        .user-dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+        .user-dropdown-info { padding: 14px 16px 10px; border-bottom: 1px solid #40444b; }
+        .user-dropdown-info .ud-name  { color: #fff; font-weight: 600; font-size: 14px; }
+        .user-dropdown a, .user-dropdown button {
+            display: block; width: 100%; text-align: left;
+            padding: 10px 16px; color: #b9bbbe; text-decoration: none;
+            font-size: 14px; font-weight: 500; background: none; border: none;
+            cursor: pointer; transition: background .15s, color .15s;
+        }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: #36393f; color: #fff; }
+        .ud-logout { color: #f04747 !important; border-top: 1px solid #40444b; margin-top: 4px; }
+        .ud-logout:hover { background: rgba(240,71,71,.1) !important; color: #f04747 !important; }
+
+        /* FAQ accordion */
+        .faq-item { background: #2f3136; border-radius: 8px; margin-bottom: 8px; border: 1px solid #40444b; overflow: hidden; }
+        .faq-q {
+            width: 100%; background: none; border: none; text-align: left;
+            color: #fff; font-size: 14px; font-weight: 600;
+            padding: 14px 18px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+            transition: background .15s;
+        }
+        .faq-q:hover { background: #36393f; }
+        .faq-chevron { color: #72767d; font-size: 11px; transition: transform .2s; flex-shrink: 0; margin-left: 12px; }
+        .faq-q.open .faq-chevron { transform: rotate(180deg); }
+        .faq-a { display: none; padding: 0 18px 14px; color: #b9bbbe; font-size: 13px; line-height: 1.7; }
+        .faq-a.open { display: block; }
+        .faq-a code { background: #202225; border-radius: 4px; padding: 2px 6px; font-family: monospace; font-size: 12px; color: #43b581; }
+
+        /* ── Script variable editor ─────────────────────────────────── */
+        .sv-sec { margin-bottom: 20px; }
+        .sv-sec:last-child { margin-bottom: 4px; }
+        .sv-sec-hdr { display:flex;align-items:center;gap:10px;padding:9px 14px;background:rgba(114,137,218,.08);border-radius:8px;border-left:3px solid #7289da;margin-bottom:8px; }
+        .sv-sec-name { font-size:13px;font-weight:700;color:#fff; }
+        .sv-sec-count { font-size:11px;color:#72767d;margin-left:auto;font-style:italic; }
+        .sv-row { display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:14px;padding:8px 10px;border-radius:6px;transition:background .1s; }
+        .sv-row:hover { background:rgba(255,255,255,.025); }
+        .sv-lbl { font-size:13px;color:#dcddde;font-weight:500; }
+        .sv-raw { font-size:10px;font-family:monospace;color:#4f545c;margin-top:1px; }
+        .sv-badge { font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.3px;text-transform:uppercase;flex-shrink:0; }
+        .sv-badge-int   { background:rgba(88,101,242,.2);color:#8b9cf7; }
+        .sv-badge-float { background:rgba(114,137,218,.15);color:#99aab5; }
+        .sv-badge-str   { background:rgba(67,181,129,.15);color:#43b581; }
+        .sv-badge-bool  { background:rgba(250,166,26,.15);color:#faa61a; }
+        .sv-inp { background:#202225;border:1px solid #40444b;border-radius:6px;color:#dcddde;font-size:13px;padding:6px 10px;width:160px;transition:border-color .15s; }
+        .sv-inp:focus { outline:none;border-color:#7289da;background:#1a1d21; }
+        /* Toggle switch */
+        .sv-tog { position:relative;width:42px;height:24px;flex-shrink:0; }
+        .sv-tog input { opacity:0;width:0;height:0;position:absolute; }
+        .sv-track { position:absolute;inset:0;background:#40444b;border-radius:12px;cursor:pointer;transition:background .2s; }
+        .sv-track::before { content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3); }
+        .sv-tog input:checked + .sv-track { background:#43b581; }
+        .sv-tog input:checked + .sv-track::before { transform:translateX(18px); }
+
+        /* Run-mode toggle */
+        .run-mode-toggle {
+            display: inline-flex; border-radius: 6px; overflow: hidden;
+            border: 1px solid #40444b; margin-bottom: 12px;
+        }
+        .run-mode-toggle button {
+            flex: 1; border: none; padding: 5px 13px; font-size: 12px; font-weight: 600;
+            cursor: pointer; background: #36393f; color: #72767d;
+            transition: background .15s, color .15s; white-space: nowrap;
+        }
+        .run-mode-toggle button.active {
+            background: #7289da; color: #fff;
+        }
+        .run-mode-toggle button.active.local-active {
+            background: #43b581;
+        }
+        .run-mode-toggle button:disabled {
+            cursor: not-allowed; opacity: .5;
+        }
+        .local-status-row {
+            display: flex; align-items: center; gap: 8px;
+            background: #36393f; border-radius: 6px; padding: 8px 12px;
+            margin-bottom: 12px; font-size: 13px;
+        }
+        .local-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .local-dot.online  { background: #43b581; box-shadow: 0 0 5px #43b581; }
+        .local-dot.offline { background: #72767d; }
+
+        /* OS tabs in local deploy modal */
+        .os-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+        .os-tab {
+            flex: 1; padding: 7px 8px; border-radius: 6px; border: 1px solid #40444b;
+            background: none; color: #72767d; font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: background .15s, color .15s;
+        }
+        .os-tab.active { background: #7289da; border-color: #7289da; color: #fff; }
+        .os-panel { display: none; }
+        .os-panel.active { display: block; }
+
+        .container {
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            color: #7289da;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        h2 {
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background-color: #43b581;
+            color: #ffffff;
+        }
+
+        .alert-error {
+            background-color: #f04747;
+            color: #ffffff;
+        }
+
+        .alert-info {
+            background-color: #5865f2;
+            color: #ffffff;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background-color: #2f3136;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,.45);
+        }
+
+        .stat-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #7289da;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #b9bbbe;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* ── Stat detail popup ── */
+        .stat-popup-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px; border-radius: 6px; background: #36393f; margin-bottom: 8px;
+        }
+        .stat-popup-row:last-child { margin-bottom: 0; }
+        .stat-popup-name { color: #fff; font-weight: 600; font-size: 14px; }
+        .stat-popup-sub  { color: #72767d; font-size: 12px; margin-top: 2px; }
+        .stat-popup-status { font-size: 12px; white-space: nowrap; padding: 3px 8px;
+            border-radius: 10px; font-weight: 600; }
+        .stat-popup-status.running { background: rgba(67,181,129,.15); color: #43b581; }
+        .stat-popup-status.stopped { background: rgba(240,71,71,.12); color: #f04747; }
+        .stat-popup-script-group { margin-bottom: 12px; }
+        .stat-popup-script-group:last-child { margin-bottom: 0; }
+        .stat-popup-script-bot { color: #b9bbbe; font-size: 12px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+        .stat-popup-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+        .stat-popup-tag { background: #40444b; color: #dcddde; font-size: 12px;
+            padding: 3px 8px; border-radius: 4px; }
+        .stat-popup-empty { color: #72767d; font-size: 13px; font-style: italic; text-align: center; padding: 20px 0; }
+
+        /* Section */
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        /* Buttons */
+        .btn {
+            background-color: #7289da;
+            color: #ffffff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #5b6eae;
+        }
+
+        .btn-success {
+            background-color: #43b581;
+        }
+
+        .btn-success:hover {
+            background-color: #3ca374;
+        }
+
+        .btn-danger {
+            background-color: #f04747;
+        }
+
+        .btn-danger:hover {
+            background-color: #d84040;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .btn-secondary {
+            background-color: #4f545c;
+        }
+
+        .btn-secondary:hover {
+            background-color: #40444b;
+        }
+
+        /* Bots Grid */
+        .bots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .bot-card {
+            background-color: #2f3136;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border-left: 4px solid #7289da;
+        }
+
+        .bot-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .bot-card.running {
+            border-left-color: #43b581;
+        }
+
+        .bot-card.stopped {
+            border-left-color: #f04747;
+        }
+
+        .bot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .bot-title h3 {
+            color: #ffffff;
+            margin-bottom: 5px;
+            font-size: 1.3em;
+        }
+
+        .bot-title p {
+            color: #b9bbbe;
+            font-size: 13px;
+        }
+
+        .bot-status {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .bot-status.running {
+            background-color: rgba(67, 181, 129, 0.2);
+            color: #43b581;
+        }
+
+        .bot-status.stopped {
+            background-color: rgba(240, 71, 71, 0.2);
+            color: #f04747;
+        }
+
+        .bot-info {
+            background-color: #36393f;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .bot-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .bot-info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .bot-info-item span:first-child {
+            color: #b9bbbe;
+        }
+
+        .bot-info-item span:last-child {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .bot-scripts {
+            margin-bottom: 15px;
+        }
+
+        .bot-scripts h4 {
+            color: #b9bbbe;
+            font-size: 13px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .script-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .script-tag {
+            background-color: #5865f2;
+            color: #ffffff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .bot-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .bot-actions .btn {
+            flex: 1 1 auto;
+            min-width: 0;
+            white-space: nowrap;
+            justify-content: center;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: #2f3136;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: modalSlideIn 0.3s ease;
+            position: relative;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #36393f;
+        }
+
+        .modal-header h2 {
+            color: #7289da;
+            font-size: 1.8em;
+            margin-bottom: 8px;
+        }
+
+        .modal-header p {
+            color: #b9bbbe;
+            font-size: 14px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #b9bbbe;
+            cursor: pointer;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            background-color: #36393f;
+            color: #ffffff;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #b9bbbe;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #36393f;
+            border-radius: 5px;
+            font-size: 14px;
+            background-color: #40444b;
+            color: #ffffff;
+            transition: all 0.3s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #7289da;
+        }
+
+        .form-group small {
+            display: block;
+            color: #72767d;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .form-group small a {
+            color: #7289da;
+            text-decoration: underline;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+                        margin-top: 25px;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background-color: #2f3136;
+            border-radius: 10px;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h2 {
+            color: #b9bbbe;
+            margin-bottom: 20px;
+        }
+
+        .empty-state p {
+            color: #72767d;
+            margin-bottom: 30px;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #b9bbbe;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #36393f;
+            border-top-color: #7289da;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background-color: #2f3136;
+            padding: 20px 25px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            gap: 15px;
+            min-width: 300px;
+            animation: slideInRight 0.3s ease;
+            border-left: 4px solid #43b581;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .notification.show {
+            display: flex;
+        }
+
+        .notification.success {
+            border-left-color: #43b581;
+        }
+
+        .notification.error {
+            border-left-color: #f04747;
+        }
+
+        .notification-icon {
+            font-size: 24px;
+        }
+
+        .notification-text {
+            flex: 1;
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        /* Bot Details View */
+        .bot-details-container {
+            background-color: #2f3136;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #7289da;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: color 0.3s;
+        }
+
+        .back-button:hover {
+            color: #5b6eae;
+        }
+
+        /* ── Light theme overrides ── */
+        [data-theme="light"] body { background: #f2f3f5; color: #060607; }
+        [data-theme="light"] .navbar { background: #fff; box-shadow: 0 1px 0 #d4d7dc; }
+        [data-theme="light"] .navbar-brand { color: #5865f2; }
+        [data-theme="light"] .navbar-links a { color: #4e5058; }
+        [data-theme="light"] .navbar-links a:hover,[data-theme="light"] .navbar-links a.active { background: #e3e5e8; color: #060607; }
+        [data-theme="light"] .user-btn { color: #5865f2; }
+        [data-theme="light"] .user-btn:hover { background: #e3e5e8; }
+        [data-theme="light"] .user-avatar { background: #5865f2; }
+        [data-theme="light"] .user-chevron { color: #80848e; }
+        [data-theme="light"] .user-dropdown { background: #fff; border-color: #c7ccd1; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+        [data-theme="light"] .user-dropdown-info { border-color: #e3e5e8; }
+        [data-theme="light"] .user-dropdown-info .ud-name { color: #060607; }
+        [data-theme="light"] .user-dropdown a,[data-theme="light"] .user-dropdown button { color: #4e5058; }
+        [data-theme="light"] .user-dropdown a:hover,[data-theme="light"] .user-dropdown button:hover { background: #f2f3f5; color: #060607; }
+        [data-theme="light"] .ud-logout { color: #da373c !important; }
+        [data-theme="light"] h1 { color: #5865f2; }
+        [data-theme="light"] h2 { color: #060607; }
+        [data-theme="light"] .stat-card { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+        [data-theme="light"] .stat-label { color: #4e5058; }
+        [data-theme="light"] .bot-card { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+        [data-theme="light"] .bot-title h3 { color: #060607; }
+        [data-theme="light"] .bot-title p { color: #4e5058; }
+        [data-theme="light"] .bot-info { background: #f2f3f5; }
+        [data-theme="light"] .bot-info-item span:first-child { color: #4e5058; }
+        [data-theme="light"] .bot-info-item span:last-child { color: #060607; }
+        [data-theme="light"] .bot-scripts h4 { color: #4e5058; }
+        [data-theme="light"] .modal-content { background: #fff; }
+        [data-theme="light"] .modal-header { border-color: #e3e5e8; }
+        [data-theme="light"] .modal-header h2 { color: #5865f2; }
+        [data-theme="light"] .modal-header p { color: #4e5058; }
+        [data-theme="light"] .close-btn { color: #4e5058; }
+        [data-theme="light"] .close-btn:hover { background: #e3e5e8; color: #060607; }
+        [data-theme="light"] .form-group label { color: #4e5058; }
+        [data-theme="light"] .form-group input,[data-theme="light"] .form-group select { background: #f2f3f5; border-color: #c7ccd1; color: #060607; }
+        [data-theme="light"] .notification { background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+        [data-theme="light"] .notification-text { color: #060607; }
+        [data-theme="light"] .empty-state { background: #fff; }
+        [data-theme="light"] .empty-state h2 { color: #4e5058; }
+        [data-theme="light"] .local-status-row { background: #f2f3f5; }
+        [data-theme="light"] .run-mode-toggle { border-color: #c7ccd1; }
+        [data-theme="light"] .run-mode-toggle button { background: #f2f3f5; color: #80848e; }
+        [data-theme="light"] .faq-item { background: #fff; border-color: #c7ccd1; }
+        [data-theme="light"] .faq-q { color: #060607; }
+        [data-theme="light"] .faq-q:hover { background: #f2f3f5; }
+        [data-theme="light"] .faq-a { color: #4e5058; }
+        [data-theme="light"] .stat-popup-row { background: #f2f3f5; }
+        [data-theme="light"] .stat-popup-name { color: #060607; }
+        [data-theme="light"] .stat-popup-tag { background: #e3e5e8; color: #060607; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .navbar-menu {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .bots-grid,
+            .scripts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bot-actions,
+            .script-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+            <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+            <div class="navbar-links">
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('servers_page') }}">Servers</a>
+                <a href="{{ url_for('bots_page') }}" class="active">Bots</a>
+                <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+                <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+                <a id="botMgrLink" href="http://127.0.0.1:5001" target="_blank" rel="noopener"
+                   style="display:none;color:#43b581;border:1px solid rgba(67,181,129,.35);border-radius:6px;">🤖 Bot Manager</a>
+            </div>
+        </div>
+        <div class="user-menu">
+            <button class="user-btn" id="userNavBtn">
+                <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+                {{ username }}
+                <span class="user-chevron">▼</span>
+            </button>
+            <div class="user-dropdown" id="userNavDropdown">
+                <div class="user-dropdown-info">
+                    <div class="ud-name">{{ username }}</div>
+                </div>
+                <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+                <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+                <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+            </div>
+        </div>
+    </nav>
+ 
+    {% if is_free_plan %}
+    <div style="background:#1e2023;border-bottom:1px solid #40444b;padding:9px 30px;
+                display:flex;align-items:center;justify-content:space-between;gap:16px;">
+        <span style="color:#b9bbbe;font-size:13px;">
+            <strong style="color:#fff;">Free plan</strong> — download your bots and run them locally.
+            Upgrade for cloud hosting.
+        </span>
+        <a href="/subscriptions" style="background:#7289da;color:#fff;text-decoration:none;
+           padding:5px 12px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap;">
+            See Plans
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="container">
+        <h1>🤖 Bot Management</h1>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card" onclick="openStatPopup('all')">
+                <div class="stat-icon">🤖</div>
+                <div class="stat-value" id="totalBots">0</div>
+                <div class="stat-label">Total Bots</div>
+            </div>
+            <div class="stat-card" onclick="openStatPopup('running')">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="runningBots">0</div>
+                <div class="stat-label">Running</div>
+            </div>
+            <div class="stat-card" onclick="openStatPopup('stopped')">
+                <div class="stat-icon">⏸️</div>
+                <div class="stat-value" id="stoppedBots">0</div>
+                <div class="stat-label">Stopped</div>
+            </div>
+            <div class="stat-card" onclick="openStatPopup('scripts')">
+                <div class="stat-icon">📦</div>
+                <div class="stat-value" id="totalScripts">0</div>
+                <div class="stat-label">Installed Scripts</div>
+            </div>
+        </div>
+
+        <!-- My Bots Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>My Bots</h2>
+                <button class="btn btn-success" onclick="openCreateBotModal()">
+                    ➕ Create New Bot
+                </button>
+            </div>
+ 
+            <div id="botsList" class="bots-grid">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading your bots...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="section" id="faqSection" style="margin-top:10px;">
+            <div class="section-header" style="margin-bottom:16px;">
+                <h2 style="font-size:1.3em;">❓ Local Bot — FAQ</h2>
+            </div>
+            <div id="faqList"></div>
+        </div>
+
+    </div>
+
+    <!-- Add Bot Modal — 3-step flow -->
+    <div id="createBotModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);
+         align-items:center;justify-content:center;z-index:1000;padding:20px;">
+        <div style="background:#2f3136;border-radius:12px;width:90%;max-width:520px;
+                    box-shadow:0 12px 40px rgba(0,0,0,.6);overflow:hidden;">
+
+            <!-- Header -->
+            <div style="padding:22px 26px 0;display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                    <h2 style="color:#7289da;font-size:1.2em;margin-bottom:3px;">🤖 Add a Bot</h2>
+                    <p style="color:#72767d;font-size:13px;">Connect a Discord bot to one of your servers</p>
+                </div>
+                <button onclick="closeBotModal()" style="background:none;border:none;color:#72767d;
+                        font-size:22px;cursor:pointer;line-height:1;padding:0 0 0 12px;">×</button>
+            </div>
+
+            <!-- Step indicators -->
+            <div style="display:flex;padding:18px 26px 0;">
+                <div id="cbStep1ind" style="flex:1;text-align:center;padding-bottom:10px;
+                     border-bottom:2px solid #7289da;color:#7289da;font-size:11px;font-weight:700;">
+                    1 · Create on Discord
+                </div>
+                <div id="cbStep2ind" style="flex:1;text-align:center;padding-bottom:10px;
+                     border-bottom:2px solid #40444b;color:#72767d;font-size:11px;font-weight:700;">
+                    2 · Paste Token
+                </div>
+                <div id="cbStep3ind" style="flex:1;text-align:center;padding-bottom:10px;
+                     border-bottom:2px solid #40444b;color:#72767d;font-size:11px;font-weight:700;">
+                    3 · Invite to Server
+                </div>
+            </div>
+
+            <!-- Step 1: Create on Discord -->
+            <div id="cbStep1" style="padding:22px 26px;">
+                <p style="color:#b9bbbe;font-size:14px;line-height:1.7;margin-bottom:18px;">
+                    First, create a bot in the Discord Developer Portal.
+                </p>
+                <div style="display:flex;flex-direction:column;gap:11px;margin-bottom:22px;">
+                    <div style="display:flex;gap:12px;align-items:flex-start;">
+                        <div style="width:24px;height:24px;border-radius:50%;background:#7289da;display:flex;
+                             align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">1</div>
+                        <div>
+                            <div style="color:#fff;font-weight:600;font-size:13px;">Open the Developer Portal</div>
+                            <div style="color:#72767d;font-size:12px;margin-top:2px;">Click the button below.</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:flex-start;">
+                        <div style="width:24px;height:24px;border-radius:50%;background:#7289da;display:flex;
+                             align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">2</div>
+                        <div>
+                            <div style="color:#fff;font-weight:600;font-size:13px;">Click "New Application"</div>
+                            <div style="color:#72767d;font-size:12px;margin-top:2px;">Give it a name — this becomes your bot's name in Discord.</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:flex-start;">
+                        <div style="width:24px;height:24px;border-radius:50%;background:#7289da;display:flex;
+                             align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">3</div>
+                        <div>
+                            <div style="color:#fff;font-weight:600;font-size:13px;">Go to Bot → "Reset Token"</div>
+                            <div style="color:#72767d;font-size:12px;margin-top:2px;">Copy the token — you'll need it in the next step.</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:flex-start;">
+                        <div style="width:24px;height:24px;border-radius:50%;background:#7289da;display:flex;
+                             align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">4</div>
+                        <div>
+                            <div style="color:#fff;font-weight:600;font-size:13px;">Enable "Message Content Intent"</div>
+                            <div style="color:#72767d;font-size:12px;margin-top:2px;">Bot → Privileged Gateway Intents → turn it on.</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <a href="https://discord.com/developers/applications" target="_blank"
+                       style="flex:1;justify-content:center;text-decoration:none;"
+                       class="btn btn-success">🔗 Open Developer Portal</a>
+                    <button onclick="cbGoTo(2)" class="btn" style="flex:1;justify-content:center;">
+                        I have my token →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Paste token + name + server -->
+            <div id="cbStep2" style="padding:22px 26px;display:none;">
+                <div style="margin-bottom:14px;">
+                    <label style="display:block;color:#b9bbbe;font-size:13px;font-weight:600;margin-bottom:5px;">
+                        Bot Name <span style="color:#f04747;">*</span>
+                    </label>
+                    <input id="cbName" type="text" placeholder="e.g. Moderation Bot"
+                           style="width:100%;padding:10px 12px;background:#40444b;border:1px solid #202225;
+                                  border-radius:5px;color:#fff;font-size:14px;">
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label style="display:block;color:#b9bbbe;font-size:13px;font-weight:600;margin-bottom:5px;">
+                        Bot Token <span style="color:#f04747;">*</span>
+                    </label>
+                    <input id="cbToken" type="password" placeholder="Paste your bot token here"
+                           style="width:100%;padding:10px 12px;background:#40444b;border:1px solid #202225;
+                                  border-radius:5px;color:#fff;font-size:14px;">
+                    <small style="color:#72767d;font-size:11px;margin-top:4px;display:block;">
+                        Developer Portal → Your App → Bot → Token
+                    </small>
+                </div>
+                <div style="margin-bottom:18px;">
+                    <label style="display:block;color:#b9bbbe;font-size:13px;font-weight:600;margin-bottom:5px;">
+                        Attach to Server <span style="color:#f04747;">*</span>
+                    </label>
+                    <select id="cbServer"
+                            style="width:100%;padding:10px 12px;background:#40444b;border:1px solid #202225;
+                                   border-radius:5px;color:#fff;font-size:14px;">
+                        <option value="">— Select a server —</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button onclick="cbGoTo(1)" class="btn btn-secondary" style="flex:1;justify-content:center;">← Back</button>
+                    <button onclick="cbGoTo(3)" class="btn btn-success" style="flex:1;justify-content:center;">
+                        Next: Invite Bot →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Invite bot to server -->
+            <div id="cbStep3" style="padding:22px 26px;display:none;">
+                <p style="color:#b9bbbe;font-size:14px;line-height:1.7;margin-bottom:6px;">
+                    Invite your bot to the selected Discord server so it can be used.
+                </p>
+                <p style="color:#72767d;font-size:12px;margin-bottom:20px;">
+                    The invite link is generated from your bot token. Click below to open the Discord authorisation page.
+                </p>
+
+                <div id="cbInviteBox" style="background:#36393f;border-radius:8px;padding:14px;margin-bottom:18px;display:none;">
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                        <div style="font-size:13px;color:#b9bbbe;flex:1;word-break:break-all;" id="cbInviteUrl"></div>
+                    </div>
+                    <a id="cbInviteLink" href="#" target="_blank"
+                       class="btn btn-success" style="width:100%;justify-content:center;text-decoration:none;display:flex;">
+                        🔗 Open Invite Page in Discord
+                    </a>
+                </div>
+
+                <div id="cbInviteError" style="color:#f04747;font-size:13px;margin-bottom:14px;display:none;"></div>
+
+                <button onclick="generateBotInvite()" id="cbGenInviteBtn"
+                        class="btn" style="width:100%;justify-content:center;margin-bottom:14px;">
+                    Generate Invite Link
+                </button>
+
+                <div style="display:flex;gap:10px;">
+                    <button onclick="cbGoTo(2)" class="btn btn-secondary" style="flex:1;justify-content:center;">← Back</button>
+                    <button onclick="submitCreateBot()" class="btn btn-success" id="cbSubmit"
+                            style="flex:1;justify-content:center;">✅ Save Bot</button>
+                </div>
+                <p style="color:#72767d;font-size:11px;margin-top:10px;text-align:center;">
+                    You can also save without inviting and invite manually later.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bot Details Modal -->
+    <div id="botDetailsModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <button class="close-btn" onclick="closeModal('botDetailsModal')">×</button>
+            <div class="modal-header">
+                <h2 id="detailsBotName">Bot Details</h2>
+                <p id="detailsBotStatus">View and manage your bot</p>
+            </div>
+            
+            <div id="botDetailsContent">
+                <!-- Will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Variables Modal -->
+    <div id="scriptVarsModal" class="modal">
+        <div class="modal-content" style="max-width:640px;display:flex;flex-direction:column;max-height:85vh;padding:0;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:10px;padding:20px 24px 16px;border-bottom:1px solid #40444b;flex-shrink:0;">
+                <span style="font-size:22px;line-height:1;">⚙️</span>
+                <div style="flex:1">
+                    <h2 style="margin:0;font-size:1.1em;color:#fff;">Script Variables</h2>
+                    <p id="scriptVarsSubtitle" style="margin:2px 0 0;font-size:12px;color:#72767d;"></p>
+                </div>
+                <button class="close-btn" onclick="closeModal('scriptVarsModal')" style="position:static;font-size:18px;background:none;border:none;color:#72767d;cursor:pointer;padding:4px 8px;border-radius:4px;">×</button>
+            </div>
+            <div id="scriptVarsBody" style="flex:1;overflow-y:auto;padding:18px 24px;"></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 24px;border-top:1px solid #40444b;background:#292b2f;flex-shrink:0;border-radius:0 0 12px 12px;">
+                <span id="scriptVarsSaveMsg" style="font-size:12px;color:#72767d;margin-right:auto;"></span>
+                <button class="btn btn-secondary" onclick="closeModal('scriptVarsModal')">Cancel</button>
+                <button class="btn btn-primary" id="scriptVarsSaveBtn" onclick="saveScriptVars()">💾 Save changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stat Detail Popup -->
+    <div id="statPopupModal" class="modal">
+        <div class="modal-content" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column;">
+            <button class="close-btn" onclick="closeModal('statPopupModal')">×</button>
+            <div class="modal-header" style="flex-shrink:0;">
+                <h2 id="statPopupTitle">Bots</h2>
+                <p id="statPopupSubtitle"></p>
+            </div>
+            <div id="statPopupBody" style="overflow-y:auto;padding-right:4px;"></div>
+        </div>
+    </div>
+
+    <!-- Start Health Check Modal -->
+    <div id="startHealthModal" class="modal">
+        <div class="modal-content" style="max-width:520px;">
+            <button class="close-btn" onclick="closeModal('startHealthModal')">×</button>
+            <div class="modal-header">
+                <h2 style="color:#f04747;">⚠️ Script Issues Detected</h2>
+                <p>Some scripts have problems. The bot may not work correctly.</p>
+            </div>
+            <div id="startHealthResults" style="max-height:300px;overflow-y:auto;margin-bottom:20px;"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('startHealthModal')">Cancel</button>
+                <button class="btn btn-danger" id="startAnywayBtn" onclick="confirmStartAnyway()">⚡ Start Anyway</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Local Deployment Modal (free tier) -->
+    <div id="localDeployModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);
+         align-items:center;justify-content:center;z-index:1000;padding:20px;">
+        <div style="background:#2f3136;border-radius:12px;width:90%;max-width:560px;
+                    max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.6);">
+
+            <!-- Header -->
+            <div style="padding:22px 26px 14px;display:flex;justify-content:space-between;align-items:flex-start;
+                        position:sticky;top:0;background:#2f3136;z-index:1;border-bottom:1px solid #40444b;">
+                <div>
+                    <h2 style="color:#7289da;font-size:1.2em;margin-bottom:3px;">🤖 Bot Manager</h2>
+                    <p style="color:#72767d;font-size:13px;">One launcher for all your bots — add more with a single click</p>
+                </div>
+                <button onclick="closeLocalDeployModal()" style="background:none;border:none;color:#72767d;
+                        font-size:22px;cursor:pointer;line-height:1;padding:0 0 0 12px;">×</button>
+            </div>
+
+            <div style="padding:20px 26px 26px;">
+
+                <!-- Two-path cards -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                    <!-- First time -->
+                    <div style="background:#202225;border-radius:8px;padding:16px;border:1px solid #40444b;display:flex;flex-direction:column;gap:8px;">
+                        <div style="font-size:22px;">🆕</div>
+                        <div style="color:#fff;font-weight:700;font-size:13px;">First time?</div>
+                        <div style="color:#72767d;font-size:12px;flex:1;">Download the Bot Manager — includes this bot's config already bundled inside.</div>
+                        <a id="localDownloadBtn" href="#" class="btn btn-success"
+                           style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;padding:9px 14px;">
+                            ⬇️ Download Bot Manager
+                        </a>
+                    </div>
+                    <!-- Already have it -->
+                    <div style="background:#202225;border-radius:8px;padding:16px;border:1px solid #40444b;display:flex;flex-direction:column;gap:8px;">
+                        <div style="font-size:22px;">➕</div>
+                        <div style="color:#fff;font-weight:700;font-size:13px;">Already have it?</div>
+                        <div style="color:#72767d;font-size:12px;flex:1;">Push this bot directly to your running manager — no download needed.</div>
+                        <button id="addToManagerBtn" class="btn btn-primary"
+                                style="font-size:13px;padding:9px 14px;" onclick="addToManager()">
+                            ⚡ Add to Manager
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Feature list -->
+                <div style="background:#202225;border-radius:8px;padding:14px 16px;margin-bottom:18px;display:flex;flex-direction:column;gap:6px;">
+                    <div style="font-size:12px;font-weight:700;color:#72767d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">What you get</div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#dcddde;"><span style="color:#43b581;">✓</span> Dependencies installed automatically on first run</div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#dcddde;"><span style="color:#43b581;">✓</span> Start / stop / restart any bot with one click</div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#dcddde;"><span style="color:#43b581;">✓</span> Live log viewer — see output in real time</div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#dcddde;"><span style="color:#43b581;">✓</span> Add more bots later — no re-download needed</div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#dcddde;"><span style="color:#43b581;">✓</span> No terminal window — double-click <code style="background:#40444b;padding:1px 5px;border-radius:3px;">Launch.vbs</code></div>
+                </div>
+
+                <!-- Quick steps (first-time) -->
+                <div style="margin-bottom:18px;">
+                    <div style="font-size:12px;font-weight:700;color:#72767d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">First-time setup (3 steps)</div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:22px;height:22px;border-radius:50%;background:#7289da;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:#fff;">1</div>
+                            <div style="font-size:13px;color:#dcddde;padding-top:2px;">
+                                Install <strong style="color:#fff;">Python 3.9+</strong> from
+                                <a href="https://python.org" target="_blank" style="color:#7289da;">python.org</a>
+                                — tick <em>"Add Python to PATH"</em>.
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:22px;height:22px;border-radius:50%;background:#7289da;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:#fff;">2</div>
+                            <div style="font-size:13px;color:#dcddde;padding-top:2px;">
+                                Click <strong style="color:#fff;">Download Bot Manager</strong>, extract the ZIP to any folder.
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="width:22px;height:22px;border-radius:50%;background:#7289da;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:#fff;">3</div>
+                            <div style="font-size:13px;color:#dcddde;padding-top:2px;">
+                                Double-click <code style="background:#40444b;padding:1px 5px;border-radius:3px;">Launch.vbs</code> — browser opens at
+                                <code style="background:#40444b;padding:1px 5px;border-radius:3px;color:#7289da;">localhost:5001</code>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Warning -->
+                <div style="background:rgba(240,71,71,.08);border:1px solid rgba(240,71,71,.2);border-radius:6px;
+                            padding:10px 12px;font-size:12px;color:#b9bbbe;">
+                    🔒 <strong style="color:#fff;">Keep the folder private</strong> — config files contain your bot tokens.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <div class="notification-icon">✓</div>
+        <div class="notification-text" id="notificationText"></div>
+    </div>
+
+    <script>
+        let botScripts = [];
+        let currentBots = [];
+        let botLimit = 0;
+        let canUseCloud = true;
+        let selectedBotForDetails = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBots();
+            renderFaq();
+        });
+
+        // Load user's bots
+        function loadBots() {
+            fetch('/api/bots/list')
+                .then(response => response.json())
+                .then(data => {
+                    currentBots = data.bots || [];
+                    botLimit = data.limit || 0;
+                    canUseCloud = data.can_use_cloud !== false;
+                    updateStats();
+                    renderBots();
+                })
+                .catch(error => {
+                    console.error('Error loading bots:', error);
+                    document.getElementById('botsList').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⚠️</div>
+                            <h2>Unable to load bots</h2>
+                            <p>Please try refreshing the page.</p>
+                        </div>
+                    `;
+                });
+        }
+
+        // Update stats
+        function updateStats() {
+            const total = currentBots.length;
+            const running = currentBots.filter(bot => {
+                if (bot.bot_type === 'local') {
+                    return bot.local_last_seen &&
+                        (Date.now() - new Date(bot.local_last_seen).getTime()) < 3 * 60 * 1000;
+                }
+                return bot.status === 'running';
+            }).length;
+            const stopped = total - running;
+            const totalScripts = currentBots.reduce((sum, bot) => sum + (bot.installed_scripts || []).length, 0);
+
+            document.getElementById('totalBots').textContent = botLimit ? `${total}/${botLimit}` : total;
+                        document.getElementById('runningBots').textContent = running;
+            document.getElementById('stoppedBots').textContent = stopped;
+            document.getElementById('totalScripts').textContent = totalScripts;
+        }
+
+        // Stat detail popup
+        function openStatPopup(type) {
+            const titles = { all: '🤖 All Bots', running: '✅ Running Bots', stopped: '⏸️ Stopped Bots', scripts: '📦 Installed Scripts' };
+            const filtered = type === 'all'     ? currentBots
+                           : type === 'running' ? currentBots.filter(b => b.status === 'running')
+                           : type === 'stopped' ? currentBots.filter(b => b.status !== 'running')
+                           : currentBots;
+
+            document.getElementById('statPopupTitle').textContent = titles[type];
+            const body = document.getElementById('statPopupBody');
+
+            if (type === 'scripts') {
+                const withScripts = currentBots.filter(b => (b.installed_scripts || []).length > 0);
+                document.getElementById('statPopupSubtitle').textContent =
+                    `${currentBots.reduce((s,b) => s + (b.installed_scripts||[]).length, 0)} scripts across ${withScripts.length} bot${withScripts.length !== 1 ? 's' : ''}`;
+
+                if (withScripts.length === 0) {
+                    body.innerHTML = '<p class="stat-popup-empty">No scripts installed on any bot.</p>';
+                } else {
+                    body.innerHTML = withScripts.map(b => `
+                        <div class="stat-popup-script-group">
+                            <div class="stat-popup-script-bot">
+                                ${b.bot_name} — ${b.server_name || b.guild_id}
+                                <span style="color:#72767d;font-weight:400;">(${(b.installed_scripts||[]).length})</span>
+                            </div>
+                            <div class="stat-popup-tags">
+                                ${(b.installed_scripts || []).map(s => `<span class="stat-popup-tag">${s.name || s}</span>`).join('')}
+                            </div>
+                        </div>`).join('');
+                }
+            } else {
+                document.getElementById('statPopupSubtitle').textContent =
+                    `${filtered.length} bot${filtered.length !== 1 ? 's' : ''}`;
+
+                if (filtered.length === 0) {
+                    body.innerHTML = `<p class="stat-popup-empty">No ${type === 'all' ? '' : type + ' '}bots found.</p>`;
+                } else {
+                    body.innerHTML = filtered.map(b => {
+                        const isRunning = b.status === 'running';
+                        return `
+                            <div class="stat-popup-row">
+                                <div>
+                                    <div class="stat-popup-name">${b.bot_name}</div>
+                                    <div class="stat-popup-sub">${b.server_name || b.guild_id}</div>
+                                </div>
+                                <span class="stat-popup-status ${isRunning ? 'running' : 'stopped'}">
+                                    ${isRunning ? '✅ Running' : '⏸️ Stopped'}
+                                </span>
+                            </div>`;
+                    }).join('');
+                }
+            }
+
+            document.getElementById('statPopupModal').classList.add('show');
+        }
+
+        // Render bots
+        function renderBots() {
+            const container = document.getElementById('botsList');
+            container.innerHTML = '';
+
+            if (currentBots.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🤖</div>
+                        <h2>No bots created yet</h2>
+                        <p>Get started by creating your first Discord bot.</p>
+                        <button class="btn btn-success" onclick="openCreateBotModal()">
+                            🚀 Create Your First Bot
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            currentBots.forEach(bot => {
+                const card = createBotCard(bot);
+                container.appendChild(card);
+            });
+        }
+
+        // Create bot card
+        function createBotCard(bot) {
+            const card = document.createElement('div');
+
+            // Effective run mode: respect per-bot bot_type, but fall back to 'local' for free plan
+            const runMode = (!canUseCloud || bot.bot_type === 'local') ? 'local' : 'cloud';
+
+            // Local online = heartbeat within last 3 minutes
+            const localOnline = bot.local_last_seen &&
+                (Date.now() - new Date(bot.local_last_seen).getTime()) < 3 * 60 * 1000;
+
+            card.className = `bot-card ${runMode === 'cloud' ? (bot.status || 'stopped') : (localOnline ? 'running' : 'stopped')}`;
+
+            // Status badge
+            let statusClass, statusText;
+            if (runMode === 'cloud') {
+                statusClass = bot.status === 'running' ? 'running' : 'stopped';
+                statusText  = bot.status === 'running' ? '✅ Running' : '⏸️ Stopped';
+            } else {
+                statusClass = localOnline ? 'running' : 'stopped';
+                statusText  = localOnline ? '🟢 Online' : '⚫ Offline';
+            }
+
+            // Run-mode toggle
+            const cloudDis = !canUseCloud ? 'disabled title="Upgrade to a paid plan to use cloud hosting"' : '';
+            const toggleHTML = `
+                <div class="run-mode-toggle">
+                    <button class="${runMode === 'cloud' ? 'active' : ''}" ${cloudDis}
+                            onclick="setRunMode('${bot.server_id}','${bot.bot_id}','cloud',this)">
+                        ☁️ Cloud
+                    </button>
+                    <button class="${runMode === 'local' ? 'active local-active' : ''}"
+                            onclick="setRunMode('${bot.server_id}','${bot.bot_id}','local',this)">
+                        💻 Local
+                    </button>
+                </div>`;
+
+            // Action buttons differ by mode
+            let actionHTML;
+            if (runMode === 'cloud') {
+                actionHTML = bot.status === 'running'
+                    ? `<button class="btn btn-danger btn-small" onclick="stopBot('${bot.server_id}','${bot.bot_id}',this)">⏹️ Stop</button>
+                       <button class="btn btn-secondary btn-small" onclick="restartBot('${bot.server_id}','${bot.bot_id}',this)">🔄 Restart</button>`
+                    : `<button class="btn btn-success btn-small" onclick="startBot('${bot.server_id}','${bot.bot_id}',this)">▶️ Start</button>`;
+            } else {
+                // Local mode: show heartbeat status row + deploy buttons
+                const lastSeenStr = bot.local_last_seen
+                    ? 'Last seen ' + timeSince(new Date(bot.local_last_seen))
+                    : 'Never connected';
+                const localStatusRow = `
+                    <div class="local-status-row">
+                        <div class="local-dot ${localOnline ? 'online' : 'offline'}"></div>
+                        <span style="color:${localOnline ? '#43b581' : '#72767d'};font-weight:600;">
+                            ${localOnline ? 'Bot is online' : 'Bot is offline'}
+                        </span>
+                        <span style="color:#72767d;font-size:11px;margin-left:auto;">${lastSeenStr}</span>
+                    </div>`;
+
+                const restartBtn = localOnline
+                    ? `<button class="btn btn-secondary btn-small" onclick="queueLocalRestart('${bot.server_id}','${bot.bot_id}',this)">🔄 Restart</button>`
+                    : '';
+
+                actionHTML = localStatusRow + `
+                    <button class="btn btn-success btn-small" onclick="showLocalDeployModal('${bot.server_id}','${bot.bot_id}','${bot.bot_name.replace(/'/g,"\\'").replace(/"/g,'\\"')}')">
+                        💾 Deploy Locally
+                    </button>
+                    ${restartBtn}`;
+            }
+
+            const installedScripts = bot.installed_scripts || [];
+            const scriptTagsHTML = installedScripts.length > 0
+                ? installedScripts.map(s => `<span class="script-tag">${s.name}</span>`).join('')
+                : '<span style="color:#72767d;font-size:12px;">No scripts installed</span>';
+
+            card.innerHTML = `
+                <div class="bot-header">
+                    <div class="bot-title">
+                        <h3>${bot.bot_name}</h3>
+                        <p>ID: ${bot.bot_id}</p>
+                    </div>
+                    <span class="bot-status ${statusClass}">${statusText}</span>
+                </div>
+
+                <div style="padding:0 0 4px;">
+                    ${toggleHTML}
+                </div>
+
+                <div class="bot-info">
+                    <div class="bot-info-item">
+                        <span>Server:</span>
+                        <span>${bot.server_name || bot.guild_id}</span>
+                    </div>
+                    <div class="bot-info-item">
+                        <span>Created:</span>
+                        <span>${bot.created_at ? new Date(bot.created_at).toLocaleDateString() : '—'}</span>
+                    </div>
+                </div>
+
+                <div class="bot-scripts">
+                    <h4>INSTALLED SCRIPTS (${installedScripts.length})</h4>
+                    <div class="script-tags">${scriptTagsHTML}</div>
+                </div>
+
+                <div class="bot-actions">
+                    ${actionHTML}
+                    <a class="btn btn-secondary btn-small" href="/scripts?bot_id=${bot.bot_id}">📦 Scripts</a>
+                    <button class="btn btn-secondary btn-small" onclick="viewBotDetails('${bot.bot_id}')">📋 Details</button>
+                    <button class="btn btn-danger btn-small"
+                        onclick="deleteBot('${bot.server_id}','${bot.bot_id}')"
+                        ${bot.status === 'running' ? 'disabled title="Stop the bot before deleting"' : ''}>
+                        🗑️ Delete
+                    </button>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Switch a bot's run mode
+        async function setRunMode(serverId, botId, mode, btn) {
+            const toggle = btn.closest('.run-mode-toggle');
+            if (toggle) toggle.querySelectorAll('button').forEach(b => b.disabled = true);
+            try {
+                const r = await fetch('/api/bots/set-run-mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({server_id: serverId, bot_id: botId, mode})
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    // Update local state and re-render
+                    const bot = currentBots.find(b => b.bot_id === botId);
+                    if (bot) bot.bot_type = mode;
+                    renderBots();
+                } else {
+                    showNotification(d.error || 'Failed to change mode', 'error');
+                    if (toggle) toggle.querySelectorAll('button').forEach(b => b.disabled = false);
+                }
+            } catch(e) {
+                showNotification('Network error', 'error');
+                if (toggle) toggle.querySelectorAll('button').forEach(b => b.disabled = false);
+            }
+        }
+
+        const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+        // ── Script variable editor ─────────────────────────────────────────
+        let _scriptVarsServerId = null;
+
+        function _humanLabel(key) {
+            return key.toLowerCase().replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+        }
+        function _typeBadge(t) {
+            const cls = {int:'sv-badge-int',float:'sv-badge-float',str:'sv-badge-str',bool:'sv-badge-bool'}[t]||'sv-badge-str';
+            return `<span class="sv-badge ${cls}">${t}</span>`;
+        }
+        function _renderVarSections(scripts, filterScript) {
+            const keys = filterScript ? (scripts[filterScript] ? [filterScript] : []) : Object.keys(scripts);
+            if (!keys.length) return `<div style="text-align:center;padding:40px 20px;color:#72767d;">
+                <div style="font-size:36px;margin-bottom:10px;">📦</div>
+                <div>No editable variables found.</div></div>`;
+            let html = '';
+            keys.forEach(sname => {
+                const vars = scripts[sname];
+                html += `<div class="sv-sec">
+                    <div class="sv-sec-hdr">
+                        <span style="font-size:16px;">📦</span>
+                        <span class="sv-sec-name">${esc(sname.replace(/_/g,' '))}</span>
+                        <span class="sv-sec-count">${vars.length} variable${vars.length!==1?'s':''}</span>
+                    </div>`;
+                vars.forEach(v => {
+                    html += `<div class="sv-row">
+                        <div><div class="sv-lbl">${esc(_humanLabel(v.key))}</div>
+                        <div class="sv-raw">${esc(v.key)}</div></div>
+                        ${_typeBadge(v.type)}`;
+                    if (v.type === 'bool') {
+                        html += `<label class="sv-tog">
+                            <input type="checkbox" data-script="${esc(sname)}" data-key="${esc(v.key)}" data-type="bool"${v.value?' checked':''}>
+                            <span class="sv-track"></span></label>`;
+                    } else {
+                        const itype = (v.type==='int'||v.type==='float') ? 'number' : 'text';
+                        html += `<input type="${itype}" class="sv-inp" data-script="${esc(sname)}" data-key="${esc(v.key)}" data-type="${v.type}"
+                            ${v.type==='float'?'step="any"':''} value="${esc(String(v.value))}">`;
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            });
+            return html;
+        }
+
+        async function openScriptVars(serverId, scriptName) {
+            _scriptVarsServerId = serverId;
+            document.getElementById('scriptVarsSubtitle').textContent =
+                scriptName ? `Configuring: ${scriptName.replace(/_/g,' ')}` : 'All installed scripts';
+            const body = document.getElementById('scriptVarsBody');
+            body.innerHTML = '<div style="text-align:center;padding:40px;color:#72767d;">Loading…</div>';
+            document.getElementById('scriptVarsModal').classList.add('show');
+            try {
+                const r = await fetch(`/api/bots/script-vars/${serverId}`);
+                const d = await r.json();
+                if (d.error) { body.innerHTML = `<div style="color:#f04747;padding:20px">${esc(d.error)}</div>`; return; }
+                body.innerHTML = _renderVarSections(d.scripts||{}, scriptName||null);
+            } catch(e) {
+                body.innerHTML = `<div style="color:#f04747;padding:20px">Error: ${esc(e.message)}</div>`;
+            }
+        }
+
+        async function saveScriptVars() {
+            if (!_scriptVarsServerId) return;
+            const byScript = {};
+            document.querySelectorAll('#scriptVarsBody [data-key]').forEach(inp => {
+                const {script, key, type} = inp.dataset;
+                let val;
+                if (type==='bool')      val = inp.checked;
+                else if (type==='int')  val = parseInt(inp.value,10);
+                else if (type==='float')val = parseFloat(inp.value);
+                else                    val = inp.value;
+                if (!byScript[script]) byScript[script] = {};
+                byScript[script][key] = val;
+            });
+            const btn = document.getElementById('scriptVarsSaveBtn');
+            const msg = document.getElementById('scriptVarsSaveMsg');
+            btn.disabled = true; btn.textContent = '⏳ Saving…'; msg.textContent = '';
+            const errors = [];
+            for (const script of Object.keys(byScript)) {
+                try {
+                    const r = await fetch(`/api/bots/script-vars/${_scriptVarsServerId}`,{
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({script, updates:byScript[script]})
+                    });
+                    const d = await r.json();
+                    if (!d.ok) errors.push(`${script}: ${d.error||d.msg}`);
+                } catch(e) { errors.push(`${script}: ${e.message}`); }
+            }
+            btn.disabled = false; btn.textContent = '💾 Save changes';
+            if (errors.length) { msg.style.color='#f04747'; msg.textContent='⚠ '+errors.join('; '); }
+            else { showNotification('Saved! Restart your bot to apply.'); closeModal('scriptVarsModal'); }
+        }
+        // ──────────────────────────────────────────────────────────────────
+
+        // Human-readable time since
+        function timeSince(date) {
+            const s = Math.floor((Date.now() - date) / 1000);
+            if (s < 60)  return s + 's ago';
+            if (s < 3600) return Math.floor(s / 60) + 'm ago';
+            if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+            return Math.floor(s / 86400) + 'd ago';
+        }
+
+        // Open create bot modal
+        // ── Bot modal (3-step) ────────────────────────────────────────
+        let _cbCurrentServers = [];
+
+        function openCreateBotModal() {
+            // Populate server dropdown
+            fetch('/api/bots/list')
+            .then(r => r.json())
+            .then(data => {
+                // Get unique servers from existing bots + load server list separately
+                fetch('/api/servers/list')
+                .then(r => r.ok ? r.json() : {servers: []})
+                .then(sd => {
+                    _cbCurrentServers = sd.servers || [];
+                    const sel = document.getElementById('cbServer');
+                    sel.innerHTML = '<option value="">— Select a server —</option>';
+                    _cbCurrentServers.forEach(s => {
+                        sel.innerHTML += `<option value="${s.server_id}">${s.server_name} (${s.guild_id})</option>`;
+                    });
+                });
+            })
+            .catch(() => {});
+
+            cbGoTo(1);
+            document.getElementById('createBotModal').style.display = 'flex';
+        }
+
+        function closeBotModal() {
+            document.getElementById('createBotModal').style.display = 'none';
+            document.getElementById('cbName').value = '';
+            document.getElementById('cbToken').value = '';
+            document.getElementById('cbServer').value = '';
+            document.getElementById('cbInviteBox').style.display = 'none';
+            document.getElementById('cbInviteError').style.display = 'none';
+            document.getElementById('cbGenInviteBtn').style.display = 'block';
+        }
+
+        function cbGoTo(step) {
+            [1,2,3].forEach(n => {
+                document.getElementById(`cbStep${n}`).style.display = n === step ? 'block' : 'none';
+                const ind = document.getElementById(`cbStep${n}ind`);
+                ind.style.borderBottomColor = n === step ? '#7289da' : '#40444b';
+                ind.style.color = n === step ? '#7289da' : '#72767d';
+            });
+        }
+
+        function generateBotInvite() {
+            const token = document.getElementById('cbToken').value.trim();
+            const errEl = document.getElementById('cbInviteError');
+            errEl.style.display = 'none';
+
+            if (!token) {
+                errEl.textContent = 'Please enter your bot token first (go back to step 2).';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            // Extract client ID from token (first segment is base64-encoded snowflake)
+            try {
+                const parts = token.split('.');
+                const clientId = atob(parts[0]);
+                if (!/^\d+$/.test(clientId)) throw new Error('bad format');
+
+                const serverId = document.getElementById('cbServer').value;
+                let url = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`;
+                if (serverId) {
+                    // Get guild_id for selected server
+                    const opt = document.querySelector(`#cbServer option[value="${serverId}"]`);
+                    const guildId = opt ? opt.text.match(/\((\d+)\)/)?.[1] : null;
+                    if (guildId) url += `&guild_id=${guildId}`;
+                }
+
+                document.getElementById('cbInviteUrl').textContent = url;
+                document.getElementById('cbInviteLink').href = url;
+                document.getElementById('cbInviteBox').style.display = 'block';
+                document.getElementById('cbGenInviteBtn').style.display = 'none';
+            } catch(e) {
+                errEl.textContent = 'Could not extract client ID from token. Make sure you pasted the full token.';
+                errEl.style.display = 'block';
+            }
+        }
+
+        function submitCreateBot() {
+            const token    = document.getElementById('cbToken').value.trim();
+            const name     = document.getElementById('cbName').value.trim();
+            const serverId = document.getElementById('cbServer').value;
+
+            if (!token || !name || !serverId) {
+                showNotification('Bot name, token and server are all required.', 'error');
+                cbGoTo(2);
+                return;
+            }
+
+            const btn = document.getElementById('cbSubmit');
+            btn.disabled = true;
+            btn.textContent = '⏳ Saving...';
+
+            fetch('/api/bots/add-to-server', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({server_id: serverId, bot_name: name, bot_token: token})
+            })
+            .then(r => r.json())
+            .then(d => {
+                btn.disabled = false;
+                btn.textContent = '✅ Save Bot';
+                if (d.success) {
+                    showNotification('Bot added successfully!', 'success');
+                    closeBotModal();
+                    loadBots();
+                } else {
+                    showNotification(d.error || 'Failed to add bot', 'error');
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.textContent = '✅ Save Bot';
+                showNotification('Network error', 'error');
+            });
+        }
+
+        // Close on backdrop click
+        document.getElementById('createBotModal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeBotModal();
+        });
+
+        // View bot details
+        function viewBotDetails(botId) {
+            const bot = currentBots.find(b => b.bot_id === botId);
+            if (!bot) return;
+
+            selectedBotForDetails = bot;
+            document.getElementById('detailsBotName').textContent = bot.bot_name;
+            document.getElementById('detailsBotStatus').textContent = `Status: ${bot.status === 'running' ? 'Running' : 'Stopped'}`;
+
+            const installedScripts = bot.installed_scripts || [];
+            const scriptsListHTML = installedScripts.length > 0
+                ? installedScripts.map(script => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#36393f;border-radius:5px;margin-bottom:8px;">
+                        <div>
+                            <strong style="color:#ffffff;">${esc(script.name)}</strong>
+                            <p style="color:#b9bbbe;font-size:12px;margin-top:4px;">${esc(script.category || 'General')}</p>
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <button class="btn btn-secondary btn-small" onclick="openScriptVars('${bot.server_id}','${esc(script.id)}')">⚙️ Configure</button>
+                            ${script.id === 'Database_management'
+                                ? '<span style="color:#72767d;font-size:12px;">Required</span>'
+                                : `<button class="btn btn-danger btn-small" onclick="removeScript('${bot.server_id}', '${script.id}')">Remove</button>`
+                            }
+                        </div>
+                    </div>
+                `).join('')
+                : '<p style="color:#72767d;text-align:center;padding:20px;">No scripts installed yet</p>';
+
+            const content = `
+                <div class="bot-info" style="margin-bottom: 20px;">
+                    <div class="bot-info-item">
+                        <span>Server:</span>
+                        <span>${bot.server_name || bot.guild_id}</span>
+                    </div>
+                    <div class="bot-info-item">
+                        <span>Status:</span>
+                        <span style="color: ${bot.status === 'running' ? '#43b581' : '#f04747'};">
+                            ${bot.status === 'running' ? '✅ Running' : '⏸️ Stopped'}
+                        </span>
+                    </div>
+                    <div class="bot-info-item">
+                        <span>Command prefix:</span>
+                        <span>!</span>
+                    </div>
+                    <div class="bot-info-item">
+                        <span>Created:</span>
+                        <span>${bot.created_at ? new Date(bot.created_at).toLocaleString() : '—'}</span>
+                    </div>
+                </div>
+
+                <h3 style="color: #ffffff; margin-bottom: 15px;">Installed Scripts (${installedScripts.length})</h3>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    ${scriptsListHTML}
+                </div>
+
+                <h3 style="color: #ffffff; margin: 20px 0 10px;">Script Health Check</h3>
+                <div id="healthCheckResults" style="margin-bottom: 16px;">
+                    <button class="btn btn-secondary btn-small" onclick="checkScripts('${bot.server_id}')">
+                        Run Check
+                    </button>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="viewLogs('${bot.server_id}', '${bot.bot_id}')">
+                        📋 View Logs
+                    </button>
+                    ${bot.local_last_seen && (Date.now() - new Date(bot.local_last_seen).getTime()) < 3*60*1000
+                        ? `<button class="btn btn-secondary" onclick="queueLocalRestart('${bot.server_id}','${bot.bot_id}',this)">🔄 Queue Restart</button>`
+                        : ''}
+                    <button class="btn btn-secondary" onclick="closeModal('botDetailsModal')">
+                        Close
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('botDetailsContent').innerHTML = content;
+            document.getElementById('botDetailsModal').classList.add('show');
+        }
+
+        // Close modal
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        // Start bot — runs health check first
+        let _pendingStart = null;
+
+        function startBot(serverId, botId, btn) {
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '🔍 Checking...';
+
+            fetch(`/api/bots/check-scripts/${serverId}`)
+                .then(r => r.json())
+                .then(data => {
+                    const summary = data.summary || { total: 0, failing: 0 };
+                    if (summary.total === 0 || summary.failing === 0) {
+                        // All good — start immediately
+                        doStartBot(serverId, botId, btn, orig);
+                    } else {
+                        // Problems found — ask for confirmation
+                        btn.disabled = false;
+                        btn.innerHTML = orig;
+                        showStartConfirm(serverId, botId, data.cogs || {}, summary);
+                    }
+                })
+                .catch(() => {
+                    // Can't reach check endpoint — proceed anyway
+                    doStartBot(serverId, botId, btn, orig);
+                });
+        }
+
+        function doStartBot(serverId, botId, btn, orig) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Starting...';
+
+            fetch('/api/bots/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ server_id: serverId, bot_id: botId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Bot started!', 'success');
+                    loadBots();
+                } else {
+                    showNotification(data.error || 'Failed to start bot', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                }
+            })
+            .catch(() => {
+                showNotification('Network error', 'error');
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            });
+        }
+
+        function showStartConfirm(serverId, botId, cogs, summary) {
+            _pendingStart = { serverId, botId };
+
+            let html = `<p style="color:#b9bbbe;font-size:13px;margin-bottom:14px;">
+                ${summary.failing} of ${summary.total} script${summary.total !== 1 ? 's' : ''} ha${summary.failing !== 1 ? 've' : 's'} issues:
+            </p>`;
+            for (const [name, result] of Object.entries(cogs)) {
+                if (result.ok) continue;
+                html += `<div style="background:#36393f;border-radius:6px;padding:10px;margin-bottom:8px;">
+                    <div style="color:#f04747;font-weight:600;margin-bottom:6px;">❌ ${name}</div>`;
+                for (const check of (result.checks || [])) {
+                    if (!check.ok) {
+                        html += `<div style="font-size:12px;color:#b9bbbe;padding:2px 0 2px 12px;">
+                            ✗ ${check.name}${check.detail ? ' — <span style="color:#f04747;">' + check.detail + '</span>' : ''}
+                        </div>`;
+                    }
+                }
+                html += '</div>';
+            }
+
+            document.getElementById('startHealthResults').innerHTML = html;
+            document.getElementById('startHealthModal').classList.add('show');
+        }
+
+        function confirmStartAnyway() {
+            if (!_pendingStart) return;
+            const { serverId, botId } = _pendingStart;
+            _pendingStart = null;
+            closeModal('startHealthModal');
+
+            // Find the start button for this bot to restore state on failure
+            const fakeBtn = { disabled: false, innerHTML: '▶️ Start' };
+            doStartBot(serverId, botId, fakeBtn, '▶️ Start');
+        }
+
+        function stopBot(serverId, botId, btn) {
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Stopping...';
+
+            fetch('/api/bots/stop', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ server_id: serverId, bot_id: botId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Bot stopped!', 'success');
+                    loadBots();
+                } else {
+                    showNotification(data.error || 'Failed to stop bot', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                }
+            })
+            .catch(() => {
+                showNotification('Network error', 'error');
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            });
+        }
+
+        async function queueLocalRestart(serverId, botId, btn) {
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Queuing…';
+            try {
+                const data = await fetch('/api/local-bot/queue-restart', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({server_id: serverId, bot_id: botId}),
+                }).then(r => r.json());
+                if (data.ok) {
+                    showNotification('Restart queued — bot will restart within 30 s.', 'success');
+                    setTimeout(() => loadBots(), 35000);
+                } else {
+                    showNotification(data.error || 'Failed to queue restart', 'error');
+                }
+            } catch {
+                showNotification('Network error', 'error');
+            }
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+
+        function restartBot(serverId, botId, btn) {
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Restarting...';
+
+            fetch('/api/bots/restart', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ server_id: serverId, bot_id: botId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                if (data.success) {
+                    showNotification('Bot restarted!', 'success');
+                    loadBots();
+                } else {
+                    showNotification(data.error || 'Failed to restart bot', 'error');
+                }
+            })
+            .catch(() => {
+                showNotification('Network error', 'error');
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            });
+        }
+
+        // Delete bot
+        function deleteBot(serverId, botId) {
+            if (!confirm('Are you sure you want to delete this bot? This will remove all installed scripts and cannot be undone.')) {
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Deleting...';
+
+            fetch('/api/bots/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ server_id: serverId, bot_id: botId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Bot deleted successfully!', 'success');
+                    loadBots();
+                } else {
+                    showNotification(data.error || 'Failed to delete bot', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting bot:', error);
+                                showNotification('Error deleting bot', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+        }
+
+        // Script health check
+        function checkScripts(serverId) {
+            const container = document.getElementById('healthCheckResults');
+            container.innerHTML = '<span style="color:#b9bbbe;font-size:13px;">Checking…</span>';
+
+            fetch(`/api/bots/check-scripts/${serverId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        container.innerHTML = `<span style="color:#f04747;">${data.error}</span>`;
+                        return;
+                    }
+                    const { cogs, summary } = data;
+                    const summaryColor = summary.failing === 0 ? '#43b581' : '#f04747';
+                    let html = `<p style="color:${summaryColor};font-size:13px;margin-bottom:10px;">
+                        ${summary.passing}/${summary.total} scripts passing
+                    </p>`;
+                    for (const [name, result] of Object.entries(cogs)) {
+                        const cogColor = result.ok ? '#43b581' : '#f04747';
+                        const cogIcon = result.ok ? '✅' : '❌';
+                        html += `<div style="background:#2f3136;border-radius:6px;padding:10px;margin-bottom:8px;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:${result.checks.length ? '8px' : '0'};">
+                                <span>${cogIcon}</span>
+                                <strong style="color:${cogColor};">${name}</strong>
+                            </div>`;
+                        for (const check of result.checks) {
+                            const icon = check.ok ? '✓' : '✗';
+                            const color = check.ok ? '#43b581' : '#f04747';
+                            html += `<div style="display:flex;gap:8px;padding:4px 0 4px 26px;font-size:12px;">
+                                <span style="color:${color};font-weight:bold;">${icon}</span>
+                                <span style="color:#b9bbbe;">${check.name}</span>
+                                ${!check.ok && check.detail ? `<span style="color:#f04747;"> — ${check.detail}</span>` : ''}
+                            </div>`;
+                        }
+                        html += '</div>';
+                    }
+                    container.innerHTML = html;
+                })
+                .catch(() => {
+                    container.innerHTML = '<span style="color:#f04747;">Failed to run health check</span>';
+                });
+        }
+
+        // Remove script from bot
+        function removeScript(serverId, scriptId) {
+            if (!confirm('Are you sure you want to remove this script from the bot?')) {
+                return;
+            }
+
+            fetch('/api/bots/remove-script', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    server_id: serverId,
+                    script_id: scriptId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Script removed successfully!', 'success');
+                    loadBots();
+                    closeModal('botDetailsModal');
+                } else {
+                    showNotification(data.error || 'Failed to remove script', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error removing script:', error);
+                showNotification('Error removing script', 'error');
+            });
+        }
+
+        // View logs
+        async function viewLogs(serverId, botId) {
+            const container = document.getElementById('botDetailsContent');
+            const logBox = document.getElementById('logBox');
+            if (logBox) {
+                logBox.style.display = logBox.style.display === 'none' ? 'block' : 'none';
+                return;
+            }
+            const resp = await fetch(`/api/local-bot/logs/${serverId}/${botId}`);
+            const data = await resp.json();
+            const lines = (data.lines || []);
+            const updated = data.updated_at ? new Date(data.updated_at).toLocaleString() : '—';
+            const box = document.createElement('div');
+            box.id = 'logBox';
+            box.style.cssText = 'margin-top:16px;';
+            box.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="color:#b9bbbe;font-size:13px;font-weight:600;">Bot Logs</span>
+                    <span style="color:#72767d;font-size:11px;">Last updated: ${updated}</span>
+                </div>
+                <pre style="background:#202225;border-radius:6px;padding:12px;max-height:260px;overflow-y:auto;
+                            font-size:11px;line-height:1.6;color:#43b581;white-space:pre-wrap;word-break:break-all;margin:0;">${
+                    lines.length
+                        ? lines.map(l => escHtmlBot(l)).join('\n')
+                        : '(no logs received yet — logs arrive on the next bot heartbeat)'
+                }</pre>`;
+            container.appendChild(box);
+            box.querySelector('pre').scrollTop = 999999;
+        }
+
+        function escHtmlBot(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            const notificationIcon = notification.querySelector('.notification-icon');
+            
+            notification.className = `notification ${type} show`;
+            notificationText.textContent = message;
+            notificationIcon.textContent = type === 'success' ? '✓' : '✕';
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        // Close modal when clicking outside
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal(this.id);
+                }
+            });
+        });
+
+        // Local deployment modal (free tier)
+        let _modalServerId = null, _modalBotId = null;
+
+        function showLocalDeployModal(serverId, botId, botName) {
+            _modalServerId = serverId;
+            _modalBotId    = botId;
+            document.getElementById('localDownloadBtn').href = `/api/bots/download-local/${serverId}/${botId}`;
+            document.getElementById('localDeployModal').style.display = 'flex';
+        }
+
+        function closeLocalDeployModal() {
+            document.getElementById('localDeployModal').style.display = 'none';
+        }
+
+        async function addToManager() {
+            const btn = document.getElementById('addToManagerBtn');
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Connecting…';
+
+            try {
+                // Fetch the config from our web app
+                const cfgRes = await fetch(`/api/bots/config-json/${_modalServerId}/${_modalBotId}`);
+                if (!cfgRes.ok) throw new Error('Could not load bot config');
+                const cfg = await cfgRes.json();
+
+                // Try pushing it to the local manager
+                const mgr = await fetch('http://localhost:5001/api/upload-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cfg),
+                    signal: AbortSignal.timeout(3000),
+                });
+                if (!mgr.ok) throw new Error('Manager returned an error');
+                const result = await mgr.json();
+                if (!result.ok) throw new Error(result.error || 'unknown error');
+
+                btn.innerHTML = '✅ Added!';
+                setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2500);
+                showNotification(`✅ "${result.name}" added to your running manager.`);
+
+            } catch (err) {
+                // Manager not running — fall back to downloading just the config JSON
+                btn.innerHTML = orig;
+                btn.disabled = false;
+                if (err.name === 'TypeError' || err.message.includes('Failed to fetch') || err.name === 'TimeoutError') {
+                    // Manager not reachable — download config file instead
+                    await downloadConfigOnly();
+                } else {
+                    showNotification('❌ ' + err.message);
+                }
+            }
+        }
+
+        async function downloadConfigOnly() {
+            const cfgRes = await fetch(`/api/bots/config-json/${_modalServerId}/${_modalBotId}`);
+            if (!cfgRes.ok) { showNotification('❌ Could not load bot config'); return; }
+            const cfg = await cfgRes.json();
+            const safe = cfg.bot_name.replace(/[^\w-]/g, '_');
+            const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = `config_${safe}.json`; a.click();
+            URL.revokeObjectURL(url);
+            showNotification('📥 Config downloaded — drop it into your Bot Manager folder.');
+        }
+
+        document.getElementById('localDeployModal').addEventListener('click', function(e) {
+            if (e.target === this) closeLocalDeployModal();
+        });
+
+        function switchOs(os, btn) {
+            document.querySelectorAll('.os-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.os-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('os-' + os).classList.add('active');
+        }
+
+        const FAQ_ITEMS = [
+            {
+                q: 'How does the local bot connect to this dashboard?',
+                a: 'The bot sends a heartbeat to <code>/api/local-bot/heartbeat</code> every 30 seconds, using an API token stored in its <code>config.json</code>. The dashboard marks the bot as online when a heartbeat arrives within the last 3 minutes. Member sync and queued actions (kick/ban/roles) also flow through these API calls.'
+            },
+            {
+                q: 'Why does my bot show as "offline" in the dashboard?',
+                a: 'The bot has not sent a heartbeat in the past 3 minutes. Common causes: (1) the bot process was stopped or crashed; (2) the <code>API_URL</code> in <code>config.json</code> points to the wrong address (must be the public URL of this web app); (3) a firewall is blocking outbound HTTP. Check the bot\'s terminal output for error messages.'
+            },
+            {
+                q: 'How do I install extra scripts (cogs) onto my bot?',
+                a: 'Go to the <strong>Scripts</strong> page, find the script you want, and click <strong>Install</strong>. The script files are downloaded into the bot\'s <code>cogs/</code> folder. Restart the bot for it to load the new cog. Already-installed scripts show a green badge on the card.'
+            },
+            {
+                q: 'Can I run multiple bots on the same machine?',
+                a: 'Yes. Each bot has its own folder and <code>config.json</code>. Download each bot package and run <code>start.bat</code> / <code>start.sh</code> in separate terminals. Make sure each bot has a different Discord token.'
+            },
+            {
+                q: 'The bot starts, says it is online, but then disconnects repeatedly.',
+                a: 'This usually means Discord is rejecting the connection. Check: (1) the bot token is correct and has not been regenerated on the Developer Portal; (2) <strong>Privileged Intents</strong> (Server Members, Message Content) are enabled in the Developer Portal under your app → Bot; (3) your machine has a stable internet connection.'
+            },
+            {
+                q: 'How do I update the bot to the latest version?',
+                a: 'Download a new bot package from the Bots page (click the download icon on your bot card). Extract it alongside your existing folder, or replace the main <code>.py</code> files while keeping your <code>config.json</code> and <code>cogs/</code> folder intact. Restart the bot after updating.'
+            },
+            {
+                q: 'Are member actions (kick/ban/roles) instant?',
+                a: 'No — they are queued. When you submit an action from the Members page, it is stored and the bot picks it up on its next heartbeat cycle (every 30 seconds). The bot then executes the action and reports the result back. Refresh the Members page after ~35 seconds to see the updated member list.'
+            },
+        ];
+
+        function renderFaq() {
+            const list = document.getElementById('faqList');
+            if (!list) return;
+            list.innerHTML = FAQ_ITEMS.map((item, i) => `
+                <div class="faq-item">
+                    <button class="faq-q" onclick="toggleFaq(${i},this)">
+                        <span>${item.q}</span>
+                        <span class="faq-chevron">▼</span>
+                    </button>
+                    <div class="faq-a" id="faq-a-${i}">${item.a}</div>
+                </div>`).join('');
+        }
+
+        function toggleFaq(i, btn) {
+            const a = document.getElementById('faq-a-' + i);
+            const open = a.classList.contains('open');
+            a.classList.toggle('open', !open);
+            btn.classList.toggle('open', !open);
+        }
+
+    </script>
+
+<script>
+(function() {
+    var btn = document.getElementById('userNavBtn');
+    var dd  = document.getElementById('userNavDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        btn.classList.toggle('open');
+        dd.classList.toggle('open');
+    });
+    dd.addEventListener('click', function(e) { e.stopPropagation(); });
+    document.addEventListener('click', function() {
+        btn.classList.remove('open');
+        dd.classList.remove('open');
+    });
+    if (['127.0.0.1','localhost'].includes(location.hostname)) {
+        document.getElementById('botMgrLink').style.display = '';
+    }
+    var hb = document.getElementById("navHamburger");
+    var nl = document.querySelector(".navbar-links");
+    if (hb && nl) {
+        hb.addEventListener("click", function(e) { e.stopPropagation(); nl.classList.toggle("mobile-open"); });
+        document.addEventListener("click", function() { nl.classList.remove("mobile-open"); });
+    }
+})();
+</script>
+
+    {% include 'footer.html' %}
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Deployment secrets - never commit these
+deploy/duckdns_update.ps1
+deploy/duckdns.log
+deploy/tunnel_notify.py
+
+# Runtime data (moved to ../data/ — keep gitignored here in case of accidental regeneration)
+data/
+servers_config.json
+users.json
+server_invites.json
+uploads/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Temp files
+_emoji_scan.py
+
+# Control panel runtime files
+flask.log
+flask.err
+.flask.pid

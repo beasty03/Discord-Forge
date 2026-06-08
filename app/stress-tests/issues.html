@@ -1,0 +1,357 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noted Issues</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:14px;font-size:.95rem;display:flex;align-items:center;justify-content:space-between}
+  .btn{background:#238636;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#2ea043}
+  .btn-danger{background:#b91c1c}
+  .btn-danger:hover{background:#dc2626}
+  .btn-blue{background:#1f6feb}
+  .btn-blue:hover{background:#388bfd}
+  .btn-sm{padding:5px 12px;font-size:.78rem;border-radius:5px}
+  .btn-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  input[type=text],textarea,select{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#c9d1d9;font-size:.85rem;outline:none;font-family:inherit}
+  input[type=text]:focus,textarea:focus,select:focus{border-color:#58a6ff}
+  textarea{resize:vertical;min-height:60px;width:100%}
+  .form-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .form-group{display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px}
+  label{font-size:.8rem;color:#8b949e}
+  .severity-badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase}
+  .sev-critical{background:#3d0f0f;color:#f85149;border:1px solid #f85149}
+  .sev-high{background:#3d1f1f;color:#ff7b72}
+  .sev-medium{background:#3d2a1f;color:#e3b341}
+  .sev-low{background:#1f3a5f;color:#58a6ff}
+  .sev-info{background:#21262d;color:#8b949e}
+  .area-badge{font-size:.7rem;padding:2px 8px;border-radius:10px;background:#21262d;color:#8b949e}
+  .issue-card{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px;margin-bottom:10px;position:relative}
+  .issue-card:hover{border-color:#30363d}
+  .issue-header{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+  .issue-title{font-weight:600;color:#f0f6fc;font-size:.9rem;flex:1}
+  .issue-meta{font-size:.75rem;color:#484f58;margin-top:4px}
+  .issue-desc{font-size:.82rem;color:#8b949e;margin-top:6px;line-height:1.5;white-space:pre-wrap}
+  .issue-steps{font-size:.8rem;color:#8b949e;margin-top:6px;background:#161b22;border-radius:5px;padding:8px;font-family:monospace;white-space:pre-wrap}
+  .delete-btn{background:transparent;border:none;color:#484f58;cursor:pointer;font-size:.85rem;padding:2px 6px;border-radius:4px;position:absolute;top:10px;right:10px}
+  .delete-btn:hover{color:#f85149;background:#21262d}
+  .summary-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+  .sbox{background:#21262d;border-radius:8px;padding:8px 14px;text-align:center;min-width:70px}
+  .sbox-num{font-size:1.2rem;font-weight:700}
+  .sbox-lbl{font-size:.7rem;color:#8b949e;margin-top:1px}
+  .filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+  .filter-row label{font-size:.8rem;color:#8b949e}
+  .empty-state{text-align:center;padding:32px;color:#484f58;font-size:.9rem}
+  .export-area{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px;font-size:.75rem;font-family:monospace;color:#8b949e;white-space:pre-wrap;max-height:200px;overflow:auto;margin-top:8px}
+  .step-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .step-tag{font-size:.73rem;padding:3px 10px;border-radius:10px;background:#1f3a5f;color:#58a6ff;cursor:pointer;border:1px solid transparent}
+  .step-tag:hover{border-color:#58a6ff}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><span>Noted Issues</span></div>
+<h1>Noted Issues</h1>
+<p class="sub">Record findings from all test steps. Stored in localStorage — survives page refreshes. Export as JSON or Markdown.</p>
+
+<div class="card">
+  <div class="card-title">New Issue</div>
+  <div class="form-row">
+    <div class="form-group" style="flex:2">
+      <label>Title *</label>
+      <input type="text" id="f-title" placeholder="Short description of the issue">
+    </div>
+    <div class="form-group">
+      <label>Severity</label>
+      <select id="f-sev">
+        <option value="critical">Critical</option>
+        <option value="high">High</option>
+        <option value="medium" selected>Medium</option>
+        <option value="low">Low</option>
+        <option value="info">Info</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Area</label>
+      <select id="f-area">
+        <option value="server-connectivity">Server: Connectivity</option>
+        <option value="server-auth">Server: Auth</option>
+        <option value="server-api">Server: Core API</option>
+        <option value="server-mgmt">Server: Management</option>
+        <option value="server-bots-api">Server: Bot API</option>
+        <option value="bots-manager">Bots: Manager</option>
+        <option value="bots-status">Bots: Status</option>
+        <option value="bots-load">Bots: Load Test</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group" style="flex:1">
+      <label>Description</label>
+      <textarea id="f-desc" placeholder="What happened? What was expected vs actual?"></textarea>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group" style="flex:1">
+      <label>Steps to reproduce (optional)</label>
+      <textarea id="f-steps" placeholder="1. Go to...\n2. Click...\n3. See error"></textarea>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label>HTTP Status / Error Code</label>
+      <input type="text" id="f-code" placeholder="e.g. 500, ERR_CONN_REFUSED">
+    </div>
+    <div class="form-group">
+      <label>Endpoint / URL</label>
+      <input type="text" id="f-url" placeholder="e.g. /api/bots/list">
+    </div>
+  </div>
+
+  <div style="margin-bottom:10px">
+    <div style="font-size:.8rem;color:#8b949e;margin-bottom:6px">Quick tag from test step:</div>
+    <div class="step-badges">
+      <span class="step-tag" onclick="quickTag('server-connectivity','Server Step 1 — Connectivity')">Server Step 1</span>
+      <span class="step-tag" onclick="quickTag('server-auth','Server Step 2 — Auth')">Server Step 2</span>
+      <span class="step-tag" onclick="quickTag('server-api','Server Step 3 — Core API')">Server Step 3</span>
+      <span class="step-tag" onclick="quickTag('server-mgmt','Server Step 4 — Server Mgmt')">Server Step 4</span>
+      <span class="step-tag" onclick="quickTag('server-bots-api','Server Step 5 — Bot API')">Server Step 5</span>
+      <span class="step-tag" onclick="quickTag('bots-manager','Bots Step 1 — Manager')">Bots Step 1</span>
+      <span class="step-tag" onclick="quickTag('bots-status','Bots Step 2 — Status')">Bots Step 2</span>
+      <span class="step-tag" onclick="quickTag('bots-load','Bots Step 3 — Load Test')">Bots Step 3</span>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="addIssue()">Add Issue</button>
+    <button class="btn" style="background:#21262d;color:#c9d1d9" onclick="clearForm()">Clear</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    <span>Issues <span id="issue-count" style="color:#8b949e;font-weight:400;font-size:.85rem"></span></span>
+    <div class="btn-row">
+      <button class="btn btn-sm btn-blue" onclick="exportMd()">Export Markdown</button>
+      <button class="btn btn-sm btn-blue" onclick="exportJson()">Export JSON</button>
+      <button class="btn btn-sm" style="background:#21262d;color:#c9d1d9" onclick="clearFalsePositives()">Clear False Positives</button>
+      <button class="btn btn-sm btn-danger" onclick="clearAll()">Clear All</button>
+    </div>
+  </div>
+
+  <div class="summary-bar">
+    <div class="sbox"><div class="sbox-num" id="c-critical" style="color:#f85149">0</div><div class="sbox-lbl">Critical</div></div>
+    <div class="sbox"><div class="sbox-num" id="c-high" style="color:#ff7b72">0</div><div class="sbox-lbl">High</div></div>
+    <div class="sbox"><div class="sbox-num" id="c-medium" style="color:#e3b341">0</div><div class="sbox-lbl">Medium</div></div>
+    <div class="sbox"><div class="sbox-num" id="c-low" style="color:#58a6ff">0</div><div class="sbox-lbl">Low</div></div>
+    <div class="sbox"><div class="sbox-num" id="c-info" style="color:#8b949e">0</div><div class="sbox-lbl">Info</div></div>
+  </div>
+
+  <div class="filter-row">
+    <label>Filter:</label>
+    <select id="filter-sev" onchange="renderIssues()">
+      <option value="">All severities</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+      <option value="info">Info</option>
+    </select>
+    <select id="filter-area" onchange="renderIssues()">
+      <option value="">All areas</option>
+      <option value="server-connectivity">Server: Connectivity</option>
+      <option value="server-auth">Server: Auth</option>
+      <option value="server-api">Server: Core API</option>
+      <option value="server-mgmt">Server: Management</option>
+      <option value="server-bots-api">Server: Bot API</option>
+      <option value="bots-manager">Bots: Manager</option>
+      <option value="bots-status">Bots: Status</option>
+      <option value="bots-load">Bots: Load Test</option>
+      <option value="other">Other</option>
+    </select>
+  </div>
+
+  <div id="issue-list"></div>
+</div>
+
+<div class="card" id="export-card" style="display:none">
+  <div class="card-title">Export <button class="btn btn-sm" style="background:#21262d;color:#c9d1d9" onclick="document.getElementById('export-card').style.display='none'">Close</button></div>
+  <div class="export-area" id="export-out"></div>
+  <button class="btn btn-sm" style="margin-top:8px" onclick="copyExport()">Copy to clipboard</button>
+</div>
+
+<script>
+const KEY='stress_test_issues';
+
+function load(){return JSON.parse(localStorage.getItem(KEY)||'[]');}
+function save(issues){localStorage.setItem(KEY,JSON.stringify(issues));}
+
+function sevClass(s){return 'sev-'+s;}
+function areaLabel(a){
+  const map={
+    'server-connectivity':'Server: Connectivity',
+    'server-auth':'Server: Auth',
+    'server-api':'Server: Core API',
+    'server-mgmt':'Server: Management',
+    'server-bots-api':'Server: Bot API',
+    'bots-manager':'Bots: Manager',
+    'bots-status':'Bots: Status',
+    'bots-load':'Bots: Load',
+    'other':'Other',
+  };
+  return map[a]||a;
+}
+
+function quickTag(area, label){
+  document.getElementById('f-area').value=area;
+  const t=document.getElementById('f-title');
+  if(!t.value) t.value=`[${label}] `;
+  t.focus();
+}
+
+function addIssue(){
+  const title=document.getElementById('f-title').value.trim();
+  if(!title){alert('Title is required.');return;}
+  const issue={
+    id: Date.now(),
+    title,
+    severity: document.getElementById('f-sev').value,
+    area: document.getElementById('f-area').value,
+    description: document.getElementById('f-desc').value.trim(),
+    steps: document.getElementById('f-steps').value.trim(),
+    code: document.getElementById('f-code').value.trim(),
+    url: document.getElementById('f-url').value.trim(),
+    created: new Date().toISOString(),
+  };
+  const issues=load();
+  issues.unshift(issue);
+  save(issues);
+  renderIssues();
+  clearForm();
+}
+
+function clearForm(){
+  ['f-title','f-desc','f-steps','f-code','f-url'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-sev').value='medium';
+  document.getElementById('f-area').value='server-connectivity';
+}
+
+function deleteIssue(id){
+  if(!confirm('Delete this issue?')) return;
+  const issues=load().filter(i=>i.id!==id);
+  save(issues);
+  renderIssues();
+}
+
+function clearAll(){
+  if(!confirm('Delete ALL issues? This cannot be undone.')) return;
+  save([]);
+  renderIssues();
+}
+
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderIssues(){
+  let issues=load();
+  const fsev=document.getElementById('filter-sev').value;
+  const farea=document.getElementById('filter-area').value;
+  if(fsev) issues=issues.filter(i=>i.severity===fsev);
+  if(farea) issues=issues.filter(i=>i.area===farea);
+
+  const all=load();
+  document.getElementById('issue-count').textContent=`(${all.length})`;
+  ['critical','high','medium','low','info'].forEach(s=>{
+    document.getElementById('c-'+s).textContent=all.filter(i=>i.severity===s).length;
+  });
+
+  const list=document.getElementById('issue-list');
+  if(issues.length===0){
+    list.innerHTML='<div class="empty-state">No issues yet. Run tests and record findings here.</div>';
+    return;
+  }
+  list.innerHTML=issues.map(i=>`
+    <div class="issue-card">
+      <button class="delete-btn" onclick="deleteIssue(${i.id})" title="Delete">&#x2715;</button>
+      <div class="issue-header">
+        <span class="issue-title">${escHtml(i.title)}</span>
+        <span class="severity-badge ${sevClass(i.severity)}">${i.severity}</span>
+        ${i.auto?'<span style="font-size:.68rem;padding:1px 6px;border-radius:8px;background:#21262d;color:#484f58">auto</span>':''}
+        <span class="area-badge">${escHtml(areaLabel(i.area))}</span>
+        ${i.code?`<span class="area-badge" style="background:#21262d;color:#e3b341">${escHtml(i.code)}</span>`:''}
+      </div>
+      ${i.url?`<div class="issue-meta">Endpoint: <code style="background:#21262d;padding:1px 5px;border-radius:4px;font-size:.78rem">${escHtml(i.url)}</code></div>`:''}
+      ${i.description?`<div class="issue-desc">${escHtml(i.description)}</div>`:''}
+      ${i.steps?`<div class="issue-steps">${escHtml(i.steps)}</div>`:''}
+      <div class="issue-meta" style="margin-top:6px">${new Date(i.created).toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+
+function exportMd(){
+  const issues=load();
+  const lines=[`# Stress Test Issues\n_Generated: ${new Date().toLocaleString()}_\n`];
+  const sevOrder=['critical','high','medium','low','info'];
+  sevOrder.forEach(s=>{
+    const grp=issues.filter(i=>i.severity===s);
+    if(!grp.length) return;
+    lines.push(`## ${s.toUpperCase()} (${grp.length})`);
+    grp.forEach(i=>{
+      lines.push(`\n### ${i.title}`);
+      lines.push(`- **Area:** ${areaLabel(i.area)}`);
+      if(i.url) lines.push(`- **Endpoint:** \`${i.url}\``);
+      if(i.code) lines.push(`- **Code:** \`${i.code}\``);
+      if(i.description) lines.push(`- **Description:** ${i.description}`);
+      if(i.steps) lines.push(`- **Steps:**\n\`\`\`\n${i.steps}\n\`\`\``);
+      lines.push(`- _${new Date(i.created).toLocaleString()}_`);
+    });
+    lines.push('');
+  });
+  showExport(lines.join('\n'));
+}
+
+function exportJson(){
+  showExport(JSON.stringify(load(),null,2));
+}
+
+function showExport(text){
+  document.getElementById('export-out').textContent=text;
+  document.getElementById('export-card').style.display='block';
+  document.getElementById('export-card').scrollIntoView({behavior:'smooth'});
+}
+
+async function copyExport(){
+  const text=document.getElementById('export-out').textContent;
+  try{await navigator.clipboard.writeText(text);alert('Copied!');}
+  catch(e){alert('Copy failed — select text manually.');}
+}
+
+// Known false positives: test artifacts, not real bugs
+const FALSE_POSITIVE_PATTERNS = [
+  /scripts\/versions.*unexpected 400/,
+  /Server reachable.*unexpected 0/,
+  /BotMgr.*Unreachable/,
+];
+
+function clearFalsePositives() {
+  const before = load();
+  const after = before.filter(i => !FALSE_POSITIVE_PATTERNS.some(p => p.test(i.title)));
+  const removed = before.length - after.length;
+  if(removed === 0){ alert('No known false positives found.'); return; }
+  save(after);
+  renderIssues();
+  alert(`Removed ${removed} false positive(s).`);
+}
+
+renderIssues();
+</script>
+</body>
+</html>

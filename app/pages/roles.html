@@ -1,0 +1,302 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roles — {{ server.server_name }} - DiscordForge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2c2f33 0%, #23272a 100%);
+            color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #2f3136; padding: 0 30px; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3); position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-left { display: flex; align-items: center; gap: 28px; }
+        .navbar-brand { font-size: 1.3em; color: #7289da; font-weight: 700; text-decoration: none; }
+        .navbar-links { display: flex; gap: 4px; }
+        .navbar-links a {
+            color: #b9bbbe; text-decoration: none; font-weight: 500; font-size: 14px;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s, color .15s;
+        }
+        .navbar-links a:hover, .navbar-links a.active { background: #36393f; color: #fff; }
+        .navbar-hamburger {
+            display: none; background: none; border: none; color: #b9bbbe;
+            font-size: 22px; cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1;
+        }
+        .navbar-hamburger:hover { background: #36393f; color: #fff; }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; min-height: 60px; height: auto; padding: 0 16px; }
+            .navbar-left { flex: 1; gap: 0; }
+            .navbar-brand { padding: 14px 0; }
+            .navbar-hamburger { display: block; margin-left: auto; align-self: center; }
+            .navbar-links { display: none; width: 100%; flex-direction: column; gap: 0; padding: 8px 0 12px; border-top: 1px solid #40444b; order: 3; }
+            .navbar-links.mobile-open { display: flex; }
+            .navbar-links a { padding: 10px 4px; border-radius: 0; font-size: 15px; }
+        }
+        .user-menu { position: relative; }
+        .user-btn {
+            background: none; border: none; color: #7289da; font-weight: 700; font-size: 14px;
+            cursor: pointer; display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 6px; transition: background .2s;
+        }
+        .user-btn:hover { background: #36393f; }
+        .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: #7289da; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
+        .user-chevron { font-size: 10px; color: #b9bbbe; transition: transform .2s; }
+        .user-btn.open .user-chevron { transform: rotate(180deg); }
+        .user-dropdown { position: absolute; top: calc(100% + 6px); right: 0; background: #2f3136; border-radius: 8px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,.5); border: 1px solid #40444b; opacity: 0; pointer-events: none; transform: translateY(-6px); transition: opacity .15s, transform .15s; z-index: 200; }
+        .user-dropdown.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+        .user-dropdown-info { padding: 14px 16px 10px; border-bottom: 1px solid #40444b; }
+        .user-dropdown-info .ud-name { color: #fff; font-weight: 600; font-size: 14px; }
+        .user-dropdown a, .user-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 16px; color: #b9bbbe; text-decoration: none; font-size: 14px; font-weight: 500; background: none; border: none; cursor: pointer; transition: background .15s, color .15s; }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: #36393f; color: #fff; }
+        .ud-logout { color: #f04747 !important; border-top: 1px solid #40444b; margin-top: 4px; }
+        .ud-logout:hover { background: rgba(240,71,71,.1) !important; color: #f04747 !important; }
+
+        .container { max-width: 860px; margin: 0 auto; padding: 36px 24px; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px; color: #7289da; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; transition: color .15s; }
+        .back-link:hover { color: #5b6eae; }
+        .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; flex-wrap: wrap; gap: 14px; }
+        .page-title { font-size: 24px; font-weight: 700; }
+        .page-subtitle { color: #72767d; font-size: 13px; margin-top: 4px; }
+
+        .btn { padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: background .15s; }
+        .btn-primary { background: #7289da; color: #fff; }
+        .btn-primary:hover { background: #5b6eae; }
+        .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-ghost { background: #36393f; color: #b9bbbe; }
+        .btn-ghost:hover { background: #40444b; color: #fff; }
+        .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: 5px; border: none; cursor: pointer; font-weight: 600; }
+        .btn-danger-sm { background: rgba(240,71,71,.15); color: #f04747; }
+        .btn-danger-sm:hover { background: rgba(240,71,71,.3); }
+
+        .section { background: #2f3136; border-radius: 10px; padding: 22px 24px; margin-bottom: 22px; border: 1px solid #40444b; }
+        .section-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+        .role-list { display: flex; flex-direction: column; gap: 8px; }
+        .role-row {
+            display: flex; align-items: center; gap: 12px;
+            background: #202225; border-radius: 7px; padding: 10px 14px;
+            border: 1px solid #40444b;
+        }
+        .role-swatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,.15); }
+        .role-name { flex: 1; font-size: 14px; font-weight: 600; }
+        .role-hoist { font-size: 10px; background: rgba(114,137,218,.2); color: #7289da; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
+        .role-actions { display: flex; gap: 6px; }
+
+        .add-form { display: grid; grid-template-columns: 1fr 100px auto auto; gap: 10px; align-items: end; }
+        @media (max-width: 600px) { .add-form { grid-template-columns: 1fr 1fr; } }
+        .form-group label { display: block; color: #b9bbbe; font-size: 11px; font-weight: 600; margin-bottom: 5px; }
+        .form-group input[type=text] {
+            width: 100%; background: #202225; border: 1px solid #40444b; border-radius: 5px;
+            color: #dcddde; padding: 8px 11px; font-size: 13px; outline: none;
+        }
+        .form-group input:focus { border-color: #7289da; }
+        .form-group input[type=color] { width: 100%; height: 36px; padding: 2px; background: #202225; border: 1px solid #40444b; border-radius: 5px; cursor: pointer; }
+        .hoist-label { display: flex; align-items: center; gap: 6px; color: #b9bbbe; font-size: 13px; cursor: pointer; padding-bottom: 2px; }
+        .hoist-label input { accent-color: #7289da; width: 15px; height: 15px; }
+
+        .sync-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        .sync-note { color: #72767d; font-size: 12px; line-height: 1.5; }
+        .pending-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(250,166,26,.15); color: #faa61a; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+
+        .empty-roles { color: #72767d; font-size: 13px; text-align: center; padding: 24px 0; }
+
+        .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: #2f3136; border: 1px solid #40444b; border-radius: 8px; padding: 12px 18px; font-size: 13px; color: #dcddde; box-shadow: 0 6px 24px rgba(0,0,0,.5); transform: translateY(20px); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-color: #43b581; color: #43b581; }
+        .toast.error   { border-color: #f04747; color: #f04747; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-left">
+        <a href="{{ url_for('dashboard') }}" class="navbar-brand"><img src="{{ url_for('static', filename='assets/DiscordForge.jpg') }}" alt="" style="height:26px;width:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:6px;"> DiscordForge</a>
+        <button class="navbar-hamburger" id="navHamburger">&#9776;</button>
+        <div class="navbar-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('servers_page') }}" class="active">Servers</a>
+            <a href="{{ url_for('bots_page') }}">Bots</a>
+            <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
+            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
+        </div>
+    </div>
+    <div class="user-menu">
+        <button class="user-btn" id="userNavBtn">
+            <div class="user-avatar">{% if user_avatar_url %}<img src="{{ user_avatar_url }}" alt="{{ username[0]|upper }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}{{ username[0]|upper }}{% endif %}</div>
+            {{ username }}
+            <span class="user-chevron">▼</span>
+        </button>
+        <div class="user-dropdown" id="userNavDropdown">
+            <div class="user-dropdown-info"><div class="ud-name">{{ username }}</div></div>
+            <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
+            <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
+            <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <a class="back-link" href="{{ url_for('servers_page') }}">← Back to Servers</a>
+
+    <div class="page-header">
+        <div>
+            <div class="page-title">🎭 Roles — {{ server.server_name }}</div>
+            <div class="page-subtitle">Manage roles in your server configuration</div>
+        </div>
+    </div>
+
+    <!-- Add role -->
+    <div class="section">
+        <div class="section-title">➕ Add Role</div>
+        <div class="add-form">
+            <div class="form-group">
+                <label for="roleName">Role Name</label>
+                <input type="text" id="roleName" placeholder="e.g. Moderator" maxlength="100">
+            </div>
+            <div class="form-group">
+                <label for="roleColor">Color</label>
+                <input type="color" id="roleColor" value="#99aab5">
+            </div>
+            <div class="form-group">
+                <label>&nbsp;</label>
+                <label class="hoist-label"><input type="checkbox" id="roleHoist"> Show separately</label>
+            </div>
+            <div class="form-group">
+                <label>&nbsp;</label>
+                <button class="btn btn-primary" onclick="addRole()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role list -->
+    <div class="section">
+        <div class="section-title">🎭 Roles ({{ roles | length }})</div>
+        <div class="role-list" id="roleList">
+        {% if roles %}
+            {% for r in roles %}
+            <div class="role-row" id="role-{{ loop.index }}">
+                <div class="role-swatch" style="background: {{ r.color or '#99aab5' }}"></div>
+                <div class="role-name">{{ r.name }}</div>
+                {% if r.get('hoist') %}<span class="role-hoist">Hoisted</span>{% endif %}
+                <div class="role-actions">
+                    <button class="btn-sm btn-danger-sm" onclick="deleteRole({{ r.name | tojson }}, this.closest('.role-row'))">🗑</button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-roles" id="emptyRoles">No roles configured yet.</div>
+        {% endif %}
+        </div>
+    </div>
+
+    <!-- Sync -->
+    <div class="section">
+        <div class="section-title">🤖 Sync to Discord</div>
+        <div class="sync-bar">
+            <div class="sync-note">
+                Queue a <strong>sync_roles</strong> command for your local bot to create/update roles in Discord.<br>
+                {% if not bot_online %}<span style="color:#faa61a">⚠ No bot online — command will execute when a bot next connects.</span>{% endif %}
+                {% if pending_sync %}<span class="pending-badge">🕐 Sync pending</span>{% endif %}
+            </div>
+            <button class="btn btn-primary" id="syncBtn" onclick="syncRoles()">🔄 Sync Roles</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const SERVER_ID = {{ server.server_id | tojson }};
+
+    async function addRole() {
+        const name  = document.getElementById('roleName').value.trim();
+        const color = document.getElementById('roleColor').value;
+        const hoist = document.getElementById('roleHoist').checked;
+        if (!name) { showToast('Enter a role name.', 'error'); return; }
+        const resp = await fetch('/api/roles/' + SERVER_ID, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, color, hoist}),
+        });
+        const data = await resp.json();
+        if (!data.ok) { showToast(data.error || 'Error', 'error'); return; }
+        document.getElementById('roleName').value = '';
+        document.getElementById('emptyRoles') && document.getElementById('emptyRoles').remove();
+        const list = document.getElementById('roleList');
+        const row = document.createElement('div');
+        row.className = 'role-row';
+        row.innerHTML = `
+            <div class="role-swatch" style="background:${esc(color)}"></div>
+            <div class="role-name">${esc(name)}</div>
+            ${hoist ? '<span class="role-hoist">Hoisted</span>' : ''}
+            <div class="role-actions">
+                <button class="btn-sm btn-danger-sm" onclick="deleteRole(${JSON.stringify(name)}, this.closest('.role-row'))">🗑</button>
+            </div>`;
+        list.appendChild(row);
+        showToast('Role added.', 'success');
+    }
+
+    async function deleteRole(name, rowEl) {
+        if (!confirm('Remove role "' + name + '"?')) return;
+        const resp = await fetch('/api/roles/' + SERVER_ID + '/' + encodeURIComponent(name), { method: 'DELETE' });
+        const data = await resp.json();
+        if (data.ok) {
+            rowEl.remove();
+            if (!document.querySelector('#roleList .role-row')) {
+                document.getElementById('roleList').innerHTML = '<div class="empty-roles" id="emptyRoles">No roles configured yet.</div>';
+            }
+            showToast('Role removed.', 'success');
+        } else {
+            showToast(data.error || 'Error', 'error');
+        }
+    }
+
+    async function syncRoles() {
+        const btn = document.getElementById('syncBtn');
+        btn.disabled = true;
+        const resp = await fetch('/api/roles/' + SERVER_ID + '/sync', { method: 'POST' });
+        const data = await resp.json();
+        btn.disabled = false;
+        if (data.ok) {
+            showToast('Sync command queued — bot will apply roles shortly.', 'success');
+        } else {
+            showToast(data.error || 'Error', 'error');
+        }
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast ' + (type || '');
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3500);
+    }
+</script>
+<script>
+(function() {
+    var btn = document.getElementById('userNavBtn');
+    var dd  = document.getElementById('userNavDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) { e.stopPropagation(); btn.classList.toggle('open'); dd.classList.toggle('open'); });
+    document.addEventListener('click', function() { btn.classList.remove('open'); dd.classList.remove('open'); });
+    var hb = document.getElementById('navHamburger');
+    var nl = document.querySelector('.navbar-links');
+    if (hb && nl) {
+        hb.addEventListener('click', function(e) { e.stopPropagation(); nl.classList.toggle('mobile-open'); });
+        document.addEventListener('click', function() { nl.classList.remove('mobile-open'); });
+    }
+})();
+</script>
+
+    {% include 'footer.html' %}
+</body>
+</html>

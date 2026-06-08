@@ -1,0 +1,228 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bots Step 1 — Manager Health</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:12px;font-size:.95rem}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  th{text-align:left;padding:8px 10px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d;font-size:.78rem;text-transform:uppercase}
+  td{padding:9px 10px;border-bottom:1px solid #21262d;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .status{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:.82rem}
+  .ok{color:#56d364}.fail{color:#f85149}.warn{color:#e3b341}.pend{color:#8b949e}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .dot-ok{background:#56d364}.dot-fail{background:#f85149}.dot-warn{background:#e3b341}.dot-pend{background:#484f58}
+  .btn{background:#238636;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#2ea043}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .btn-row{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+  .summary-bar{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+  .sbox{background:#21262d;border-radius:8px;padding:10px 16px;text-align:center;min-width:80px}
+  .sbox-num{font-size:1.4rem;font-weight:700}
+  .sbox-lbl{font-size:.73rem;color:#8b949e;margin-top:2px}
+  .detail{font-size:.78rem;color:#8b949e;max-width:300px;word-break:break-all}
+  .progress{height:4px;background:#21262d;border-radius:2px;overflow:hidden;margin-bottom:16px}
+  .progress-bar{height:100%;background:#238636;transition:width .3s;width:0}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-next{background:#1f6feb;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-next:hover{background:#388bfd}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  .json-preview{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px;font-size:.75rem;font-family:monospace;color:#8b949e;white-space:pre-wrap;max-height:200px;overflow:auto;margin-top:8px}
+  .info-box{background:#1a3d26;border:1px solid #238636;border-radius:8px;padding:12px 16px;font-size:.82rem;color:#8b949e;margin-bottom:16px}
+  .info-box strong{color:#56d364}
+  .warn-box{background:#3d2a1f;border:1px solid #e3b341;border-radius:8px;padding:12px 16px;font-size:.82rem;color:#8b949e;margin-bottom:16px}
+  .warn-box strong{color:#e3b341}
+  .kv-row{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #21262d;font-size:.82rem}
+  .kv-row:last-child{border-bottom:none}
+  .kv-key{color:#8b949e;min-width:140px}
+  .kv-val{color:#f0f6fc;font-family:monospace}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><span>Bots</span><span class="nav-sep">/</span><span>Step 1 — Manager Health</span></div>
+<h1>Bots Step 1 &mdash; Bot Manager Health</h1>
+<p class="sub">Check that <code>bot_manager_direct.py</code> is running on port 5001. Hit its API endpoints and inspect the debug payload.</p>
+
+<div class="warn-box"><strong>Prerequisites:</strong> Run <code>python bot_manager_direct.py</code> before this test. If not running, all checks will fail with "Unreachable".</div>
+
+<div class="summary-bar">
+  <div class="sbox"><div class="sbox-num" id="s-pass" style="color:#56d364">0</div><div class="sbox-lbl">Passed</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-fail" style="color:#f85149">0</div><div class="sbox-lbl">Failed</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-warn" style="color:#e3b341">0</div><div class="sbox-lbl">Warnings</div></div>
+  <div class="sbox"><div class="sbox-num" id="s-ms">—</div><div class="sbox-lbl">Avg ms</div></div>
+</div>
+
+<div class="btn-row">
+  <button class="btn" id="runBtn" onclick="runAll()">Run Tests</button>
+  <button class="btn" style="background:#21262d;color:#c9d1d9" onclick="resetAll()">Reset</button>
+</div>
+<div class="progress"><div class="progress-bar" id="prog"></div></div>
+
+<div class="card">
+  <div class="card-title">Endpoint Checks</div>
+  <table>
+    <thead><tr><th>Check</th><th>Endpoint</th><th>Expected</th><th>Result</th><th>ms</th><th>Detail</th></tr></thead>
+    <tbody id="checks-body">
+      <tr><td>Manager reachable</td><td><code>GET /</code></td><td>200 HTML</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Status API</td><td><code>GET /api/status</code></td><td>200 + JSON</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Debug endpoint</td><td><code>GET /api/debug</code></td><td>200 + JSON</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>Prereq log</td><td><code>GET /api/prereq/log</code></td><td>200 + JSON</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+      <tr><td>404 handling</td><td><code>GET /nonexistent</code></td><td>404</td><td><span class="status pend"><span class="dot dot-pend"></span>Pending</span></td><td>—</td><td class="detail">—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" id="debug-card" style="display:none">
+  <div class="card-title">Debug Info</div>
+  <div id="debug-kv"></div>
+</div>
+
+<div class="card" id="status-card" style="display:none">
+  <div class="card-title">/api/status Response</div>
+  <div class="json-preview" id="status-out">—</div>
+</div>
+
+<div class="card" id="prereq-card" style="display:none">
+  <div class="card-title">Prerequisites Log</div>
+  <div style="font-size:.78rem;color:#8b949e" id="prereq-status">—</div>
+  <div class="json-preview" id="prereq-out" style="margin-top:8px">—</div>
+</div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="server_step5_bots.html">&larr; Back: Bot Management API</a>
+  <a class="btn-next" href="bots_step2_status.html">Next: Bot Instance Status &rarr;</a>
+</div>
+
+<script>
+const BASE='http://127.0.0.1:5001';
+let pass=0,fail=0,warn=0,msList=[];
+
+function autoLogIssue(title, description, code, url, sev) {
+  const issues = JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  if(issues.find(i=>i.title===title&&i.url===url&&(Date.now()-new Date(i.created).getTime())<300000)) return;
+  issues.unshift({id:Date.now()+Math.random(),title,severity:sev||'medium',area:'bots-manager',description,steps:'',code:String(code||''),url:url||'',created:new Date().toISOString(),auto:true});
+  localStorage.setItem('stress_test_issues',JSON.stringify(issues));
+}
+
+function setStatus(td,type,text){
+  const cls={ok:'ok',fail:'fail',warn:'warn',pend:'pend'}[type]||'pend';
+  const dot={ok:'dot-ok',fail:'dot-fail',warn:'dot-warn',pend:'dot-pend'}[type]||'dot-pend';
+  td.innerHTML=`<span class="status ${cls}"><span class="dot ${dot}"></span>${text}</span>`;
+}
+function upd(){
+  document.getElementById('s-pass').textContent=pass;
+  document.getElementById('s-fail').textContent=fail;
+  document.getElementById('s-warn').textContent=warn;
+  if(msList.length){
+    const avg=Math.round(msList.reduce((a,b)=>a+b,0)/msList.length);
+    document.getElementById('s-ms').textContent=avg+'ms';
+  }
+}
+
+async function chk(rowIdx, url, codes, parseJson=false, jsonCardId=null){
+  const row=document.querySelectorAll('#checks-body tr')[rowIdx];
+  const c=row.querySelectorAll('td');
+  setStatus(c[3],'pend','Testing…');
+  c[4].textContent='—'; c[5].textContent='—';
+  try{
+    const t0=performance.now();
+    const r=await fetch(BASE+url,{method:'GET',redirect:'follow',signal:AbortSignal.timeout(5000)});
+    const ms=Math.round(performance.now()-t0);
+    c[4].textContent=ms+'ms';
+    msList.push(ms);
+    const ok=codes.includes(r.status);
+    if(r.status===500){setStatus(c[3],'fail','500 Error');fail++;autoLogIssue(`BotMgr ${url} — 500 Error`,'Bot manager returned 500',500,url,'critical');}
+    else if(ok){setStatus(c[3],'ok',r.status+' OK');pass++;}
+    else{setStatus(c[3],'warn',r.status+' unexpected');warn++;autoLogIssue(`BotMgr ${url} — unexpected ${r.status}`,`Expected one of ${codes.join('/')}, got ${r.status}`,r.status,url,'medium');}
+    if(parseJson&&r.status===200){
+      try{
+        const txt=await r.text();
+        const j=JSON.parse(txt);
+        c[5].textContent='JSON: '+Object.keys(j).slice(0,4).join(', ');
+        if(jsonCardId){
+          document.getElementById(jsonCardId).style.display='block';
+          return j;
+        }
+      }catch(e){c[5].textContent='Non-JSON response';}
+    } else {
+      c[5].textContent='status='+r.status;
+    }
+  }catch(e){
+    setStatus(c[3],'fail','Unreachable');
+    c[5].textContent=e.message; fail++;
+    // Not logged — bot_manager_direct.py is optional when using webapp bots
+  }
+  upd();
+  return null;
+}
+
+async function runAll(){
+  pass=0;fail=0;warn=0;msList=[];
+  document.getElementById('runBtn').disabled=true;
+  const prog=document.getElementById('prog');
+  let done=0; const total=5;
+  const tick=()=>{done++;prog.style.width=Math.round(done/total*100)+'%';};
+
+  await chk(0,'/',[200]); tick();
+
+  const statusData=await chk(1,'/api/status',[200],true,'status-card');
+  if(statusData){
+    document.getElementById('status-out').textContent=JSON.stringify(statusData,null,2);
+  }
+  tick(); upd();
+
+  const debugData=await chk(2,'/api/debug',[200],true,'debug-card');
+  if(debugData){
+    const kv=document.getElementById('debug-kv');
+    const fields=[
+      ['base_dir',debugData.base_dir],
+      ['python',debugData.python],
+      ['setup_done',String(debugData.setup_done)],
+      ['config_files',JSON.stringify(debugData.config_files)],
+      ['bots_registered',JSON.stringify(Object.keys(debugData.bots||{}))],
+    ];
+    kv.innerHTML=fields.map(([k,v])=>`<div class="kv-row"><span class="kv-key">${k}</span><span class="kv-val">${v||'—'}</span></div>`).join('');
+  }
+  tick(); upd();
+
+  const prereqData=await chk(3,'/api/prereq/log',[200],true,'prereq-card');
+  if(prereqData){
+    document.getElementById('prereq-status').textContent=
+      `Running: ${prereqData.running} | Done: ${prereqData.done} | Lines: ${(prereqData.lines||[]).length}`;
+    document.getElementById('prereq-out').textContent=(prereqData.lines||[]).slice(-20).join('\n')||'(empty)';
+  }
+  tick(); upd();
+
+  await chk(4,'/nonexistent',[404]); tick();
+
+  prog.style.width='100%';
+  prog.style.background=fail>0?'#f85149':'#56d364';
+  document.getElementById('runBtn').disabled=false;
+  upd();
+}
+
+function resetAll(){
+  pass=0;fail=0;warn=0;msList=[];
+  document.querySelectorAll('#checks-body tr').forEach(row=>{
+    const c=row.querySelectorAll('td');
+    if(c.length>=6){setStatus(c[3],'pend','Pending');c[4].textContent='—';c[5].textContent='—';}
+  });
+  ['s-pass','s-fail','s-warn'].forEach(id=>document.getElementById(id).textContent='0');
+  document.getElementById('s-ms').textContent='—';
+  document.getElementById('prog').style.cssText='width:0;background:#238636';
+  ['debug-card','status-card','prereq-card'].forEach(id=>document.getElementById(id).style.display='none');
+}
+</script>
+</body>
+</html>

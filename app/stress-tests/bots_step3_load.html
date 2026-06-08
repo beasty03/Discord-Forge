@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bots Step 3 — Load Test</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:12px;font-size:.95rem}
+  .btn{background:#238636;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#2ea043}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .btn-row{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  .btn-issues{background:#e3b341;color:#0d1117;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-issues:hover{background:#d4a730}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  .metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+  .metric{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:12px;text-align:center}
+  .metric-num{font-size:1.3rem;font-weight:700;color:#f0f6fc}
+  .metric-lbl{font-size:.72rem;color:#8b949e;margin-top:3px}
+  .log-stream{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px;font-size:.73rem;font-family:monospace;color:#8b949e;white-space:pre-wrap;max-height:200px;overflow:auto}
+  .bar-container{display:flex;gap:2px;align-items:flex-end;height:60px;margin-top:8px;flex-wrap:wrap}
+  .bar{width:8px;border-radius:2px 2px 0 0;min-height:2px;flex-shrink:0}
+  select,input[type=number]{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.83rem;outline:none}
+  select:focus,input[type=number]:focus{border-color:#58a6ff}
+  .config-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;align-items:flex-end}
+  .config-row label{font-size:.8rem;color:#8b949e;display:block;margin-bottom:4px}
+  .progress{height:4px;background:#21262d;border-radius:2px;overflow:hidden;margin-bottom:16px}
+  .progress-bar{height:100%;background:#238636;transition:width .1s;width:0}
+  .warn-box{background:#3d2a1f;border:1px solid #e3b341;border-radius:8px;padding:12px 16px;font-size:.82rem;color:#8b949e;margin-bottom:16px}
+  .warn-box strong{color:#e3b341}
+  .result-row{display:flex;gap:4px;font-size:.75rem;padding:2px 0;border-bottom:1px solid #21262d}
+  .result-ok{color:#56d364}.result-fail{color:#f85149}.result-slow{color:#e3b341}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><span>Bots</span><span class="nav-sep">/</span><span>Step 3 — Load Test</span></div>
+<h1>Bots Step 3 &mdash; Load Test</h1>
+<p class="sub">Fire concurrent requests at both Flask (5000) and Bot Manager (5001) to measure throughput, error rate and latency under load.</p>
+
+<div class="warn-box"><strong>Note:</strong> This fires real HTTP requests to your local servers. Keep concurrency reasonable (20–50) to avoid overwhelming localhost. This is a stress test &mdash; some failures under high load are expected.</div>
+
+<div class="config-row">
+  <div>
+    <label>Target</label>
+    <select id="target">
+      <option value="flask">Flask :5000 (GET /)</option>
+      <option value="botmgr">Bot Manager :5001 (GET /api/status)</option>
+      <option value="both">Both targets alternating</option>
+    </select>
+  </div>
+  <div>
+    <label>Requests</label>
+    <input type="number" id="reqCount" value="50" min="5" max="200" style="width:80px">
+  </div>
+  <div>
+    <label>Concurrency</label>
+    <input type="number" id="concurrency" value="10" min="1" max="50" style="width:70px">
+  </div>
+  <div>
+    <label>Timeout (ms)</label>
+    <input type="number" id="timeout" value="3000" min="500" max="10000" style="width:80px">
+  </div>
+</div>
+
+<div class="btn-row">
+  <button class="btn" id="runBtn" onclick="runLoad()">Start Load Test</button>
+  <button class="btn" style="background:#21262d;color:#c9d1d9" onclick="resetLoad()">Reset</button>
+</div>
+<div class="progress"><div class="progress-bar" id="prog"></div></div>
+
+<div class="metric-grid" id="metrics">
+  <div class="metric"><div class="metric-num" id="m-sent">0</div><div class="metric-lbl">Sent</div></div>
+  <div class="metric"><div class="metric-num" id="m-ok" style="color:#56d364">0</div><div class="metric-lbl">OK</div></div>
+  <div class="metric"><div class="metric-num" id="m-fail" style="color:#f85149">0</div><div class="metric-lbl">Failed</div></div>
+  <div class="metric"><div class="metric-num" id="m-timeout" style="color:#e3b341">0</div><div class="metric-lbl">Timeouts</div></div>
+  <div class="metric"><div class="metric-num" id="m-avg">—</div><div class="metric-lbl">Avg ms</div></div>
+  <div class="metric"><div class="metric-num" id="m-p95">—</div><div class="metric-lbl">P95 ms</div></div>
+  <div class="metric"><div class="metric-num" id="m-rps">—</div><div class="metric-lbl">Req/s</div></div>
+  <div class="metric"><div class="metric-num" id="m-errrate">—</div><div class="metric-lbl">Error %</div></div>
+</div>
+
+<div class="card">
+  <div class="card-title">Latency Distribution</div>
+  <div id="bar-info" style="font-size:.78rem;color:#8b949e">Run load test to see distribution.</div>
+  <div class="bar-container" id="bars"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">Live Log <span style="font-size:.75rem;color:#484f58">(last 100 results)</span></div>
+  <div class="log-stream" id="live-log">(waiting for test)</div>
+</div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="bots_step2_status.html">&larr; Back: Bot Status</a>
+  <a class="btn-issues" href="issues.html">Record Issues &rarr;</a>
+</div>
+
+<script>
+let running=false;
+let results=[];
+
+function autoLogIssue(title, description, code, url, sev) {
+  const issues = JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  if(issues.find(i=>i.title===title&&(Date.now()-new Date(i.created).getTime())<300000)) return;
+  issues.unshift({id:Date.now()+Math.random(),title,severity:sev||'medium',area:'bots-load',description,steps:'',code:String(code||''),url:url||'',created:new Date().toISOString(),auto:true});
+  localStorage.setItem('stress_test_issues',JSON.stringify(issues));
+}
+
+const TARGETS={
+  flask: 'http://127.0.0.1:5000/',
+  botmgr: 'http://127.0.0.1:5001/api/status',
+};
+
+function getUrl(i){
+  const t=document.getElementById('target').value;
+  if(t==='both') return i%2===0?TARGETS.flask:TARGETS.botmgr;
+  return TARGETS[t]||TARGETS.flask;
+}
+
+function upd(sent,ok,fail,timeouts,latencies,elapsed){
+  document.getElementById('m-sent').textContent=sent;
+  document.getElementById('m-ok').textContent=ok;
+  document.getElementById('m-fail').textContent=fail;
+  document.getElementById('m-timeout').textContent=timeouts;
+  if(latencies.length){
+    const sorted=[...latencies].sort((a,b)=>a-b);
+    const avg=Math.round(latencies.reduce((a,b)=>a+b,0)/latencies.length);
+    const p95=sorted[Math.floor(sorted.length*0.95)];
+    document.getElementById('m-avg').textContent=avg+'ms';
+    document.getElementById('m-p95').textContent=p95+'ms';
+  }
+  if(elapsed>0){
+    const rps=(sent/elapsed*1000).toFixed(1);
+    document.getElementById('m-rps').textContent=rps;
+  }
+  const errRate=sent>0?Math.round((fail+timeouts)/sent*100):0;
+  document.getElementById('m-errrate').textContent=errRate+'%';
+  document.getElementById('m-errrate').style.color=errRate>20?'#f85149':errRate>5?'#e3b341':'#56d364';
+}
+
+function drawBars(latencies){
+  const bars=document.getElementById('bars');
+  bars.innerHTML='';
+  if(!latencies.length) return;
+  const max=Math.max(...latencies,1);
+  const info=document.getElementById('bar-info');
+  info.textContent=`${latencies.length} samples — min: ${Math.min(...latencies)}ms, max: ${max}ms`;
+  latencies.forEach(ms=>{
+    const b=document.createElement('div');
+    b.className='bar';
+    b.style.height=Math.max(3,Math.round(ms/max*58))+'px';
+    b.style.background=ms<200?'#56d364':ms<500?'#e3b341':'#f85149';
+    b.title=ms+'ms';
+    bars.appendChild(b);
+  });
+}
+
+function log(msg,cls){
+  const el=document.getElementById('live-log');
+  const line=document.createElement('div');
+  line.className='result-row';
+  line.innerHTML=`<span class="${cls}">${escHtml(msg)}</span>`;
+  el.appendChild(line);
+  while(el.childElementCount>100) el.removeChild(el.firstChild);
+  el.scrollTop=el.scrollHeight;
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function runOne(i, timeoutMs){
+  const url=getUrl(i);
+  const t0=performance.now();
+  try{
+    const r=await fetch(url,{method:'GET',signal:AbortSignal.timeout(timeoutMs)});
+    const ms=Math.round(performance.now()-t0);
+    return {ok:r.ok,ms,status:r.status,timeout:false};
+  }catch(e){
+    const ms=Math.round(performance.now()-t0);
+    const isTimeout=e.name==='TimeoutError'||e.name==='AbortError';
+    return {ok:false,ms,status:0,timeout:isTimeout};
+  }
+}
+
+async function runLoad(){
+  if(running) return;
+  running=true;
+  results=[];
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('live-log').innerHTML='';
+
+  const total=Math.min(200,parseInt(document.getElementById('reqCount').value)||50);
+  const conc=Math.min(50,parseInt(document.getElementById('concurrency').value)||10);
+  const tmo=parseInt(document.getElementById('timeout').value)||3000;
+  const prog=document.getElementById('prog');
+  prog.style.width='0';
+  prog.style.background='#238636';
+
+  let sent=0,ok=0,fail=0,timeouts=0;
+  const latencies=[];
+  const t0=performance.now();
+
+  for(let batch=0;batch<total;batch+=conc){
+    const batchSize=Math.min(conc,total-batch);
+    const promises=[];
+    for(let j=0;j<batchSize;j++) promises.push(runOne(batch+j,tmo));
+    const batchResults=await Promise.all(promises);
+    batchResults.forEach((r,j)=>{
+      sent++;
+      if(r.timeout){timeouts++;log(`#${batch+j+1} TIMEOUT (${r.ms}ms) → ${getUrl(batch+j)}`,'result-slow');}
+      else if(r.ok){ok++;latencies.push(r.ms);log(`#${batch+j+1} ${r.status} OK (${r.ms}ms)`,'result-ok');}
+      else{fail++;log(`#${batch+j+1} ${r.status} FAIL (${r.ms}ms)`,'result-fail');}
+    });
+    const elapsed=performance.now()-t0;
+    upd(sent,ok,fail,timeouts,latencies,elapsed);
+    prog.style.width=Math.round(sent/total*100)+'%';
+    await new Promise(res=>setTimeout(res,10));
+  }
+  const totalMs=performance.now()-t0;
+  drawBars(latencies);
+  prog.style.width='100%';
+  const errRate=Math.round((fail+timeouts)/total*100);
+  prog.style.background=errRate>20?'#f85149':errRate>5?'#e3b341':'#56d364';
+  const target=document.getElementById('target').value;
+  const avgMs=latencies.length?Math.round(latencies.reduce((a,b)=>a+b,0)/latencies.length):0;
+  const sorted=[...latencies].sort((a,b)=>a-b);
+  const p95=sorted[Math.floor(sorted.length*0.95)]||0;
+  if(errRate>20){
+    autoLogIssue(`Load test — high error rate ${errRate}%`,`${sent} requests to ${target}: ${ok} OK, ${fail} FAIL, ${timeouts} TIMEOUT. Avg: ${avgMs}ms, P95: ${p95}ms`,`ERR_RATE_${errRate}`,target,'critical');
+  } else if(errRate>5){
+    autoLogIssue(`Load test — elevated error rate ${errRate}%`,`${sent} requests to ${target}: ${ok} OK, ${fail} FAIL, ${timeouts} TIMEOUT. Avg: ${avgMs}ms, P95: ${p95}ms`,`ERR_RATE_${errRate}`,target,'medium');
+  } else if(p95>1000){
+    autoLogIssue(`Load test — high P95 latency ${p95}ms`,`${sent} requests to ${target}: avg ${avgMs}ms, P95 ${p95}ms. Error rate ${errRate}%.`,`P95_${p95}`,target,'low');
+  }
+  log(`--- DONE: ${sent} requests in ${Math.round(totalMs)}ms | ${ok} OK | ${fail} FAIL | ${timeouts} TIMEOUT ---`,'result-ok');
+  running=false;
+  document.getElementById('runBtn').disabled=false;
+}
+
+function resetLoad(){
+  results=[];
+  running=false;
+  ['m-sent','m-ok','m-fail','m-timeout'].forEach(id=>document.getElementById(id).textContent='0');
+  ['m-avg','m-p95','m-rps','m-errrate'].forEach(id=>document.getElementById(id).textContent='—');
+  document.getElementById('prog').style.cssText='width:0;background:#238636';
+  document.getElementById('bars').innerHTML='';
+  document.getElementById('bar-info').textContent='Run load test to see distribution.';
+  document.getElementById('live-log').innerHTML='(waiting for test)';
+  document.getElementById('runBtn').disabled=false;
+}
+</script>
+</body>
+</html>

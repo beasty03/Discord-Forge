@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Func Step 2 — Guild Presence</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 24px}
+  .nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;font-size:.83rem;color:#8b949e}
+  .nav a{color:#58a6ff;text-decoration:none}.nav a:hover{text-decoration:underline}
+  .nav-sep{color:#30363d}
+  h1{font-size:1.45rem;font-weight:700;color:#f0f6fc}
+  .sub{color:#8b949e;font-size:.85rem;margin:4px 0 24px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}
+  .card-title{font-weight:600;color:#f0f6fc;margin-bottom:12px;font-size:.95rem}
+  .btn{background:#6e40c9;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:#a371f7}.btn:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
+  .footer-nav{display:flex;justify-content:space-between;margin-top:24px;flex-wrap:wrap;gap:10px}
+  .btn-next{background:#1f6feb;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-next:hover{background:#388bfd}
+  .btn-prev{background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-prev:hover{background:#30363d}
+  code{background:#21262d;padding:1px 5px;border-radius:4px;font-size:.8rem;font-family:monospace}
+  .kv-row{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #21262d;font-size:.82rem}
+  .kv-row:last-child{border-bottom:none}
+  .kv-key{color:#8b949e;min-width:160px}
+  .kv-val{color:#f0f6fc;font-family:monospace}
+  .result-big{font-size:2rem;font-weight:700;text-align:center;padding:24px}
+  .ok-big{color:#56d364}.fail-big{color:#f85149}
+  .server-selector{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  select{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:.85rem;outline:none;min-width:200px}
+  select:focus{border-color:#a371f7}
+  .empty-state{text-align:center;padding:32px;color:#484f58;font-size:.9rem}
+  .guild-icon{width:64px;height:64px;border-radius:50%;margin:0 auto 8px;display:block;object-fit:cover}
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">Deployment Inspector</a><span class="nav-sep">/</span><a href="func_index.html">Function Tests</a><span class="nav-sep">/</span><span>Step 2 — Guild</span></div>
+<h1>Step 2 &mdash; Guild Presence</h1>
+<p class="sub">Confirm the bot is in the Discord guild and can read basic guild information.</p>
+
+<div class="server-selector">
+  <label style="font-size:.85rem;color:#8b949e">Server:</label>
+  <select id="serverSelect" onchange="saveServer()"><option value="">— select —</option></select>
+  <button class="btn" id="runBtn" onclick="runCheck()">Check Guild</button>
+</div>
+
+<div id="output"><div class="empty-state">Select a server and click "Check Guild".</div></div>
+
+<div class="footer-nav">
+  <a class="btn-prev" href="func_step1_config.html">&larr; Back: Config</a>
+  <a class="btn-next" href="func_step3_channels.html">Next: Channel Audit &rarr;</a>
+</div>
+
+<script>
+const F=window.location.origin;
+
+async function loadServers(){
+  const sel=document.getElementById('serverSelect');
+  try{
+    const r=await fetch(F+'/api/servers/list',{redirect:'manual',signal:AbortSignal.timeout(5000)});
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){sel.innerHTML='<option value="">— Please log in first —</option>';if(!document.getElementById('_loginBtn')){const a=document.createElement('a');a.id='_loginBtn';a.href=F+'/login?next='+encodeURIComponent(window.location.pathname);a.textContent='Log in';a.style.cssText='margin-left:8px;background:#238636;color:#fff;border-radius:7px;padding:9px 20px;font-size:.875rem;font-weight:600;text-decoration:none;display:inline-block;';sel.parentNode.insertBefore(a,sel.nextSibling);const b=document.createElement('button');b.id='_refreshBtn';b.textContent='↻ Refresh';b.onclick=loadServers;b.style.cssText='margin-left:8px;background:#21262d;color:#c9d1d9;border:none;border-radius:7px;padding:9px 14px;font-size:.875rem;font-weight:600;cursor:pointer;';a.parentNode.insertBefore(b,a.nextSibling);}return;}
+    const data=await r.json();
+    const servers=data.servers||data||[];
+    sel.innerHTML='<option value="">— select —</option>';
+    servers.forEach(s=>{
+      const opt=document.createElement('option');
+      opt.value=s.server_id||s.id||s.name;
+      opt.textContent=s.name||(s.server_id||s.id);
+      sel.appendChild(opt);
+    });
+    const saved=localStorage.getItem('func_test_server_id');
+    if(saved) for(let i=0;i<sel.options.length;i++) if(sel.options[i].value===saved){sel.selectedIndex=i;break;}
+  }catch(e){sel.innerHTML='<option value="">— Flask unreachable —</option>';}
+}
+
+function saveServer(){
+  const v=document.getElementById('serverSelect').value;
+  if(v) localStorage.setItem('func_test_server_id',v);
+}
+
+async function runCheck(){
+  const sid=document.getElementById('serverSelect').value;
+  if(!sid){alert('Select a server first.');return;}
+  const btn=document.getElementById('runBtn');
+  const out=document.getElementById('output');
+  btn.disabled=true;
+  out.innerHTML='<div class="empty-state">Contacting Discord…</div>';
+
+  try{
+    const r=await fetch(`${F}/api/func-test/guild/${encodeURIComponent(sid)}`,{
+      redirect:'manual',signal:AbortSignal.timeout(12000)
+    });
+    if(r.type==='opaqueredirect'||[302,303,401].includes(r.status)){
+      out.innerHTML='<div class="empty-state">Login required — <a href="'+F+'/login?next='+encodeURIComponent(window.location.pathname)+'" style="color:#58a6ff">log in</a> &nbsp;<button onclick="runCheck()" style="background:#21262d;color:#c9d1d9;border:none;border-radius:6px;padding:5px 12px;font-size:.82rem;font-weight:600;cursor:pointer;">↻ Retry</button></div>';
+      btn.disabled=false;return;
+    }
+    if(!r.ok){
+      let errText='HTTP '+r.status;
+      try{const e=await r.clone().json();errText=e.error||errText;}catch(x){}
+      out.innerHTML=`<div class="empty-state" style="color:#f85149">${escHtml(errText)}</div>`;
+      btn.disabled=false;return;
+    }
+    const d=await r.json();
+
+    if(d.ok){
+      const iconUrl=d.icon
+        ?`https://cdn.discordapp.com/icons/${encodeURIComponent(d.guild_id)}/${d.icon}.png?size=128`
+        :null;
+      out.innerHTML=`
+        <div class="card" style="text-align:center">
+          ${iconUrl?`<img class="guild-icon" src="${iconUrl}" alt="guild icon">`:'<div style="width:64px;height:64px;border-radius:50%;background:#21262d;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:1.5rem">&#x1f916;</div>'}
+          <div class="result-big ok-big">&#x2713; Bot is in guild</div>
+          <div style="font-size:1rem;color:#f0f6fc;margin-bottom:16px">${escHtml(d.guild_name)}</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Guild Details</div>
+          <div class="kv-row"><span class="kv-key">Guild ID</span><span class="kv-val">${escHtml(d.guild_id)}</span></div>
+          <div class="kv-row"><span class="kv-key">Bot used</span><span class="kv-val">${escHtml(d.bot_used||'—')}</span></div>
+          <div class="kv-row"><span class="kv-key">Approx members</span><span class="kv-val">${d.member_count??'—'}</span></div>
+          <div class="kv-row"><span class="kv-key">Discord HTTP</span><span class="kv-val">${d.discord_status}</span></div>
+        </div>`;
+    } else {
+      autoLogIssue(`Guild presence check failed`,d.error||'Bot not in guild','GUILD_ERR',`/api/func-test/guild/${sid}`,'high');
+      out.innerHTML=`<div class="card">
+        <div class="result-big fail-big">&#x2717; Not in guild</div>
+        <div style="color:#f85149;text-align:center;margin-bottom:12px">${escHtml(d.error||'Unknown error')}</div>
+        <div class="kv-row"><span class="kv-key">Discord status</span><span class="kv-val">${d.discord_status}</span></div>
+        <div style="font-size:.82rem;color:#8b949e;margin-top:12px">Make sure the bot was invited with the correct OAuth2 scopes (<code>bot</code> + <code>applications.commands</code>).</div>
+      </div>`;
+    }
+  }catch(e){
+    out.innerHTML=`<div class="empty-state" style="color:#f85149">Error: ${escHtml(e.message)}</div>`;
+  }
+  btn.disabled=false;
+}
+
+function autoLogIssue(title,description,code,url,sev){
+  const issues=JSON.parse(localStorage.getItem('stress_test_issues')||'[]');
+  if(issues.find(i=>i.title===title&&i.url===url&&(Date.now()-new Date(i.created).getTime())<300000)) return;
+  issues.unshift({id:Date.now()+Math.random(),title,severity:sev,area:'func-guild',description,steps:'',code:String(code||''),url,created:new Date().toISOString(),auto:true});
+  localStorage.setItem('stress_test_issues',JSON.stringify(issues));
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+loadServers();
+</script>
+</body>
+</html>
