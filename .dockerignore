@@ -1,0 +1,36 @@
+# Node
+frontend/node_modules/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Secrets and runtime state (supplied via env_file + volume at runtime)
+app/.env
+app/.secret_key
+app/.revoked_sessions.json
+app/.claude/
+
+# User data (mounted as volume)
+data/users.json
+data/users/
+data/uploads/
+data/bots/
+data/pending_resets.json
+data/pending_verify.json
+data/server_invites.json
+
+# Logs
+*.log
+
+# Generated
+graphify-out/
+app/static/dist/
+
+# Git / tooling
+.git/
+.gitignore
+AUDIT.md
+checklist.html
+dev/
