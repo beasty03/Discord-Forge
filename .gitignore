@@ -4,14 +4,8 @@ app/.secret_key
 app/.revoked_sessions.json
 app/.claude/
 
-# Runtime user data (sensitive)
-data/users.json
-data/users/
-data/uploads/
-data/bots/
-data/pending_resets.json
-data/pending_verify.json
-data/server_invites.json
+# Runtime user data (sensitive — entire data/ dir excluded)
+data/
 
 # Python
 __pycache__/
