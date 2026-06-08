@@ -811,7 +811,6 @@
                 <a href="{{ url_for('servers_page') }}">Servers</a>
                 <a href="{{ url_for('bots_page') }}" class="active">Bots</a>
                 <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
-                <a href="{{ url_for('subscriptions_page') }}">Plans</a>
                 <a id="botMgrLink" href="http://127.0.0.1:5001" target="_blank" rel="noopener"
                    style="display:none;color:#43b581;border:1px solid rgba(67,181,129,.35);border-radius:6px;">🤖 Bot Manager</a>
             </div>
@@ -827,25 +826,10 @@
                     <div class="ud-name">{{ username }}</div>
                 </div>
                 <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
-                <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
                 <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
             </div>
         </div>
     </nav>
- 
-    {% if is_free_plan %}
-    <div style="background:#1e2023;border-bottom:1px solid #40444b;padding:9px 30px;
-                display:flex;align-items:center;justify-content:space-between;gap:16px;">
-        <span style="color:#b9bbbe;font-size:13px;">
-            <strong style="color:#fff;">Free plan</strong> — download your bots and run them locally.
-            Upgrade for cloud hosting.
-        </span>
-        <a href="/subscriptions" style="background:#7289da;color:#fff;text-decoration:none;
-           padding:5px 12px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap;">
-            See Plans
-        </a>
-    </div>
-    {% endif %}
 
     <div class="container">
         <h1>🤖 Bot Management</h1>
@@ -1221,8 +1205,6 @@
     <script>
         let botScripts = [];
         let currentBots = [];
-        let botLimit = 0;
-        let canUseCloud = true;
         let selectedBotForDetails = null;
 
         // Initialize
@@ -1237,8 +1219,6 @@
                 .then(response => response.json())
                 .then(data => {
                     currentBots = data.bots || [];
-                    botLimit = data.limit || 0;
-                    canUseCloud = data.can_use_cloud !== false;
                     updateStats();
                     renderBots();
                 })
@@ -1358,8 +1338,7 @@
         function createBotCard(bot) {
             const card = document.createElement('div');
 
-            // Effective run mode: respect per-bot bot_type, but fall back to 'local' for free plan
-            const runMode = (!canUseCloud || bot.bot_type === 'local') ? 'local' : 'cloud';
+            const runMode = bot.bot_type === 'local' ? 'local' : 'cloud';
 
             // Local online = heartbeat within last 3 minutes
             const localOnline = bot.local_last_seen &&
@@ -1378,10 +1357,9 @@
             }
 
             // Run-mode toggle
-            const cloudDis = !canUseCloud ? 'disabled title="Upgrade to a paid plan to use cloud hosting"' : '';
             const toggleHTML = `
                 <div class="run-mode-toggle">
-                    <button class="${runMode === 'cloud' ? 'active' : ''}" ${cloudDis}
+                    <button class="${runMode === 'cloud' ? 'active' : ''}"
                             onclick="setRunMode('${bot.server_id}','${bot.bot_id}','cloud',this)">
                         ☁️ Cloud
                     </button>

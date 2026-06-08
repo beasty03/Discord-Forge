@@ -332,7 +332,6 @@
             <a href="{{ url_for('servers_page') }}">Servers</a>
             <a href="{{ url_for('bots_page') }}">Bots</a>
             <a href="{{ url_for('scripts_page') }}" class="active">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
-            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
         </div>
     </div>
     <div class="user-menu">
@@ -346,7 +345,6 @@
                 <div class="ud-name">{{ username }}</div>
             </div>
             <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
-            <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
             <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
         </div>
     </div>

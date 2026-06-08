@@ -276,27 +276,6 @@ for d in [UPLOADS_DIR, USERS_DATA_DIR, BOTS_DATA_DIR]:
     os.makedirs(d, exist_ok=True)
 
 
-# ============================================
-# PLANS & LIMITS
-# ============================================
-# To add a paid plan later: add a new key here and set user['plan'] = 'pro' after payment.
-# -1 means unlimited.
-PLANS = {
-    'free':       {'max_servers': 2,  'max_bots': 4,  'infrastructure': ['local']},
-    # 'pro':      {'max_servers': 10, 'max_bots': 20, 'infrastructure': ['local', 'cloud']},
-    # 'enterprise':{'max_servers':-1, 'max_bots': -1, 'infrastructure': ['local', 'cloud']},
-}
-DEFAULT_PLAN = 'free'
-
-
-def get_user_plan(username):
-    return load_users().get(username, {}).get('plan', DEFAULT_PLAN)
-
-
-def get_plan_limits(username):
-    return PLANS.get(get_user_plan(username), PLANS[DEFAULT_PLAN])
-
-
 def count_user_servers(username):
     return sum(1 for s in load_servers().values() if s.get('owner') == username)
 
@@ -312,20 +291,6 @@ def count_user_bots(username):
             if config:
                 total += len(config.get('discord_bots', []))
     return total
-
-
-def check_limit(username, resource):
-    """Return (allowed, max, current). resource: 'servers' or 'bots'."""
-    limits = get_plan_limits(username)
-    max_val = limits.get(f'max_{resource}', 0)
-    current = count_user_servers(username) if resource == 'servers' else count_user_bots(username)
-    return (max_val == -1 or current < max_val), max_val, current
-
-
-def can_use_cloud(username):
-    """Return True if the user's plan allows running bots on the server (cloud)."""
-    plan = get_user_plan(username)
-    return 'cloud' in PLANS.get(plan, PLANS[DEFAULT_PLAN]).get('infrastructure', ['local'])
 
 
 # ============================================
@@ -1062,7 +1027,6 @@ def register():
                 'email': email,
                 'password': generate_password_hash(password),
                 'servers': [],
-                'plan': 'free',
                 'email_verified': False,
                 'created_at': datetime.now().isoformat(),
             }
@@ -1634,8 +1598,6 @@ def account_profile():
     username = session['user_id']
     users    = load_users()
     user     = users.get(username, {})
-    plan     = get_user_plan(username)
-    limits   = get_plan_limits(username)
     discord_id     = user.get('discord_id', '')
     discord_avatar = user.get('discord_avatar', '')
     avatar_source  = user.get('avatar_source', 'initials')
@@ -1658,9 +1620,6 @@ def account_profile():
         'discord_linked':           bool(user.get('discord_id')),
         'discord_username':         user.get('discord_username', ''),
         'email_verified':           user.get('email_verified', False),
-        'plan':                     plan,
-        'max_servers':              limits.get('max_servers', 2),
-        'max_bots':                 limits.get('max_bots', 4),
         'server_count':             len(user.get('servers', [])),
         'session_timeout_minutes':  user.get('session_timeout_minutes', 1),
         'csrf_token':               _csrf_token(),
@@ -1724,7 +1683,7 @@ def api_register():
         return jsonify({'error': 'Username already taken.'}), 409
     users[username] = {
         'email': email, 'password': generate_password_hash(password),
-        'servers': [], 'plan': 'free',
+        'servers': [],
         'email_verified': False, 'created_at': datetime.now().isoformat(),
     }
     save_users(users)
@@ -1860,10 +1819,9 @@ def spa_invite(token):
 # ============================================
 
 @app.context_processor
-def inject_plan_info():
+def inject_user_info():
     if 'user_id' in session:
         username = session['user_id']
-        plan     = get_user_plan(username)
         udata    = load_users().get(username, {})
         discord_id     = udata.get('discord_id', '')
         discord_avatar = udata.get('discord_avatar', '')
@@ -1883,24 +1841,12 @@ def inject_plan_info():
             avatar_url = ''
 
         return {
-            'current_plan':    plan,
-            'is_free_plan':    plan == 'free',
             'current_username': username,
             'user_avatar_url':  avatar_url,
             'avatar_source':   effective_source,
             'is_admin':        username == ADMIN_USERNAME,
         }
-    return {'current_plan': 'free', 'is_free_plan': True, 'current_username': '', 'user_avatar_url': '', 'avatar_source': 'initials', 'is_admin': False}
-
-
-# ============================================
-# SUBSCRIPTIONS
-# ============================================
-
-@app.route('/subscriptions')
-@login_required
-def subscriptions_page():
-    return redirect('/app/')  # React UserPage subscription tab
+    return {'current_username': '', 'user_avatar_url': '', 'avatar_source': 'initials', 'is_admin': False}
 
 
 # ============================================
@@ -2146,9 +2092,6 @@ def setup():
                 'error': 'This server is already configured.',
                 'edit_url': url_for('edit_server', server_id=existing_id)
             }), 409
-        ok, max_val, current = check_limit(username, 'servers')
-        if not ok:
-            return jsonify({'error': f'Server limit reached ({current}/{max_val}) on your current plan. Upgrade to add more servers.'}), 403
         server_id = f"{username}_{guild_id}"
     else:
         if server_id not in servers_data:
@@ -4351,12 +4294,9 @@ def servers_list_api():
         {'server_id': sid, 'server_name': servers_data[sid]['server_name'], 'guild_id': servers_data[sid]['guild_id']}
         for sid in user_servers if sid in servers_data
     ]
-    limits = get_plan_limits(username)
     return jsonify({
         'servers': servers,
         'count': count_user_servers(username),
-        'limit': limits['max_servers'],
-        'plan': get_user_plan(username),
     })
 
 
@@ -4468,13 +4408,9 @@ def list_bots():
         if config_dirty:
             save_server_config(server.get('config_path'), config)
 
-    limits = get_plan_limits(username)
     return jsonify({
         'bots': bots,
         'count': len(bots),
-        'limit': limits['max_bots'],
-        'plan': get_user_plan(username),
-        'can_use_cloud': can_use_cloud(username),
     })
 
 
@@ -4491,9 +4427,6 @@ def set_bot_run_mode():
         return jsonify({'error': 'Invalid mode — must be cloud or local'}), 400
 
     username = session['user_id']
-    if mode == 'cloud' and not can_use_cloud(username):
-        return jsonify({'error': 'Cloud hosting requires a paid plan'}), 403
-
     _, _, config, config_path = _get_authorized_config(server_id, username)
     if config is None:
         return jsonify({'error': 'Server not found or not authorized'}), 404
@@ -4526,15 +4459,6 @@ def add_bot_to_server():
     bots = config.setdefault('discord_bots', [])
     if any(b['token'] == bot_token for b in bots):
         return jsonify({'error': 'Bot already configured'}), 400
-
-    ok, max_val, current = check_limit(username, 'bots')
-    if not ok:
-        return jsonify({
-            'error': f'Bot limit reached ({current}/{max_val}) on your current plan. Upgrade to add more bots.',
-            'limit_reached': True,
-            'limit': max_val,
-            'current': current,
-        }), 403
 
     bots.append({'id': str(uuid.uuid4()), 'name': bot_name, 'token': bot_token})
     save_server_config(config_path, config)
@@ -4659,12 +4583,6 @@ def start_bot():
             'error': 'This bot is set to run locally. Use your downloaded bot_manager package to start it.',
             'local_required': True,
         }), 400
-
-    if not can_use_cloud(session['user_id']):
-        return jsonify({
-            'error': 'Cloud hosting requires a paid plan. Download the bot package and run it on your own PC.',
-            'local_required': True,
-        }), 403
 
     install_dir = os.path.abspath(server['install_dir'])
     repo_dir    = os.path.join(install_dir, 'discord-server-setup')

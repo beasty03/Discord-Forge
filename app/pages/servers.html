@@ -424,7 +424,6 @@
             <a href="{{ url_for('servers_page') }}" class="active">Servers</a>
             <a href="{{ url_for('bots_page') }}">Bots</a>
             <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
-            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
         </div>
     </div>
     <div class="user-menu">
@@ -438,25 +437,11 @@
                 <div class="ud-name">{{ username }}</div>
             </div>
             <a href="{{ url_for('account') }}">⚙️ Account Settings</a>
-            <a href="{{ url_for('subscriptions_page') }}">💎 My Plan</a>
             <a href="{{ url_for('logout') }}" class="ud-logout">🚪 Logout</a>
         </div>
     </div>
 </nav>
 
-{% if is_free_plan %}
-<div style="background:#1e2023;border-bottom:1px solid #40444b;padding:9px 30px;
-            display:flex;align-items:center;justify-content:space-between;gap:16px;">
-    <span style="color:#b9bbbe;font-size:13px;">
-        <strong style="color:#fff;">Free plan</strong> — bots run on your PC.
-        Upgrade for cloud hosting and more capacity.
-    </span>
-    <a href="/subscriptions" style="background:#7289da;color:#fff;text-decoration:none;
-       padding:5px 12px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap;">
-        See Plans
-    </a>
-</div>
-{% endif %}
 
 <div class="container">
 

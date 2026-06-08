@@ -410,7 +410,6 @@
             <a href="{{ url_for('servers_page') }}" class="active">Servers</a>
             <a href="{{ url_for('bots_page') }}">Bots</a>
             <a href="{{ url_for('scripts_page') }}">Scripts</a>{% if is_admin %}<a href="{{ url_for('admin_portal') }}" style="color:#ed4245;font-weight:600;">Admin</a>{% endif %}
-            <a href="{{ url_for('subscriptions_page') }}">Plans</a>
         </div>
     </div>
     <div class="user-menu">
@@ -424,7 +423,6 @@
                 <div class="ud-name">{{ username }}</div>
             </div>
             <a href="{{ url_for('account') }}">&#9881;&#65039; Account Settings</a>
-            <a href="{{ url_for('subscriptions_page') }}">&#128142; My Plan</a>
             <a href="{{ url_for('logout') }}" class="ud-logout">&#128682; Logout</a>
         </div>
     </div>

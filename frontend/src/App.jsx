@@ -1450,12 +1450,6 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
     }catch{ setDiscordAvatarMsg('Failed'); }
     setTimeout(()=>setDiscordAvatarMsg(null),3000);
   };
-  const PLANS=[
-    {id:"free", name:"Free",  price:"$0",  feats:[`Up to ${profile?.max_servers??2} servers`,"Basic dashboard","Community support"]},
-    {id:"pro",  name:"Pro",   price:"$9",  feats:["Up to 10 servers","All pages & features","Script library","Priority support"]},
-    {id:"team", name:"Team",  price:"$29", feats:["Unlimited servers","Team access (5 seats)","API access","SLA support"]},
-  ];
-  const currentPlan = profile?.plan || 'free';
   const initial = profile?.username?.[0]?.toUpperCase() || '?';
 
   const revokeOthers = () => {
@@ -1468,9 +1462,9 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
   return (
     <div>
       <div className="df-page-title">Account</div>
-      <div className="df-page-sub">Profile, subscription and preferences</div>
+      <div className="df-page-sub">Profile and preferences</div>
       <div className="df-tabs">
-        {["profile","subscription","appearance","quick access"].map(t=>(
+        {["profile","appearance","quick access"].map(t=>(
           <div key={t} className={`df-tab ${tab===t?"active":""}`} onClick={()=>setTab(t)}>{t[0].toUpperCase()+t.slice(1)}</div>
         ))}
       </div>
@@ -1495,7 +1489,6 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
                 <div className="df-flex df-gap6" style={{marginTop:6,flexWrap:'wrap'}}>
                   {profile?.discord_linked&&<span className="df-badge df-bc">Discord linked</span>}
                   {profile?.email_verified===false&&<span className="df-badge df-by">Email unverified</span>}
-                  <span className="df-badge df-bp">{currentPlan}</span>
                 </div>
                 {profile?.discord_linked&&profile?.discord_avatar_url&&(
                   <button className="df-btn df-btn-sm" style={{marginTop:8,fontSize:10}} onClick={useDiscordAvatar}>
@@ -1507,7 +1500,7 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
             <div className="df-sgap">
               <div className="df-setting-row"><div className="df-s-label">Username</div><span style={{fontFamily:"var(--mono)",fontSize:13,color:"var(--t0)"}}>{profile?.username||'…'}</span></div>
               <div className="df-setting-row"><div className="df-s-label">Email</div><span style={{fontFamily:"var(--mono)",fontSize:13,color:"var(--t0)"}}>{profile?.email||'…'}</span></div>
-              <div className="df-setting-row"><div className="df-s-label">Servers</div><span style={{fontFamily:"var(--mono)",fontSize:13,color:"var(--t0)"}}>{profile?.server_count??'—'} / {profile?.max_servers??'—'}</span></div>
+              <div className="df-setting-row"><div className="df-s-label">Servers</div><span style={{fontFamily:"var(--mono)",fontSize:13,color:"var(--t0)"}}>{profile?.server_count??'—'}</span></div>
             </div>
           </div>
           <div className="df-card">
@@ -1537,37 +1530,21 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
           </div>
         </div>
       )}
-      {tab==="subscription"&&(
-        <div className="df-g3">
-          {PLANS.map(p=>(
-            <div key={p.id} className={`df-plan-card ${currentPlan===p.id?"active":""}`}>
-              <div style={{fontSize:16,fontWeight:800,marginBottom:4}}>{p.name}</div>
-              <div style={{fontSize:24,fontWeight:800,fontFamily:"var(--mono)",letterSpacing:-1,margin:"8px 0 14px"}}>{p.price}<span style={{fontSize:11,color:"var(--t2)"}}>/mo</span></div>
-              {p.feats.map((f,i)=><div key={i} style={{fontSize:12,color:"var(--t1)",padding:"3px 0",display:"flex",alignItems:"center",gap:6}}><span style={{color:"var(--green)"}}>✓</span>{f}</div>)}
-              <button className={`df-btn df-btn-sm ${currentPlan===p.id?"df-btn-accent":""}`} style={{width:"100%",marginTop:14}} disabled={currentPlan===p.id}>{currentPlan===p.id?"Current Plan":"Switch to "+p.name}</button>
-            </div>
-          ))}
-        </div>
-      )}
       {tab==="appearance"&&(()=>{
         const q=themeSearch.toLowerCase();
         const allThemes = getThemeList().filter(t=>!q||t.name.toLowerCase().includes(q)||t.desc?.toLowerCase().includes(q));
-        const freeThemes = allThemes.filter(t=>!t.overlay);
-        const paidThemes = allThemes.filter(t=>!!t.overlay);
-        const isPaid = currentPlan==='pro'||currentPlan==='team';
         const ThemeCard = ({t})=>{
           const id=t.id;
           const active=theme===id;
-          const locked=!!t.overlay&&!isPaid;
           return (
             <div key={id}
-              onClick={()=>{ if(locked){ window.dispatchEvent(new CustomEvent('df:toast',{detail:{text:'Upgrade to Pro to unlock animated themes',type:'info'}})); return; } applyTheme(id); }}
+              onClick={()=>applyTheme(id)}
               style={{
-                border:`2px solid ${active?"var(--accent)":locked?"var(--border)":"var(--border2)"}`,
+                border:`2px solid ${active?"var(--accent)":"var(--border2)"}`,
                 borderRadius:"var(--rl)",padding:"18px 16px",
-                cursor:locked?"not-allowed":"pointer",
-                background:active?"var(--accent3)":locked?"var(--bg2)":"var(--bg2)",
-                transition:"all .15s",opacity:locked?0.55:1,
+                cursor:"pointer",
+                background:active?"var(--accent3)":"var(--bg2)",
+                transition:"all .15s",
                 position:"relative",
               }}>
               <div style={{display:"flex",gap:6,marginBottom:12}}>
@@ -1575,10 +1552,9 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
                   <div key={i} style={{width:i===2?28:22,height:22,borderRadius:i===2?6:4,background:c,border:"1px solid rgba(128,128,128,0.2)",flexShrink:0}}/>
                 ))}
               </div>
-              <div style={{fontSize:14,fontWeight:700,color:active?"var(--accent)":locked?"var(--t2)":"var(--t0)",marginBottom:3}}>{t.name}</div>
+              <div style={{fontSize:14,fontWeight:700,color:active?"var(--accent)":"var(--t0)",marginBottom:3}}>{t.name}</div>
               <div style={{fontSize:11,color:"var(--t2)"}}>{t.desc}</div>
               {active&&<div style={{marginTop:10,fontSize:10,fontFamily:"var(--mono)",color:"var(--accent)"}}>● active</div>}
-              {locked&&<div style={{position:"absolute",top:10,right:10,fontSize:13}} title="Pro only">🔒</div>}
             </div>
           );
         };
@@ -1594,25 +1570,14 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
                 onChange={e=>setThemeSearch(e.target.value)}
               />
             </div>
-            <div className="df-card" style={{marginBottom:14}}>
-              <div className="df-card-hdr">
-                <div><div className="df-card-title">Free Themes</div><div className="df-card-sub">Available on all plans</div></div>
-                <span style={{fontSize:11,color:"var(--t2)"}}>Takes effect immediately</span>
-              </div>
-              {freeThemes.length===0
-                ? <div style={{fontSize:12,color:'var(--t2)',padding:'8px 0'}}>No free themes match.</div>
-                : <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>{freeThemes.map(t=><ThemeCard key={t.id} t={t}/>)}</div>
-              }
-            </div>
             <div className="df-card">
               <div className="df-card-hdr">
-                <div><div className="df-card-title">Pro Themes</div><div className="df-card-sub">Animated — requires Pro or Team plan</div></div>
-                {!isPaid&&<span className="df-badge df-bp" style={{cursor:"pointer"}} onClick={()=>setTab("subscription")}>Upgrade ↗</span>}
-                {isPaid&&<span className="df-badge df-bg">✓ unlocked</span>}
+                <div><div className="df-card-title">Themes</div><div className="df-card-sub">All themes included</div></div>
+                <span style={{fontSize:11,color:"var(--t2)"}}>Takes effect immediately</span>
               </div>
-              {paidThemes.length===0
-                ? <div style={{fontSize:12,color:'var(--t2)',padding:'8px 0'}}>No Pro themes match.</div>
-                : <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>{paidThemes.map(t=><ThemeCard key={t.id} t={t}/>)}</div>
+              {allThemes.length===0
+                ? <div style={{fontSize:12,color:'var(--t2)',padding:'8px 0'}}>No themes match.</div>
+                : <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>{allThemes.map(t=><ThemeCard key={t.id} t={t}/>)}</div>
               }
             </div>
           </div>
