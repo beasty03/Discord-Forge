@@ -1,5 +1,5 @@
 // themes/library/synthwave.js
-import SynthwaveGridCanvas from "../SynthwaveGridCanvas.jsx";
+import SynthwaveGridCanvas from "../Synthwavegridcanvas.jsx";
 
 export default {
   id: "synthwave",
