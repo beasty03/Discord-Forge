@@ -4346,8 +4346,17 @@ def list_bots():
             cloud_status_map[k] = cb.get('status', 'stopped')
             cloud_pid_map[k]    = cb.get('pid')
 
+    # Collect owned servers + collaborated servers where user has bot access
+    bot_server_ids = set(users[username].get('servers', []))
+    for sid, srv in servers_data.items():
+        entry = srv.get('collaborators', {}).get(username)
+        if entry is not None:
+            perms = entry if isinstance(entry, list) else entry.get('permissions', [])
+            if 'view_bots' in perms or 'edit_bots' in perms:
+                bot_server_ids.add(sid)
+
     bots = []
-    for server_id in users[username].get('servers', []):
+    for server_id in bot_server_ids:
         if server_id not in servers_data:
             continue
         server = servers_data[server_id]
@@ -4427,7 +4436,7 @@ def set_bot_run_mode():
         return jsonify({'error': 'Invalid mode — must be cloud or local'}), 400
 
     username = session['user_id']
-    _, _, config, config_path = _get_authorized_config(server_id, username)
+    _, _, config, config_path = _get_authorized_config(server_id, username, permission='edit_bots')
     if config is None:
         return jsonify({'error': 'Server not found or not authorized'}), 404
 
@@ -4452,7 +4461,7 @@ def add_bot_to_server():
         return jsonify({'error': 'Missing required fields'}), 400
 
     username = session['user_id']
-    _, _, config, config_path = _get_authorized_config(server_id, username)
+    _, _, config, config_path = _get_authorized_config(server_id, username, permission='edit_bots')
     if config is None:
         return jsonify({'error': 'Server not found, not authorized, or config missing'}), 404
 
@@ -4479,7 +4488,7 @@ def remove_bot_from_server():
     if not all([server_id, bot_id]):
         return jsonify({'error': 'Missing required fields'}), 400
 
-    _, _, config, config_path = _get_authorized_config(server_id, session['user_id'])
+    _, _, config, config_path = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if config is None:
         return jsonify({'error': 'Server not found, not authorized, or config missing'}), 404
 
@@ -4499,7 +4508,7 @@ def delete_bot():
     if not all([server_id, bot_id]):
         return jsonify({'error': 'Missing required fields'}), 400
 
-    _, server, config, config_path = _get_authorized_config(server_id, session['user_id'])
+    _, server, config, config_path = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if config is None:
         return jsonify({'error': 'Server not found, not authorized, or config missing'}), 404
 
@@ -4566,7 +4575,7 @@ def start_bot():
     if not all([server_id, bot_id]):
         return jsonify({'error': 'Missing required fields'}), 400
 
-    _, server, config, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, config, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if config is None:
         return jsonify({'error': 'Server not found, not authorized, or config missing'}), 404
 
@@ -4625,7 +4634,7 @@ def stop_bot():
     if not all([server_id, bot_id]):
         return jsonify({'error': 'Missing required fields'}), 400
 
-    _, server, config, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, config, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if config is None:
         return jsonify({'error': 'Server not found, not authorized, or config missing'}), 404
 
@@ -6176,7 +6185,7 @@ def _make_bot_config(server_id, bot_id, config, server):
 @login_required
 def bot_config_json(server_id, bot_id):
     """Return the bot config as JSON so the browser can push it to a running local manager."""
-    _, server, config, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, config, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if config is None:
         return jsonify({'error': 'Server not found or not authorized'}), 404
     bot_config, _ = _make_bot_config(server_id, bot_id, config, server)
@@ -6293,7 +6302,7 @@ def download_botpy():
 @login_required
 def download_local_bot(server_id, bot_id):
     """First-time ZIP: Bot Manager + this bot's config bundled together."""
-    _, server, config, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, config, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if config is None:
         return jsonify({'error': 'Server not found or not authorized'}), 404
 
@@ -6411,7 +6420,7 @@ def restart_bot():
     if not all([server_id, bot_id]):
         return jsonify({'error': 'Missing required fields'}), 400
 
-    _, server, config, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, config, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if config is None:
         return jsonify({'error': 'Server not found, not authorized, or config missing'}), 404
 
@@ -7753,7 +7762,7 @@ def import_cogs():
     if not server_id or not selected_cogs:
         return jsonify({'error': 'Missing required fields'}), 400
 
-    _, server, config, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, config, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if server is None:
         return jsonify({'error': 'Server not found or not authorized'}), 404
 
@@ -7831,7 +7840,7 @@ def import_cogs():
 @app.route('/api/bots/installed-cogs/<server_id>', methods=['GET'])
 @login_required
 def get_installed_cogs(server_id):
-    _, server, _, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, _, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if server is None:
         return jsonify({'error': 'Server not found or not authorized'}), 404
 
@@ -7922,7 +7931,7 @@ def _save_variables_file(path, updates):
 @app.route('/api/bots/script-vars/<server_id>', methods=['GET'])
 @login_required
 def get_script_vars(server_id):
-    _, server, _, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, _, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if server is None:
         return jsonify({'error': 'Not found'}), 404
     install_dir = server.get('install_dir', '')
@@ -7944,7 +7953,7 @@ def get_script_vars(server_id):
 @app.route('/api/bots/script-vars/<server_id>', methods=['POST'])
 @login_required
 def save_script_vars(server_id):
-    _, server, _, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, _, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if server is None:
         return jsonify({'error': 'Not found'}), 404
     data        = request.json or {}
@@ -7981,7 +7990,7 @@ def check_script_updates():
     """Compare each installed cog's .version SHA against the latest GitHub commit."""
     data      = request.get_json(silent=True) or {}
     server_id = data.get('server_id', '')
-    _, server, _, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, _, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if server is None:
         return jsonify({'error': 'Not authorized'}), 404
 
@@ -8085,7 +8094,7 @@ def update_script_version():
     if not server_id or not script_path:
         return jsonify({'error': 'Missing required fields'}), 400
 
-    _, server, _, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, _, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if server is None:
         return jsonify({'error': 'Not authorized'}), 404
 
@@ -8120,7 +8129,7 @@ def update_script_version():
 @app.route('/api/bots/check-scripts/<server_id>', methods=['GET'])
 @login_required
 def check_scripts(server_id):
-    _, server, config, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, config, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if server is None:
         return jsonify({'error': 'Server not found or not authorized'}), 404
 
@@ -8240,7 +8249,7 @@ def remove_script():
     if not server_id or not script_id:
         return jsonify({'error': 'Missing required fields'}), 400
 
-    _, server, _, _ = _get_authorized_config(server_id, session['user_id'])
+    _, server, _, _ = _get_authorized_config(server_id, session['user_id'], permission='edit_bots')
     if server is None:
         return jsonify({'error': 'Server not found or not authorized'}), 404
 
