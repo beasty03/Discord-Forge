@@ -7593,16 +7593,16 @@ def import_cogs():
         cmds = load_json(cmds_path, [])
         for bot_cfg in config.get('discord_bots', []):
             cmds.append({
-                    'id':           str(uuid.uuid4()),
-                    'type':         'sync_scripts',
-                    'bot_id':       bot_cfg.get('id', ''),
-                    'scripts':      downloaded,
-                    'status':       'pending',
-                    'error':        '',
-                    'created_at':   datetime.now(timezone.utc).isoformat(),
-                    'completed_at': None,
-                })
-                synced_bots.append(bot_cfg.get('name', bot_cfg.get('id', '')))
+                'id':           str(uuid.uuid4()),
+                'type':         'sync_scripts',
+                'bot_id':       bot_cfg.get('id', ''),
+                'scripts':      downloaded,
+                'status':       'pending',
+                'error':        '',
+                'created_at':   datetime.now(timezone.utc).isoformat(),
+                'completed_at': None,
+            })
+            synced_bots.append(bot_cfg.get('name', bot_cfg.get('id', '')))
         if len(cmds) > 200:
             cmds = cmds[-200:]
         save_json(cmds_path, cmds)
