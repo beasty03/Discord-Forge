@@ -8,3 +8,5 @@ services:
       - app/.env
     volumes:
       - ./data:/discordforge/data
+      # Mount Docker socket so the app can manage bot containers (BOT_RUNNER=docker only)
+      - /var/run/docker.sock:/var/run/docker.sock

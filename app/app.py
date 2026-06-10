@@ -69,28 +69,6 @@ def _utf8_env():
     env['PYTHONIOENCODING'] = 'utf-8'
     return env
 
-def _botmgr_secret():
-    """Read the shared secret that bot_manager_direct.py generates on first run."""
-    secret_file = os.path.join(_APP_DIR, '.botmgr_secret')
-    try:
-        with open(secret_file, 'r') as _f:
-            return _f.read().strip()
-    except OSError:
-        return ''
-
-def _botmgr(method, path, body=None, timeout=5):
-    """Call bot_manager_direct.py on :5001. Returns response dict or None if unreachable."""
-    url = f'http://127.0.0.1:5001{path}'
-    headers = {'X-Manager-Secret': _botmgr_secret()}
-    try:
-        if method.upper() == 'GET':
-            r = requests.get(url, headers=headers, timeout=timeout)
-        else:
-            r = requests.post(url, json=body or {}, headers=headers, timeout=timeout)
-        return r.json() if r.content else {}
-    except Exception:
-        return None
-
 def _find_bot_by_id(config, bot_id):
     """Return the bot config entry whose 'id' matches bot_id, or None."""
     return next((b for b in config.get('discord_bots', []) if b.get('id') == bot_id), None)
@@ -4238,15 +4216,8 @@ def list_bots():
     users = load_users()
     servers_data = load_servers()
 
-    # Fetch live status for all cloud bots from bot_manager once before the loop
-    cloud_status_map = {}  # "server_id:bot_name" → status str
-    cloud_pid_map    = {}  # "server_id:bot_name" → pid or None
-    mgr_data = _botmgr('GET', '/api/cloud/status')
-    if mgr_data:
-        for cb in mgr_data.get('bots', []):
-            k = f'{cb["server_id"]}:{cb["name"]}'
-            cloud_status_map[k] = cb.get('status', 'stopped')
-            cloud_pid_map[k]    = cb.get('pid')
+    import bot_docker as _bd
+    docker_statuses = _bd.get_all_statuses() if _bd.is_docker_mode() else {}
 
     # Collect owned servers + collaborated servers where user has bot access
     bot_server_ids = set(users[username].get('servers', []))
@@ -4281,14 +4252,10 @@ def list_bots():
             if not bot.get('id'):
                 bot['id'] = str(uuid.uuid4())
                 config_dirty = True
-            bot_type = bot.get('bot_type', 'local')
-            if bot_type == 'cloud':
-                status = cloud_status_map.get(f'{server_id}:{bot["name"]}', 'stopped')
-                pid    = cloud_pid_map.get(f'{server_id}:{bot["name"]}')
-            else:
-                # Local bot — status comes from heartbeat field, never process-managed here
-                status = bot.get('local_status', 'offline')
-                pid    = None
+            key    = f'{server_id}:{bot["name"]}'
+            status = docker_statuses.get(key, bot.get('local_status', 'offline')) \
+                     if docker_statuses else bot.get('local_status', 'offline')
+            pid    = None
             # Kick off background avatar fetch if not cached or stale (1 h TTL)
             cached_info = _bot_info_cache.get(bot['id'])
             if cached_info is None or time.time() - cached_info.get('fetched_at', 0) > 3600:
@@ -4309,7 +4276,6 @@ def list_bots():
                 'pid':               pid,
                 'installed_scripts': installed_scripts,
                 'created_at':        server.get('created_at', ''),
-                'bot_type':          bot_type,
                 'local_status':      bot.get('local_status', 'offline'),
                 'local_last_seen':   bot.get('local_last_seen', None),
                 'ping':              bot.get('local_ping_ms', 0),
@@ -4323,32 +4289,6 @@ def list_bots():
         'bots': bots,
         'count': len(bots),
     })
-
-
-@app.route('/api/bots/set-run-mode', methods=['POST'])
-@login_required
-def set_bot_run_mode():
-    """Toggle a bot between cloud and local run mode."""
-    data      = request.json or {}
-    server_id = data.get('server_id')
-    bot_id    = data.get('bot_id')
-    mode      = data.get('mode')
-
-    if mode not in ('cloud', 'local'):
-        return jsonify({'error': 'Invalid mode — must be cloud or local'}), 400
-
-    username = session['user_id']
-    _, _, config, config_path = _get_authorized_config(server_id, username, permission='edit_bots')
-    if config is None:
-        return jsonify({'error': 'Server not found or not authorized'}), 404
-
-    for bot in config.get('discord_bots', []):
-        if bot.get('id') == bot_id:
-            bot['bot_type'] = 'cloud' if mode == 'cloud' else 'local'
-            save_server_config(config_path, config)
-            return jsonify({'ok': True, 'mode': mode})
-
-    return jsonify({'error': 'Bot not found'}), 404
 
 
 @app.route('/api/bots/add-to-server', methods=['POST'])
@@ -4421,14 +4361,6 @@ def delete_bot():
     bot_name  = bot_cfg['name']
     bot_token = bot_cfg['token']
 
-    # Stop cloud bot in bot_manager before deleting
-    if bot_cfg.get('bot_type') == 'cloud':
-        mgr = _botmgr('POST', '/api/cloud/stop', {'server_id': server_id, 'bot_name': bot_name})
-        if mgr is None:
-            return jsonify({'error': 'Bot manager unreachable — stop the bot manually first'}), 503
-        if mgr.get('info', {}).get('status') not in ('stopped', 'error', None):
-            return jsonify({'error': 'Stop the bot before deleting it'}), 400
-
     # Remove bot from config and delete its config file
     config['discord_bots'] = [b for b in config.get('discord_bots', []) if b.get('id') != bot_id]
     save_server_config(config_path, config)
@@ -4487,43 +4419,25 @@ def start_bot():
 
     bot_name  = bot_cfg['name']
     bot_token = bot_cfg['token']
-    bot_type  = bot_cfg.get('bot_type', 'local')
 
-    if bot_type != 'cloud':
-        return jsonify({
-            'error': 'This bot is set to run locally. Use your downloaded bot_manager package to start it.',
-            'local_required': True,
-        }), 400
+    import bot_docker as _bd
+    if _bd.is_docker_mode():
+        single_config = dict(config)
+        single_config['discord_bots'] = [bot_cfg]
+        ok, msg = _bd.start(server_id, bot_name, bot_token, single_config)
+        if not ok:
+            return jsonify({'error': msg}), 500
+        threading.Thread(
+            target=_send_bot_log,
+            args=(server['guild_id'], bot_name, 'online', 'container started', bot_token),
+            daemon=True
+        ).start()
+        return jsonify({'success': True, 'message': f'Bot {bot_name} started in container.'})
 
-    install_dir = os.path.abspath(server['install_dir'])
-    repo_dir    = os.path.join(install_dir, 'discord-server-setup')
-    launcher    = find_file_ci(repo_dir, 'launcher.py')
-    if not launcher:
-        return jsonify({'error': 'launcher.py not found in discord-server-setup'}), 404
-
-    # Write a per-bot config so launcher.py has a single-bot config to read
-    single_config = dict(config)
-    single_config['discord_bots'] = [bot_cfg]
-    save_server_config(os.path.join(repo_dir, f'config_{bot_name}.json'), single_config)
-
-    mgr = _botmgr('POST', '/api/cloud/start', {
-        'server_id': server_id,
-        'bot_name':  bot_name,
-        'launcher':  launcher,
-        'cwd':       repo_dir,
-    })
-    if mgr is None:
-        return jsonify({'error': 'Bot manager is not running. Start bot_manager_direct.py first.'}), 503
-    if not mgr.get('ok'):
-        return jsonify({'error': mgr.get('msg', 'Bot manager error')}), 500
-
-    threading.Thread(
-        target=_send_bot_log,
-        args=(server['guild_id'], bot_name, 'online', f'cloud pid {mgr.get("info", {}).get("pid")}', bot_token),
-        daemon=True
-    ).start()
-    return jsonify({'success': True, 'message': f'Bot {bot_name} started!',
-                    'pid': mgr.get('info', {}).get('pid')})
+    return jsonify({
+        'error': 'Start/stop is only available in Docker mode. Use your downloaded bot_manager package to control local bots.',
+        'local_required': True,
+    }), 400
 
 
 @app.route('/api/bots/stop', methods=['POST'])
@@ -4546,21 +4460,20 @@ def stop_bot():
 
     bot_name  = bot_cfg['name']
     bot_token = bot_cfg['token']
-    bot_type  = bot_cfg.get('bot_type', 'local')
 
-    if bot_type != 'cloud':
-        return jsonify({'success': True, 'message': 'Local bot — stop it via your bot_manager package.'})
+    import bot_docker as _bd
+    if _bd.is_docker_mode():
+        ok, msg = _bd.stop(server_id, bot_name)
+        if not ok:
+            return jsonify({'error': msg}), 500
+        threading.Thread(
+            target=_send_bot_log,
+            args=(server['guild_id'], bot_name, 'offline', '', bot_token),
+            daemon=True
+        ).start()
+        return jsonify({'success': True, 'message': f'Bot {bot_name} stopped.'})
 
-    mgr = _botmgr('POST', '/api/cloud/stop', {'server_id': server_id, 'bot_name': bot_name})
-    if mgr is None:
-        return jsonify({'error': 'Bot manager is not running.'}), 503
-
-    threading.Thread(
-        target=_send_bot_log,
-        args=(server['guild_id'], bot_name, 'offline', '', bot_token),
-        daemon=True
-    ).start()
-    return jsonify({'success': True, 'message': f'Bot {bot_name} stopped.'})
+    return jsonify({'success': True, 'message': 'Local bot — stop it via your bot_manager package.'})
 
 
 _LOCAL_BOT_PY = '''\
@@ -6333,45 +6246,27 @@ def restart_bot():
     bot_name  = bot_cfg['name']
     bot_token = bot_cfg['token']
     guild_id  = server['guild_id']
-    bot_type  = bot_cfg.get('bot_type', 'local')
 
-    if bot_type != 'cloud':
-        return jsonify({'error': 'Local bot — restart it via your bot_manager package.'}), 400
+    import bot_docker as _bd
+    if _bd.is_docker_mode():
+        single_config = dict(config)
+        single_config['discord_bots'] = [bot_cfg]
+        threading.Thread(
+            target=_send_bot_log,
+            args=(guild_id, bot_name, 'restarting', '', bot_token),
+            daemon=True
+        ).start()
+        ok, msg = _bd.restart(server_id, bot_name, bot_token, single_config)
+        if not ok:
+            return jsonify({'error': msg}), 500
+        threading.Thread(
+            target=_send_bot_log,
+            args=(guild_id, bot_name, 'online', 'container restarted', bot_token),
+            daemon=True
+        ).start()
+        return jsonify({'success': True, 'message': f'Bot {bot_name} restarted.'})
 
-    install_dir = os.path.abspath(server['install_dir'])
-    repo_dir    = os.path.join(install_dir, 'discord-server-setup')
-    launcher    = find_file_ci(repo_dir, 'launcher.py')
-    if not launcher:
-        return jsonify({'error': 'launcher.py not found'}), 404
-
-    single_config = dict(config)
-    single_config['discord_bots'] = [bot_cfg]
-    save_server_config(os.path.join(repo_dir, f'config_{bot_name}.json'), single_config)
-
-    threading.Thread(
-        target=_send_bot_log,
-        args=(guild_id, bot_name, 'restarting', '', bot_token),
-        daemon=True
-    ).start()
-
-    mgr = _botmgr('POST', '/api/cloud/restart', {
-        'server_id': server_id,
-        'bot_name':  bot_name,
-        'launcher':  launcher,
-        'cwd':       repo_dir,
-    })
-    if mgr is None:
-        return jsonify({'error': 'Bot manager is not running.'}), 503
-    if not mgr.get('ok'):
-        return jsonify({'error': mgr.get('msg', 'Bot manager error')}), 500
-
-    threading.Thread(
-        target=_send_bot_log,
-        args=(guild_id, bot_name, 'online', f'Restarted — PID {mgr.get("info", {}).get("pid")}', bot_token),
-        daemon=True
-    ).start()
-    return jsonify({'success': True, 'message': f'Bot {bot_name} restarted!',
-                    'pid': mgr.get('info', {}).get('pid')})
+    return jsonify({'error': 'Restart is only available in Docker mode. Use your bot_manager package.'}), 400
 
 
 # ============================================
@@ -6385,8 +6280,6 @@ def _check_bots_offline(owner, server_id, cfg, srv_name):
     """Mark stale local bots offline and fire events/notifications. Returns True if cfg changed."""
     changed = False
     for b in cfg.get('discord_bots', []):
-        if b.get('bot_type') != 'local':
-            continue
         last_seen = b.get('local_last_seen')
         if not last_seen:
             continue
@@ -7019,9 +6912,16 @@ def fire_notification_webhooks(owner, server_id, event_type, message, context=No
         save_json(path, items)
 
 
+def _botmgr_secret():
+    try:
+        with open(os.path.join(_APP_DIR, '.botmgr_secret'), 'r') as _f:
+            return _f.read().strip()
+    except OSError:
+        return ''
+
 @app.route('/api/internal/bot-crash-alert', methods=['POST'])
 def internal_bot_crash_alert():
-    """Receives crash notifications from bot_manager_direct.py and fires user webhooks."""
+    """Receives crash notifications from the local bot_manager package and fires user webhooks."""
     if request.headers.get('X-Manager-Secret', '') != _botmgr_secret():
         return jsonify({'error': 'Unauthorized'}), 401
     data     = request.get_json(silent=True) or {}
@@ -7226,9 +7126,8 @@ def dashboard_server_health():
         if not srv:
             continue
         cfg = load_server_config(srv.get('config_path', '')) or {}
-        local_bots = [b for b in cfg.get('discord_bots', []) if b.get('bot_type') == 'local']
         online = 0
-        for b in local_bots:
+        for b in cfg.get('discord_bots', []):
             ls = b.get('local_last_seen', '')
             if ls:
                 try:
@@ -7685,34 +7584,15 @@ def import_cogs():
         )
         (downloaded if ok else failed).append(cog_name)
 
-    # Restart any running cloud bots so they pick up the new cogs
-    restarted = []
-    if downloaded:
-        full_config = load_server_config(server.get('config_path'))
-        if full_config:
-            repo_dir = os.path.join(install_dir, 'discord-server-setup')
-            launcher = find_file_ci(repo_dir, 'launcher.py')
-            for bot_cfg in full_config.get('discord_bots', []):
-                if bot_cfg.get('bot_type', 'local') != 'cloud':
-                    continue
-                mgr = _botmgr('POST', '/api/cloud/restart', {
-                    'server_id': server_id,
-                    'bot_name':  bot_cfg['name'],
-                    'launcher':  launcher or '',
-                    'cwd':       repo_dir,
-                })
-                if mgr and mgr.get('ok'):
-                    restarted.append(bot_cfg['name'])
-
     # Queue sync_scripts for any local bots so they pull the new cogs automatically
+    restarted = []
     synced_bots = []
     if downloaded and config:
         username = session['user_id']
         cmds_path = os.path.join(USERS_DATA_DIR,username, 'servers', server_id, 'commands.json')
         cmds = load_json(cmds_path, [])
         for bot_cfg in config.get('discord_bots', []):
-            if bot_cfg.get('bot_type', 'local') == 'local':
-                cmds.append({
+            cmds.append({
                     'id':           str(uuid.uuid4()),
                     'type':         'sync_scripts',
                     'bot_id':       bot_cfg.get('id', ''),
@@ -8173,29 +8053,7 @@ def remove_script():
 
     shutil.rmtree(cog_path)
 
-    # Restart any running cloud bots so they drop the removed cog
-    full_config = load_server_config(server.get('config_path'))
-    restarted = []
-    if full_config:
-        repo_dir = os.path.join(install_dir, 'discord-server-setup')
-        launcher = find_file_ci(repo_dir, 'launcher.py')
-        for bot_cfg in full_config.get('discord_bots', []):
-            if bot_cfg.get('bot_type', 'local') != 'cloud':
-                continue
-            mgr = _botmgr('POST', '/api/cloud/restart', {
-                'server_id': server_id,
-                'bot_name':  bot_cfg['name'],
-                'launcher':  launcher or '',
-                'cwd':       repo_dir,
-            })
-            if mgr and mgr.get('ok'):
-                restarted.append(bot_cfg['name'])
-
-    return jsonify({
-        'success': True,
-        'removed': script_id,
-        'restarted_bots': restarted,
-    })
+    return jsonify({'success': True, 'removed': script_id})
 
 
 # ============================================
@@ -8341,7 +8199,6 @@ def func_test_config(server_id):
             )
         bots.append({
             'name': bot.get('name', '?'),
-            'bot_type': bot.get('bot_type', 'local'),
             'has_token': bool(bot.get('token')),
             'has_app_id': False,   # not a stored field; derived at runtime
             'cogs_count': cog_count,

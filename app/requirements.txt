@@ -17,3 +17,6 @@ gevent-websocket>=0.10.1
 
 # WSGI (kept for local dev without gevent)
 waitress>=3.0.0
+
+# Docker SDK — used when BOT_RUNNER=docker to manage bot containers
+docker>=7.0.0

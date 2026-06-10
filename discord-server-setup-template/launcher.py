@@ -84,18 +84,26 @@ logger = logging.getLogger("launcher")
 
 def load_config():
     """
-    Loads configuration from config.json
-    
-    Returns:
-        dict: Configuration data with bot tokens and server settings
+    Loads configuration from BOT_CONFIG_JSON env var (Docker mode) or config.json (local mode).
     """
+    import os as _os
+    env_json = _os.environ.get('BOT_CONFIG_JSON', '')
+    if env_json:
+        try:
+            config = json.loads(env_json)
+            logger.info("✅ Configuration loaded from BOT_CONFIG_JSON env var")
+            return config
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ ERROR: BOT_CONFIG_JSON is not valid JSON: {e}")
+            sys.exit(1)
+
     try:
         if not CONFIG_FILE.exists():
             logger.error("❌ ERROR: config.json not found!")
             logger.error(f"   Expected location: {CONFIG_FILE}")
             logger.error("   Please run bot_config.ps1 first to configure your bots")
             sys.exit(1)
-        
+
         with open(CONFIG_FILE, 'r', encoding='utf-8-sig') as f:
             config = json.load(f)
         
@@ -138,18 +146,23 @@ def get_bot_token(config: dict, bot_name: str = None):
         logger.error(f"   Available bots: {', '.join([b['name'] for b in bots])}")
         sys.exit(1)
     
-    # If multiple bots, ask user to select
+    # If multiple bots, ask user to select (or auto-select first in non-interactive mode)
     if len(bots) > 1:
+        import os as _os, sys as _sys
+        if not _sys.stdin.isatty() or _os.environ.get('BOT_CONFIG_JSON'):
+            logger.info(f"Multiple bots in config — auto-selecting first: {bots[0]['name']}")
+            return bots[0]['token'], bots[0]['name']
+
         logger.info("\n📋 Multiple bots configured:")
         for i, bot in enumerate(bots, 1):
             logger.info(f"   {i}. {bot['name']}")
-        
+
         while True:
             try:
                 selection = input("\nSelect bot number to launch (or press Enter for first bot): ").strip()
                 if not selection:
                     return bots[0]['token'], bots[0]['name']
-                
+
                 index = int(selection) - 1
                 if 0 <= index < len(bots):
                     return bots[index]['token'], bots[index]['name']
