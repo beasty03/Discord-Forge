@@ -616,14 +616,111 @@ function PreviewPane({ form }) {
   );
 }
 
+// ── Choose screen ────────────────────────────────────────
+
+function StepChoose({ onNew, onImport }) {
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:20,padding:"40px 32px"}}>
+      <div style={{fontSize:22,fontWeight:800,letterSpacing:"-.5px",marginBottom:4}}>How do you want to start?</div>
+      <div style={{fontSize:13,color:"var(--t2)",marginBottom:20}}>Create a brand-new server or import the structure of an existing one.</div>
+      <div style={{display:"flex",gap:16,width:"100%",maxWidth:560}}>
+        <div onClick={onNew} style={{flex:1,background:"var(--bg2)",border:"1.5px solid var(--border)",borderRadius:"var(--rl)",padding:"28px 22px",cursor:"pointer",transition:"all .15s",textAlign:"center"}}
+          onMouseEnter={e=>{ e.currentTarget.style.borderColor="var(--accent)"; e.currentTarget.style.background="var(--accent3)"; }}
+          onMouseLeave={e=>{ e.currentTarget.style.borderColor="var(--border)"; e.currentTarget.style.background="var(--bg2)"; }}>
+          <div style={{fontSize:36,marginBottom:12}}>✨</div>
+          <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>New Server</div>
+          <div style={{fontSize:12,color:"var(--t2)",lineHeight:1.5}}>Build from scratch with a template. Pick channels, roles and scripts in the wizard.</div>
+        </div>
+        <div onClick={onImport} style={{flex:1,background:"var(--bg2)",border:"1.5px solid var(--border)",borderRadius:"var(--rl)",padding:"28px 22px",cursor:"pointer",transition:"all .15s",textAlign:"center"}}
+          onMouseEnter={e=>{ e.currentTarget.style.borderColor="var(--green)"; e.currentTarget.style.background="rgba(35,209,139,.06)"; }}
+          onMouseLeave={e=>{ e.currentTarget.style.borderColor="var(--border)"; e.currentTarget.style.background="var(--bg2)"; }}>
+          <div style={{fontSize:36,marginBottom:12}}>📥</div>
+          <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>Import Existing</div>
+          <div style={{fontSize:12,color:"var(--t2)",lineHeight:1.5}}>Read the structure of a Discord server you already have and pre-fill the wizard.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImportForm({ onBack, onImported }) {
+  const [guildId,   setGuildId]   = useState("");
+  const [botToken,  setBotToken]  = useState("");
+  const [loading,   setLoading]   = useState(false);
+  const [err,       setErr]       = useState("");
+
+  const run = async () => {
+    if (!guildId.trim() || !botToken.trim()) { setErr("Both fields are required."); return; }
+    setLoading(true); setErr("");
+    try {
+      const res  = await fetch('/api/discord/import-guild', {
+        method: 'POST', credentials: 'include',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({guild_id: guildId.trim(), bot_token: botToken.trim()}),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErr(data.error || `Error ${res.status}`); setLoading(false); return; }
+
+      // Map API response → wizard form
+      const channels = [];
+      for (const cat of data.categories || []) {
+        for (const ch of cat.textChannels  || []) channels.push({name:ch.name, type:"text",  cat:cat.name, id:`i${channels.length}`});
+        for (const ch of cat.voiceChannels || []) channels.push({name:ch.name, type:"voice", cat:cat.name, id:`i${channels.length}`});
+        for (const ch of cat.forumChannels || []) channels.push({name:ch.name, type:"forum", cat:cat.name, id:`i${channels.length}`});
+      }
+      const roles = (data.custom_roles || []).map(r => ({name:r.name, color:r.color||"#99aab5", perms:"standard", hoist:!!r.hoist}));
+      if (!roles.find(r=>r.name==="@everyone")) roles.unshift({name:"@everyone",color:"#888",perms:"basic"});
+
+      onImported({
+        name:     data.server_name || "",
+        icon:     "📥",
+        guildId:  guildId.trim(),
+        botToken: botToken.trim(),
+        botName:  "",
+        botClientId: "",
+        template: "blank",
+        channels,
+        roles,
+        scripts:  [],
+      });
+    } catch(e) {
+      setErr(e.message || "Network error");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{maxWidth:480,margin:"0 auto",padding:"20px 0"}}>
+      <div className="step-title">Import from Discord</div>
+      <div className="step-sub">Provide your server ID and a bot token. The bot must already be in the server.</div>
+      <div style={{marginBottom:18}}>
+        <div className="section-label">Discord Server ID (Guild ID)</div>
+        <input className="wiz-input" value={guildId} onChange={e=>setGuildId(e.target.value.trim())} placeholder="e.g. 1234567890123456789"/>
+        <div className="input-hint">Right-click your server in Discord → Copy Server ID</div>
+      </div>
+      <div style={{marginBottom:20}}>
+        <div className="section-label">Bot Token</div>
+        <input className="wiz-input" type="password" value={botToken} onChange={e=>setBotToken(e.target.value.trim())} placeholder="Bot token from discord.com/developers"/>
+      </div>
+      {err && <div style={{fontSize:12,color:"var(--red)",fontFamily:"var(--mono)",marginBottom:12}}>{err}</div>}
+      <div style={{display:"flex",gap:10}}>
+        <button className="df-btn" onClick={onBack}>← Back</button>
+        <button className="df-btn df-btn-success" onClick={run} disabled={loading}>
+          {loading ? "Importing…" : "Import Structure →"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Modal ───────────────────────────────────────────
 
 export default function CreateServerModal({ open, onClose, onCreated }) {
+  const [mode, setMode] = useState(null); // null=choose, 'new', 'import'
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ name:"", icon:"🎮", guildId:"", botToken:"", botName:"", botClientId:"", template:"gaming", channels:[], roles:[], scripts:[] });
   const [error, setError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [createDone, setCreateDone] = useState(false);
   const [logs, setLogs] = useState([]);
   const [createError, setCreateError] = useState("");
 
@@ -639,7 +736,7 @@ export default function CreateServerModal({ open, onClose, onCreated }) {
   const isSuccess = step === STEPS.length;
 
   useEffect(()=>{
-    if(open){ setStep(0); setError(""); setCreateError(""); setIsCreating(false); setLogs([]); setForm({name:"",icon:"🎮",guildId:"",botToken:"",botName:"",template:"gaming",channels:[],roles:[],scripts:[]}); }
+    if(open){ setMode(null); setStep(0); setError(""); setCreateError(""); setIsCreating(false); setLogs([]); setForm({name:"",icon:"🎮",guildId:"",botToken:"",botName:"",template:"gaming",channels:[],roles:[],scripts:[]}); }
   },[open]);
 
   // Pre-load channels/roles when template changes (template is step index 2)
@@ -762,6 +859,7 @@ export default function CreateServerModal({ open, onClose, onCreated }) {
 
   // Steps 0,2,5 have no preview pane (basics, template, scripts)
   const hidePreview = step===0||step===1||step===2||step===5;
+  const inWizard    = mode === 'new';
 
   return (
     <>
@@ -769,15 +867,17 @@ export default function CreateServerModal({ open, onClose, onCreated }) {
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal" onClick={e=>e.stopPropagation()}>
           <div className="modal-hdr">
-            <div className="modal-h-icon">✨</div>
+            <div className="modal-h-icon">{mode==='import'?"📥":"✨"}</div>
             <div>
-              <div className="modal-h-title">Create New Server</div>
-              <div className="modal-h-sub">Step {Math.min(step+1,STEPS.length)} of {STEPS.length}</div>
+              <div className="modal-h-title">
+                {mode===null?"Add a Server":mode==='import'?"Import Server":"Create New Server"}
+              </div>
+              {inWizard && <div className="modal-h-sub">Step {Math.min(step+1,STEPS.length)} of {STEPS.length}</div>}
             </div>
             <button className="modal-h-close" onClick={onClose}>✕</button>
           </div>
 
-          {!isSuccess && (
+          {inWizard && !isSuccess && (
             <div className="stepper">
               {STEPS.map((s,i)=>(
                 <div key={s.id} className={`wiz-step${step===i?" current":i<step?" done":""}`} onClick={()=>i<step&&setStep(i)}>
@@ -788,9 +888,20 @@ export default function CreateServerModal({ open, onClose, onCreated }) {
             </div>
           )}
 
-          <div className={`modal-body${hidePreview||isSuccess||isCreating?" no-preview":""}`}>
+          <div className={`modal-body${hidePreview||isSuccess||isCreating||!inWizard?" no-preview":""}`}>
             <div className="body-main">
-              {isCreating ? (
+              {mode === null ? (
+                <StepChoose onNew={()=>setMode('new')} onImport={()=>setMode('import')}/>
+              ) : mode === 'import' ? (
+                <ImportForm
+                  onBack={()=>setMode(null)}
+                  onImported={(prefilled)=>{
+                    setForm(prefilled);
+                    setMode('new');
+                    setStep(0);
+                  }}
+                />
+              ) : isCreating ? (
                 <div className="success-wrap" style={{padding:"30px 20px"}}>
                   <div className="success-ring" style={{animation:"none",background:"var(--bg2)"}}><div className="wiz-spinner"/></div>
                   <div className="success-h1" style={{fontSize:20}}>Creating {form.name}…</div>
@@ -813,20 +924,28 @@ export default function CreateServerModal({ open, onClose, onCreated }) {
                 </>
               )}
             </div>
-            {!hidePreview && !isCreating && !isSuccess && (
+            {inWizard && !hidePreview && !isCreating && !isSuccess && (
               <div className="body-preview"><PreviewPane form={form}/></div>
             )}
           </div>
 
-          {!isCreating && !isSuccess && (
+          {inWizard && !isCreating && !isSuccess && (
             <div className="modal-ftr">
               <button className="df-btn df-btn-ghost" onClick={onClose}>Cancel</button>
               <span className="ftr-progress">{Math.round(((step+1)/STEPS.length)*100)}% complete</span>
               <div style={{flex:1}}/>
-              {step>0 && <button className="df-btn" onClick={()=>{setStep(s=>s-1);setError("");}}>← Back</button>}
+              {step===0
+                ? <button className="df-btn" onClick={()=>{setMode(null);setError("");}}>← Back</button>
+                : <button className="df-btn" onClick={()=>{setStep(s=>s-1);setError("");}}>← Back</button>
+              }
               <button className={`df-btn ${step===STEPS.length-1?"df-btn-success":"df-btn-accent"}`} onClick={next}>
                 {step===STEPS.length-1?"Create Server 🚀":"Continue →"}
               </button>
+            </div>
+          )}
+          {mode === null && (
+            <div className="modal-ftr">
+              <button className="df-btn df-btn-ghost" onClick={onClose}>Cancel</button>
             </div>
           )}
         </div>
