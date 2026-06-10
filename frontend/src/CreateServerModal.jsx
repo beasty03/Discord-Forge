@@ -635,78 +635,128 @@ function StepChoose({ onNew, onImport }) {
           onMouseEnter={e=>{ e.currentTarget.style.borderColor="var(--green)"; e.currentTarget.style.background="rgba(35,209,139,.06)"; }}
           onMouseLeave={e=>{ e.currentTarget.style.borderColor="var(--border)"; e.currentTarget.style.background="var(--bg2)"; }}>
           <div style={{fontSize:36,marginBottom:12}}>📥</div>
-          <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>Import Existing</div>
-          <div style={{fontSize:12,color:"var(--t2)",lineHeight:1.5}}>Read the structure of a Discord server you already have and pre-fill the wizard.</div>
+          <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>Add Existing</div>
+          <div style={{fontSize:12,color:"var(--t2)",lineHeight:1.5}}>Register a Discord server you already have. No setup — just add it so you can manage bots and scripts.</div>
         </div>
       </div>
     </div>
   );
 }
 
-function ImportForm({ onBack, onImported }) {
-  const [guildId,   setGuildId]   = useState("");
-  const [botToken,  setBotToken]  = useState("");
-  const [loading,   setLoading]   = useState(false);
-  const [err,       setErr]       = useState("");
+function ImportForm({ onBack, onClose, onCreated }) {
+  const [phase,       setPhase]       = useState("verify"); // verify | confirm
+  const [guildId,    setGuildId]    = useState("");
+  const [botToken,   setBotToken]   = useState("");
+  const [serverName, setServerName] = useState("");
+  const [botName,    setBotName]    = useState("");
+  const [botClientId,setBotClientId]= useState("");
+  const [importData, setImportData] = useState(null); // {roles, categories} from verify step
+  const [loading,    setLoading]    = useState(false);
+  const [err,        setErr]        = useState("");
+  const [done,       setDone]       = useState(false);
 
-  const run = async () => {
+  const verify = async () => {
     if (!guildId.trim() || !botToken.trim()) { setErr("Both fields are required."); return; }
+    if (!/^\d{17,20}$/.test(guildId.trim())) { setErr("Server ID should be a 17-20 digit number."); return; }
     setLoading(true); setErr("");
     try {
       const res  = await fetch('/api/discord/import-guild', {
-        method: 'POST', credentials: 'include',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({guild_id: guildId.trim(), bot_token: botToken.trim()}),
+        method:'POST', credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({guild_id:guildId.trim(), bot_token:botToken.trim()}),
       });
       const data = await res.json();
       if (!res.ok) { setErr(data.error || `Error ${res.status}`); setLoading(false); return; }
-
-      // Map API response → wizard form
-      const channels = [];
-      for (const cat of data.categories || []) {
-        for (const ch of cat.textChannels  || []) channels.push({name:ch.name, type:"text",  cat:cat.name, id:`i${channels.length}`});
-        for (const ch of cat.voiceChannels || []) channels.push({name:ch.name, type:"voice", cat:cat.name, id:`i${channels.length}`});
-        for (const ch of cat.forumChannels || []) channels.push({name:ch.name, type:"forum", cat:cat.name, id:`i${channels.length}`});
-      }
-      const roles = (data.custom_roles || []).map(r => ({name:r.name, color:r.color||"#99aab5", perms:"standard", hoist:!!r.hoist}));
-      if (!roles.find(r=>r.name==="@everyone")) roles.unshift({name:"@everyone",color:"#888",perms:"basic"});
-
-      onImported({
-        name:     data.server_name || "",
-        icon:     "📥",
-        guildId:  guildId.trim(),
-        botToken: botToken.trim(),
-        botName:  "",
-        botClientId: "",
-        template: "blank",
-        channels,
-        roles,
-        scripts:  [],
-      });
-    } catch(e) {
-      setErr(e.message || "Network error");
-    }
+      setServerName(data.server_name || "");
+      setImportData({roles: data.custom_roles || [], categories: data.categories || []});
+      setPhase("confirm");
+    } catch(e) { setErr(e.message || "Network error"); }
     setLoading(false);
   };
 
-  return (
+  const add = async () => {
+    if (!serverName.trim()) { setErr("Server name is required."); return; }
+    setLoading(true); setErr("");
+    try {
+      const res  = await fetch('/api/discord/register-existing', {
+        method:'POST', credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          guild_id:      guildId.trim(),
+          bot_token:     botToken.trim(),
+          server_name:   serverName.trim(),
+          bot_name:      botName.trim() || "My Bot",
+          bot_client_id: botClientId.trim(),
+          roles:         importData?.roles     || [],
+          categories:    importData?.categories || [],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErr(data.error || `Error ${res.status}`); setLoading(false); return; }
+      setDone(true);
+      if (onCreated) onCreated({server_id: data.server_id, server_name: data.server_name});
+    } catch(e) { setErr(e.message || "Network error"); }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{textAlign:"center",padding:"48px 32px"}}>
+      <div style={{fontSize:48,marginBottom:16}}>✅</div>
+      <div style={{fontSize:20,fontWeight:700,marginBottom:8}}>{serverName} added!</div>
+      <div style={{fontSize:13,color:"var(--t2)",marginBottom:24}}>The server is now registered in DiscordForge. You can manage bots and scripts from the server dashboard.</div>
+      <button className="df-btn df-btn-accent" onClick={onClose}>Open Dashboard →</button>
+    </div>
+  );
+
+  if (phase === "verify") return (
     <div style={{maxWidth:480,margin:"0 auto",padding:"20px 0"}}>
-      <div className="step-title">Import from Discord</div>
-      <div className="step-sub">Provide your server ID and a bot token. The bot must already be in the server.</div>
+      <div className="step-title">Add an Existing Server</div>
+      <div className="step-sub">DiscordForge will read your server's structure and register it for management. Nothing is created or changed on Discord.</div>
       <div style={{marginBottom:18}}>
         <div className="section-label">Discord Server ID (Guild ID)</div>
         <input className="wiz-input" value={guildId} onChange={e=>setGuildId(e.target.value.trim())} placeholder="e.g. 1234567890123456789"/>
-        <div className="input-hint">Right-click your server in Discord → Copy Server ID</div>
+        <div className="input-hint">Right-click your server in Discord → Copy Server ID (requires Developer Mode)</div>
       </div>
       <div style={{marginBottom:20}}>
         <div className="section-label">Bot Token</div>
         <input className="wiz-input" type="password" value={botToken} onChange={e=>setBotToken(e.target.value.trim())} placeholder="Bot token from discord.com/developers"/>
+        <div className="input-hint">The bot must already be in the server</div>
       </div>
       {err && <div style={{fontSize:12,color:"var(--red)",fontFamily:"var(--mono)",marginBottom:12}}>{err}</div>}
       <div style={{display:"flex",gap:10}}>
         <button className="df-btn" onClick={onBack}>← Back</button>
-        <button className="df-btn df-btn-success" onClick={run} disabled={loading}>
-          {loading ? "Importing…" : "Import Structure →"}
+        <button className="df-btn df-btn-accent" onClick={verify} disabled={loading}>
+          {loading ? "Verifying…" : "Verify Server →"}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{maxWidth:480,margin:"0 auto",padding:"20px 0"}}>
+      <div className="step-title">Confirm &amp; Add</div>
+      <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(35,209,139,.1)",border:"1px solid var(--green)",borderRadius:"var(--r)",padding:"10px 14px",marginBottom:20}}>
+        <span style={{color:"var(--green)",fontWeight:700}}>✓</span>
+        <span style={{fontSize:13}}>Found: <strong>{serverName}</strong></span>
+      </div>
+      <div style={{marginBottom:16}}>
+        <div className="section-label">Server Name</div>
+        <input className="wiz-input" value={serverName} onChange={e=>setServerName(e.target.value)} placeholder="Server name"/>
+      </div>
+      <div style={{marginBottom:16}}>
+        <div className="section-label">Bot Name</div>
+        <input className="wiz-input" value={botName} onChange={e=>setBotName(e.target.value)} placeholder="e.g. MyBot"/>
+        <div className="input-hint">How this bot will appear in DiscordForge</div>
+      </div>
+      <div style={{marginBottom:20}}>
+        <div className="section-label">Bot Client ID <span style={{color:"var(--t2)",fontWeight:400}}>(optional)</span></div>
+        <input className="wiz-input" value={botClientId} onChange={e=>setBotClientId(e.target.value.trim())} placeholder="e.g. 1234567890123456789"/>
+      </div>
+      {err && <div style={{fontSize:12,color:"var(--red)",fontFamily:"var(--mono)",marginBottom:12}}>{err}</div>}
+      <div style={{display:"flex",gap:10}}>
+        <button className="df-btn" onClick={()=>setPhase("verify")}>← Back</button>
+        <button className="df-btn df-btn-success" onClick={add} disabled={loading}>
+          {loading ? "Adding…" : "Add Server →"}
         </button>
       </div>
     </div>
@@ -870,7 +920,7 @@ export default function CreateServerModal({ open, onClose, onCreated }) {
             <div className="modal-h-icon">{mode==='import'?"📥":"✨"}</div>
             <div>
               <div className="modal-h-title">
-                {mode===null?"Add a Server":mode==='import'?"Import Server":"Create New Server"}
+                {mode===null?"Add a Server":mode==='import'?"Add Existing Server":"Create New Server"}
               </div>
               {inWizard && <div className="modal-h-sub">Step {Math.min(step+1,STEPS.length)} of {STEPS.length}</div>}
             </div>
@@ -895,11 +945,8 @@ export default function CreateServerModal({ open, onClose, onCreated }) {
               ) : mode === 'import' ? (
                 <ImportForm
                   onBack={()=>setMode(null)}
-                  onImported={(prefilled)=>{
-                    setForm(prefilled);
-                    setMode('new');
-                    setStep(0);
-                  }}
+                  onClose={onClose}
+                  onCreated={onCreated}
                 />
               ) : isCreating ? (
                 <div className="success-wrap" style={{padding:"30px 20px"}}>

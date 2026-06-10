@@ -1944,6 +1944,91 @@ def import_discord_guild():
     return jsonify({'ok': True, 'server_name': guild.get('name', '')})
 
 
+@app.route('/api/discord/register-existing', methods=['POST'])
+@login_required
+def register_existing_server():
+    """Register an already-configured Discord server into DiscordForge without running setup."""
+    data          = request.get_json(force=True) or {}
+    guild_id      = str(data.get('guild_id',      '')).strip()
+    bot_token     = str(data.get('bot_token',     '')).strip()
+    server_name   = str(data.get('server_name',   '')).strip()
+    bot_name      = str(data.get('bot_name',      '')).strip() or 'My Bot'
+    bot_client_id = str(data.get('bot_client_id', '')).strip()
+    custom_roles  = data.get('roles',      [])
+    categories    = data.get('categories', [])
+
+    if not guild_id or not bot_token:
+        return jsonify({'error': 'guild_id and bot_token are required'}), 400
+    if not server_name:
+        return jsonify({'error': 'server_name is required'}), 400
+
+    username     = session['user_id']
+    servers_data = load_servers()
+    users_data   = load_users()
+
+    existing_id = next((sid for sid, s in servers_data.items() if s['guild_id'] == guild_id), None)
+    if existing_id:
+        if servers_data[existing_id]['owner'] != username:
+            return jsonify({'error': 'This server already exists and is owned by another user.'}), 409
+        return jsonify({'error': 'This server is already configured.', 'server_id': existing_id}), 409
+
+    server_id   = f"{username}_{guild_id}"
+    install_dir = os.path.join(USERS_DATA_DIR, username, 'installations', f'server_{guild_id}')
+    os.makedirs(install_dir, exist_ok=True)
+
+    import shutil as _shutil
+    repo_dir = os.path.join(install_dir, 'discord-server-setup')
+    if not os.path.exists(repo_dir):
+        if not os.path.isdir(SETUP_TEMPLATE_DIR):
+            return jsonify({'error': 'Setup template directory not found.'}), 500
+        _shutil.copytree(SETUP_TEMPLATE_DIR, repo_dir)
+
+    config_path = os.path.join(repo_dir, 'config.json')
+    config = build_server_config(
+        server_name, None, guild_id, repo_dir, config_path,
+        custom_roles=custom_roles, categories=categories,
+        bot_token=bot_token,
+    )
+    config['setup_completed'] = True
+    config['discord_bots'] = [{
+        'id':          str(uuid.uuid4()),
+        'name':        bot_name,
+        'token':       bot_token,
+        'client_id':   bot_client_id,
+        'maintenance': True,
+    }]
+    save_server_config(config_path, config)
+
+    server_data = {
+        'server_id':        server_id,
+        'server_name':      server_name,
+        'guild_id':         guild_id,
+        'owner':            username,
+        'icon_path':        None,
+        'custom_roles':     custom_roles,
+        'categories':       categories,
+        'welcome_template': 'no',
+        'community_server': 'no',
+        'moderator_users':  [],
+        'server_assets':    {'emoji': [], 'stickers': [], 'soundboard': []},
+        'install_dir':      install_dir,
+        'config_path':      config_path,
+        'setup_completed':  True,
+        'created_at':       datetime.now().isoformat(),
+    }
+    servers_data[server_id] = server_data
+    save_servers(servers_data)
+
+    if server_id not in users_data[username]['servers']:
+        users_data[username]['servers'].append(server_id)
+        save_users(users_data)
+
+    append_event(username, server_id, server_name, 'server_added',
+                 'Existing Discord server registered in DiscordForge.')
+
+    return jsonify({'success': True, 'server_id': server_id, 'server_name': server_name})
+
+
 @app.route('/setup', methods=['GET', 'POST'])
 @login_required
 def setup():
