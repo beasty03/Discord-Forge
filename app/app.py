@@ -4513,6 +4513,7 @@ def start_bot():
     if _bd.is_docker_mode():
         single_config = dict(config)
         single_config['discord_bots'] = [bot_cfg]
+        single_config['install_dir'] = server.get('install_dir', '')
         ok, msg = _bd.start(server_id, bot_name, bot_token, single_config)
         if not ok:
             return jsonify({'error': msg}), 500
@@ -6340,6 +6341,7 @@ def restart_bot():
     if _bd.is_docker_mode():
         single_config = dict(config)
         single_config['discord_bots'] = [bot_cfg]
+        single_config['install_dir'] = server.get('install_dir', '')
         threading.Thread(
             target=_send_bot_log,
             args=(guild_id, bot_name, 'restarting', '', bot_token),
