@@ -1510,8 +1510,26 @@ def account_profile():
         'discord_username':         user.get('discord_username', ''),
         'server_count':             len(user.get('servers', [])),
         'session_timeout_minutes':  user.get('session_timeout_minutes', 1),
+        'timezone':                 user.get('timezone', 'UTC'),
         'csrf_token':               _csrf_token(),
     })
+
+
+@app.route('/api/account/timezone', methods=['POST'])
+@login_required
+@csrf_protect
+def set_account_timezone():
+    data = request.get_json(silent=True) or {}
+    tz   = str(data.get('timezone', '')).strip()
+    try:
+        from zoneinfo import ZoneInfo
+        ZoneInfo(tz)
+    except Exception:
+        return jsonify({'error': 'Invalid timezone'}), 400
+    users = load_users()
+    users[session['user_id']]['timezone'] = tz
+    save_users(users)
+    return jsonify({'ok': True})
 
 
 # ── Public config (hCaptcha key etc.) ────────────────────────────────────────

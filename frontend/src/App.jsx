@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { THEMES, getRootCSS, getOverlay, getThemeList } from './themes/index.js';
+import { fmtDate } from './utils.js';
 import CreateServerModal from "./CreateServerModal";
 import InspectorHub from "./InspectorHub";
 import IntegrationsPage  from "./pages/IntegrationsPage.jsx";
@@ -915,7 +916,7 @@ function BotScriptsTab({server, bot, onNav}) {
   );
 }
 
-function BotPage({bot, server, onNav}) {
+function BotPage({bot, server, onNav, timezone='UTC'}) {
   const [tab,setTab]=useState("overview");
   const [busy,setBusy]=useState(false);
   const [logs,setLogs]=useState([]);
@@ -1060,7 +1061,7 @@ function BotPage({bot, server, onNav}) {
               ['Status',     <span style={{color:statusColor,fontWeight:700}}>{db.status||'unknown'}</span>],
               ['Ping',       db.ping>0?db.ping+'ms':'—'],
               ['Uptime',     db.uptime||'—'],
-              ['Last seen',  liveBot?.local_last_seen?liveBot.local_last_seen.slice(11,19)+' UTC':'—'],
+              ['Last seen',  liveBot?.local_last_seen ? fmtDate(liveBot.local_last_seen, timezone, {timeOnly:true}) : '—'],
             ].map(([k,v])=>(
               <div key={k} className="df-hrow">
                 <span className="df-hname">{k}</span>
@@ -1165,7 +1166,7 @@ function BotPage({bot, server, onNav}) {
 
 // ── Members ──────────────────────────────────────────────
 
-function MembersPage({server}) {
+function MembersPage({server, timezone='UTC'}) {
   const [members,setMembers]=useState([]);
   const [loadingM,setLoadingM]=useState(true);
   const [roleNames,setRoleNames]=useState([]);
@@ -1262,7 +1263,7 @@ function MembersPage({server}) {
                 </div>
               </div>
               <div className="df-divider"/>
-              {[["Joined",sel.joined],["Messages",sel.msgs.toLocaleString()],["Warnings",sel.warns]].map(([k,v])=>(
+              {[["Joined",fmtDate(sel.joined,timezone)],["Messages",sel.msgs.toLocaleString()],["Warnings",sel.warns]].map(([k,v])=>(
                 <div key={k} className="df-hrow"><span className="df-hname">{k}</span><span style={{fontFamily:"var(--mono)",fontSize:12,color:k==="Warnings"&&v>0?"var(--yellow)":"var(--t0)"}}>{v}</span></div>
               ))}
             </div>
@@ -1474,6 +1475,10 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
   const [themeSearch,setThemeSearch]=useState('');
   const [dragIdx,setDragIdx]=useState(null);
   const [overIdx,setOverIdx]=useState(null);
+  const [tzInput,setTzInput]=useState(profile?.timezone||'UTC');
+  const [tzMsg,setTzMsg]=useState(null);
+  useEffect(()=>{ setTzInput(profile?.timezone||'UTC'); },[profile?.timezone]);
+  const TZ_LIST = Intl.supportedValuesOf?.('timeZone') ?? ['UTC'];
 
   const uploadAvatar=async(e)=>{
     const file=e.target.files?.[0];
@@ -1551,6 +1556,34 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
               <div className="df-setting-row"><div className="df-s-label">Username</div><span style={{fontFamily:"var(--mono)",fontSize:13,color:"var(--t0)"}}>{profile?.username||'…'}</span></div>
               <div className="df-setting-row"><div className="df-s-label">Email</div><span style={{fontFamily:"var(--mono)",fontSize:13,color:"var(--t0)"}}>{profile?.email||'…'}</span></div>
               <div className="df-setting-row"><div className="df-s-label">Servers</div><span style={{fontFamily:"var(--mono)",fontSize:13,color:"var(--t0)"}}>{profile?.server_count??'—'}</span></div>
+              <div className="df-setting-row">
+                <div>
+                  <div className="df-s-label">Timezone</div>
+                  <div className="df-s-hint">Timestamps displayed throughout the app</div>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+                  <input
+                    className="df-s-input"
+                    list="df-tz-list"
+                    value={tzInput}
+                    style={{width:220,fontSize:12}}
+                    onChange={e=>setTzInput(e.target.value)}
+                    onBlur={async()=>{
+                      if (!TZ_LIST.includes(tzInput)) { setTzInput(profile?.timezone||'UTC'); return; }
+                      if (tzInput===(profile?.timezone||'UTC')) return;
+                      try {
+                        await api.setTimezone(tzInput);
+                        setProfile(p=>p?{...p,timezone:tzInput}:p);
+                        setTzMsg('Saved');
+                      } catch { setTzMsg('Failed'); }
+                      setTimeout(()=>setTzMsg(null),2000);
+                    }}
+                    placeholder="e.g. Europe/Amsterdam"
+                  />
+                  <datalist id="df-tz-list">{TZ_LIST.map(tz=><option key={tz} value={tz}/>)}</datalist>
+                  {tzMsg&&<span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--green)'}}>{tzMsg}</span>}
+                </div>
+              </div>
             </div>
           </div>
           <div className="df-card">
@@ -2005,16 +2038,16 @@ export default function App() {
             {!loading && page==="dashboard" &&<DashboardPage server={server} live={live} events={events} bot={bot} onNavigate={setPage}/>}
             {!loading && page==="stats"     &&<DashboardPage server={server} live={live} events={events} bot={bot} onNavigate={setPage}/>}
             {!loading && page==="server"    &&<ServerPage    server={server} onIconUpdate={iconUrl=>setServers(ss=>ss.map(s=>s.id===server.id?{...s,iconUrl}:s))}/>}
-            {!loading && page==="bot"       &&<BotPage       bot={bot} server={server} onNav={setPage}/>}
-            {!loading && page==="members"   &&<MembersPage   server={server}/>}
+            {!loading && page==="bot"       &&<BotPage       bot={bot} server={server} onNav={setPage} timezone={profile?.timezone||'UTC'}/>}
+            {!loading && page==="members"   &&<MembersPage   server={server} timezone={profile?.timezone||'UTC'}/>}
             {!loading && page==="scripts"   &&<ScriptsPage   server={server}/>}
             {!loading && page==="inspector"    &&<InspectorHub    serverList={servers}/>}
             {!loading && page==="integrations" &&<IntegrationsPage  server={server}/>}
             {!loading && page==="collaborators"&&<CollaboratorsPage server={server}/>}
             {!loading && page==="settings"     &&<SettingsPage      server={server} onServerDeleted={()=>{ api.servers().then(r=>{ if(r){ const n=(r.servers||[]).map((s,i)=>({id:s.server_id,name:s.server_name,icon:serverIcon(s.server_name,i),iconUrl:null,memberCount:0,online:0,region:"—",boostLevel:0,boosts:0,createdAt:"—",guild_id:s.guild_id})); setServers(n); setServerId(n[0]?.id||null); } }); setPage("dashboard"); }}/>}
-            {!loading && page==="activity"     &&<ActivityPage      server={server}/>}
+            {!loading && page==="activity"     &&<ActivityPage      server={server} timezone={profile?.timezone||'UTC'}/>}
             {!loading && page==="assets"       &&<AssetsPage        server={server}/>}
-            {!loading && page==="agent"        &&<AgentPage/>}
+            {!loading && page==="agent"        &&<AgentPage timezone={profile?.timezone||'UTC'}/>}
             {!loading && page==="user"         &&<UserPage quickAccess={quickAccess} setQuickAccess={updateQuickAccess} profile={profile} setProfile={setProfile} theme={theme} applyTheme={applyTheme} avatarUrl={avatarUrl} onAvatarChange={url=>{setAvatarUrl(url);}}/>}
           </div>
           <div className="df-app-footer">

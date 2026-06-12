@@ -121,6 +121,7 @@ export const api = {
 
   // Avatar source
   setAvatarSource: (source) => apiFetch('/api/account/avatar/source', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({source})}),
+  setTimezone:     (timezone) => apiFetch('/api/account/timezone',      {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({timezone})}),
 
   // Agent
   agentToken:       ()    => apiFetch('/api/agent/token'),

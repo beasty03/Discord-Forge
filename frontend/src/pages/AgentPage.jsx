@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { api } from "../api.js";
+import { fmtDate } from "../utils.js";
 
-export default function AgentPage() {
+export default function AgentPage({ timezone = 'UTC' }) {
   const [token,   setToken]   = useState(null);
   const [status,  setStatus]  = useState(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +67,7 @@ export default function AgentPage() {
             </div>
             {token?.created_at && (
               <div style={{fontSize:11,color:"var(--t2)",fontFamily:"var(--mono)",marginBottom:14}}>
-                Created: {token.created_at?.slice(0,16).replace("T"," ")}
+                Created: {fmtDate(token.created_at, timezone)}
               </div>
             )}
             <button className="df-btn df-btn-danger df-btn-sm" onClick={regen} disabled={busy}>Regenerate Token</button>

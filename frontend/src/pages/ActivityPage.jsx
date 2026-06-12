@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../api.js";
+import { fmtDate } from "../utils.js";
 
 const TYPE_COLOR = {
   bot_online:   "var(--green)",
@@ -13,7 +14,7 @@ const TYPE_COLOR = {
   command:      "var(--t1)",
 };
 
-export default function ActivityPage({ server }) {
+export default function ActivityPage({ server, timezone = 'UTC' }) {
   const [events,  setEvents]  = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState("all");
@@ -72,7 +73,7 @@ export default function ActivityPage({ server }) {
               <div style={{fontSize:12,color:"var(--t1)",marginTop:3,lineHeight:1.5}}>{e.description}</div>
             </div>
             <span style={{fontSize:10,color:"var(--t2)",fontFamily:"var(--mono)",whiteSpace:"nowrap",flexShrink:0}}>
-              {e.ts?.slice(0,16).replace("T"," ")||""}
+              {fmtDate(e.ts, timezone)}
             </span>
           </div>
         ))}
