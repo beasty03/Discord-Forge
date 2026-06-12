@@ -300,6 +300,25 @@ def save_json(path, data):
         json.dump(data, f, indent=4)
     os.replace(tmp, path)
 
+def _sync_builtin_cogs(install_dir: str):
+    """Copy built-in cogs from the template into the user's installation if not already present."""
+    if not install_dir:
+        return
+    import shutil
+    template_cogs = os.path.join(_ROOT, 'discord-server-setup-template', 'cogs')
+    user_cogs     = os.path.join(install_dir, 'discord-server-setup', 'cogs')
+    if not os.path.isdir(template_cogs) or not os.path.isdir(user_cogs):
+        return
+    for cog_name in os.listdir(template_cogs):
+        src = os.path.join(template_cogs, cog_name)
+        dst = os.path.join(user_cogs, cog_name)
+        if os.path.isdir(src) and not cog_name.startswith('_') and not os.path.exists(dst):
+            try:
+                shutil.copytree(src, dst)
+            except Exception:
+                pass
+
+
 def load_users():
     return load_json(USERS_FILE, {})
 
@@ -4550,6 +4569,7 @@ def start_bot():
             single_config['api_token'] = bot_cfg_extra.get('api_token', '')
         _u = load_users().get(session['user_id'], {})
         single_config['timezone'] = _u.get('timezone', 'UTC')
+        _sync_builtin_cogs(single_config.get('install_dir', ''))
         ok, msg = _bd.start(server_id, bot_name, bot_token, single_config)
         if not ok:
             return jsonify({'error': msg}), 500
@@ -6387,6 +6407,7 @@ def restart_bot():
             single_config['api_token'] = bot_cfg_extra.get('api_token', '')
         _u = load_users().get(session['user_id'], {})
         single_config['timezone'] = _u.get('timezone', 'UTC')
+        _sync_builtin_cogs(single_config.get('install_dir', ''))
         threading.Thread(
             target=_send_bot_log,
             args=(guild_id, bot_name, 'restarting', '', bot_token),
