@@ -1517,7 +1517,6 @@ def account_profile():
 
 @app.route('/api/account/timezone', methods=['POST'])
 @login_required
-@csrf_protect
 def set_account_timezone():
     data = request.get_json(silent=True) or {}
     tz   = str(data.get('timezone', '')).strip()
