@@ -1997,7 +1997,10 @@ def register_existing_server():
         'client_id':   bot_client_id,
         'maintenance': True,
     }]
-    save_server_config(config_path, config)
+    try:
+        save_server_config(config_path, config)
+    except RuntimeError as e:
+        return jsonify({'error': str(e)}), 500
 
     server_data = {
         'server_id':        server_id,
