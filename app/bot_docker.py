@@ -167,25 +167,23 @@ def remove(server_id: str, bot_name: str) -> tuple:
 
 
 def get_status(server_id: str, bot_name: str) -> str:
-    """Return 'running' or 'stopped'."""
-    client = _client()
-    name   = _container_name(server_id, bot_name)
+    """Return 'online' or 'offline'."""
+    name = _container_name(server_id, bot_name)
     try:
-        c = client.containers.get(name)
-        return 'running' if c.status == 'running' else 'stopped'
+        c = _client().containers.get(name)
+        return 'online' if c.status == 'running' else 'offline'
     except Exception:
-        return 'stopped'
+        return 'offline'
 
 
 def get_all_statuses() -> dict:
     """
-    Return {'{server_id}:{bot_name}': 'running'|'stopped'} for all bot containers
+    Return {'{server_id}:{bot_name}': 'online'|'offline'} for all bot containers
     managed by this DiscordForge instance.
     """
-    client = _client()
     result = {}
     try:
-        containers = client.containers.list(
+        containers = _client().containers.list(
             all=True,
             filters={'label': 'discordforge.bot=1'},
         )
@@ -194,7 +192,7 @@ def get_all_statuses() -> dict:
             sid    = labels.get('discordforge.server_id', '')
             bname  = labels.get('discordforge.bot_name', '')
             if sid and bname:
-                result[f'{sid}:{bname}'] = 'running' if c.status == 'running' else 'stopped'
+                result[f'{sid}:{bname}'] = 'online' if c.status == 'running' else 'offline'
     except Exception:
         pass
     return result
