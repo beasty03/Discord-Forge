@@ -14,11 +14,55 @@ Requires:
 import json
 import os
 import re
+import socket
 
 _BOT_RUNNER  = os.environ.get('BOT_RUNNER', 'subprocess')
 _BOT_IMAGE   = os.environ.get('BOT_IMAGE',  'discordforge-bot')
 _NETWORK     = os.environ.get('DOCKER_NETWORK', 'discordforge_default')
 _FORGE_URL   = os.environ.get('FORGE_API_URL',  'http://discordforge:5000')
+
+# Cached host-side path for the data volume (resolved once via container self-inspection)
+_HOST_DATA_PATH = None
+
+
+def _resolve_host_data_path() -> str:
+    """
+    Inspect our own container's mounts to find what host path is bound to
+    /discordforge/data. Returns '' if running outside Docker or on failure.
+    """
+    global _HOST_DATA_PATH
+    if _HOST_DATA_PATH is not None:
+        return _HOST_DATA_PATH
+    try:
+        client = _client()
+        me = client.containers.get(socket.gethostname())
+        for m in me.attrs.get('Mounts', []):
+            if m.get('Destination') == '/discordforge/data':
+                _HOST_DATA_PATH = m.get('Source', '')
+                return _HOST_DATA_PATH
+    except Exception:
+        pass
+    _HOST_DATA_PATH = ''
+    return ''
+
+
+def _host_repo_dir(install_dir: str) -> str:
+    """
+    Convert the container-internal install_dir path to the host-side
+    discord-server-setup directory so it can be volume-mounted in bot containers.
+    Returns '' if the mapping can't be determined.
+    """
+    if not install_dir:
+        return ''
+    host_data = _resolve_host_data_path()
+    if not host_data:
+        return ''
+    # /discordforge/data/users/... → {host_data}/users/...
+    prefix = '/discordforge/data'
+    if install_dir.startswith(prefix):
+        rel = install_dir[len(prefix):].lstrip('/')
+        return os.path.join(host_data, rel, 'discord-server-setup')
+    return ''
 
 
 def is_docker_mode() -> bool:
@@ -52,6 +96,16 @@ def start(server_id: str, bot_name: str, bot_token: str, config: dict) -> tuple:
         pass  # docker.errors.NotFound — nothing to clean up
 
     config_json = json.dumps(config)
+
+    # Mount the server's discord-server-setup directory so the bot can access its cogs.
+    # We self-inspect to find the host-side path of our data volume.
+    host_repo = _host_repo_dir(config.get('install_dir', ''))
+    volumes = {}
+    env_extra = {}
+    if host_repo:
+        volumes[host_repo] = {'bind': '/bot/server_data', 'mode': 'rw'}
+        env_extra['BOT_COGS_DIR'] = '/bot/server_data/cogs'
+
     try:
         client.containers.run(
             _BOT_IMAGE,
@@ -62,6 +116,7 @@ def start(server_id: str, bot_name: str, bot_token: str, config: dict) -> tuple:
                 'BOT_CONFIG_JSON': config_json,
                 'BOT_NAME':        bot_name,
                 'FORGE_API_URL':   _FORGE_URL,
+                **env_extra,
             },
             labels={
                 'discordforge.bot':       '1',
@@ -69,6 +124,7 @@ def start(server_id: str, bot_name: str, bot_token: str, config: dict) -> tuple:
                 'discordforge.bot_name':  bot_name,
             },
             network=_NETWORK,
+            volumes=volumes or None,
         )
         return True, 'Started'
     except Exception as e:

@@ -51,7 +51,10 @@ import importlib.util
 # Get project root
 SCRIPT_DIR = Path(__file__).parent
 CONFIG_FILE = SCRIPT_DIR / "config.json"
-COGS_DIR = SCRIPT_DIR / "cogs"
+
+import os as _os
+_env_cogs = _os.environ.get('BOT_COGS_DIR', '').strip()
+COGS_DIR = Path(_env_cogs) if _env_cogs else SCRIPT_DIR / "cogs"
 
 # Default settings
 COMMAND_PREFIX = "!"
