@@ -4358,6 +4358,8 @@ def list_bots():
         config = load_server_config(server.get('config_path'))
         if not config:
             continue
+        # Ensure built-in cogs are present before reading the list
+        _sync_builtin_cogs(server.get('install_dir', ''))
         # Read installed cogs from the filesystem for this server
         cogs_dir = os.path.join(server.get('install_dir', ''), 'discord-server-setup', 'cogs')
         installed_scripts = []
@@ -7856,6 +7858,8 @@ def get_installed_cogs(server_id):
     install_dir = server.get('install_dir')
     if not install_dir:
         return jsonify({'cogs': []})
+
+    _sync_builtin_cogs(install_dir)
 
     cogs_dir = os.path.join(install_dir, 'discord-server-setup', 'cogs')
     if not os.path.exists(cogs_dir):
