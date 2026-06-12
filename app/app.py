@@ -7679,6 +7679,7 @@ def import_cogs():
     if downloaded and config:
         username = session['user_id']
         cmds_path = os.path.join(USERS_DATA_DIR,username, 'servers', server_id, 'commands.json')
+        os.makedirs(os.path.dirname(cmds_path), exist_ok=True)
         cmds = load_json(cmds_path, [])
         for bot_cfg in config.get('discord_bots', []):
             cmds.append({
