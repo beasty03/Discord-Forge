@@ -875,6 +875,56 @@ function ServerPage({server, onIconUpdate}) {
 
 // ── Bot ──────────────────────────────────────────────────
 
+function BotScriptsTab({server, bot, onNav}) {
+  const [cogs,    setCogs]    = useState(null);
+  const [busy,    setBusy]    = useState(null); // cog name being removed
+  const [msg,     setMsg]     = useState(null);
+
+  const flash = (text, ok=true) => { setMsg({text,ok}); setTimeout(()=>setMsg(null),3000); };
+
+  useEffect(()=>{
+    if (!server?.id) return;
+    api.installedCogs(server.id).then(r=>setCogs(r?.cogs||[])).catch(()=>setCogs([]));
+  },[server?.id]);
+
+  const remove = async (cogName) => {
+    setBusy(cogName);
+    try {
+      await api.removeCog(server.id, cogName);
+      setCogs(c=>(c||[]).filter(x=>x.name!==cogName));
+      flash(`Removed: ${cogName}`);
+    } catch(e) { flash(e.message||'Remove failed', false); }
+    setBusy(null);
+  };
+
+  return (
+    <div className="df-g2">
+      <div className="df-card" style={{gridColumn:'1/-1'}}>
+        <div className="df-card-hdr">
+          <div className="df-card-title">Installed Scripts</div>
+          {msg && <span style={{fontSize:11,fontFamily:'var(--mono)',color:msg.ok?'var(--green)':'var(--red)'}}>{msg.text}</span>}
+          {onNav && <button className="df-btn df-btn-sm df-btn-accent" onClick={()=>onNav('scripts')}>+ Browse Library</button>}
+        </div>
+        {cogs===null && <div style={{fontSize:12,color:'var(--t2)',fontFamily:'var(--mono)'}}>Loading…</div>}
+        {cogs!==null && cogs.length===0 && (
+          <div style={{fontSize:13,color:'var(--t2)',padding:'12px 0'}}>
+            No scripts installed.{onNav&&<> <span style={{cursor:'pointer',color:'var(--accent)',textDecoration:'underline'}} onClick={()=>onNav('scripts')}>Browse the library</span> to add some.</>}
+          </div>
+        )}
+        {(cogs||[]).map(c=>(
+          <div key={c.name} className="df-hrow">
+            <span className="df-hname" style={{fontFamily:'var(--mono)'}}>{c.name}</span>
+            {c.version && <span className="df-badge df-bgr" style={{marginRight:'auto',marginLeft:8}}>v{c.version}</span>}
+            <button className="df-btn df-btn-danger df-btn-sm" onClick={()=>remove(c.name)} disabled={busy===c.name}>
+              {busy===c.name?'Removing…':'Uninstall'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function BotPage({bot, server, onNav}) {
   const [tab,setTab]=useState("overview");
   const [busy,setBusy]=useState(false);
@@ -972,7 +1022,7 @@ function BotPage({bot, server, onNav}) {
       </div>
 
       <div className="df-tabs">
-        {["controls","info","update","logs"].map(t=>(
+        {["controls","scripts","info","update","logs"].map(t=>(
           <div key={t} className={`df-tab ${tab===t?"active":""}`} onClick={()=>setTab(t)}>
             {t[0].toUpperCase()+t.slice(1)}
           </div>
@@ -1029,6 +1079,10 @@ function BotPage({bot, server, onNav}) {
             ))}
           </div>
         </div>
+      )}
+
+      {tab==="scripts"&&(
+        <BotScriptsTab server={server} bot={db} onNav={onNav}/>
       )}
 
       {tab==="info"&&(
@@ -1306,10 +1360,12 @@ function ScriptsPage({server}) {
     });
   },[server?.id]);
 
-  const cats=["all",...new Set(scripts.map(s=>s.cat))];
+  const cats=["all","installed",...new Set(scripts.map(s=>s.cat))];
   const filtered=scripts.filter(s=>{
     const q=search.toLowerCase();
-    return(s.name.toLowerCase().includes(q)||s.desc.toLowerCase().includes(q)||s.tags.some(t=>String(t).toLowerCase().includes(q)))&&(cat==="all"||s.cat===cat);
+    const matchSearch=s.name.toLowerCase().includes(q)||s.desc.toLowerCase().includes(q)||s.tags.some(t=>String(t).toLowerCase().includes(q));
+    const matchCat=cat==="all"||(cat==="installed"?s.installed:s.cat===cat);
+    return matchSearch&&matchCat;
   });
 
   const toggle=async(id)=>{
