@@ -298,7 +298,11 @@ def create_bot(config: dict, bot_name: str):
     bot.bot_name = bot_name
     bot.server_name = config.get('server_name', 'Unknown Server')
     bot.guild_id = config.get('guild_id') or config.get('server', {}).get('guild_id')
-    
+
+    async def _setup_hook():
+        bot.loop.create_task(_heartbeat_loop(bot))
+    bot.setup_hook = _setup_hook
+
     logger.info(f"✅ Bot initialized")
     logger.info(f"   Bot Name: {bot_name}")
     logger.info(f"   Server: {bot.server_name}")
@@ -354,6 +358,95 @@ async def load_cogs(bot: commands.Bot, cog_list: list):
     if failed_count > 0:
         logger.warning(f"❌ Failed to load: {failed_count}")
     logger.info("")
+
+# ============================================================================
+# FORGE API HEARTBEAT
+# ============================================================================
+
+_API_URL   = ''
+_SERVER_ID = ''
+_BOT_ID    = ''
+_API_TOKEN = ''
+
+
+def _uptime_str(start_time: datetime) -> str:
+    delta = datetime.utcnow() - start_time
+    h, rem = divmod(int(delta.total_seconds()), 3600)
+    m = rem // 60
+    return f'{h}h {m}m' if h else f'{m}m'
+
+
+def _log_tail(n: int = 20) -> list:
+    try:
+        lines = _LOG_FILE.read_text(encoding='utf-8', errors='replace').splitlines()
+        return lines[-n:]
+    except Exception:
+        return []
+
+
+async def _post_heartbeat(bot: commands.Bot):
+    if not (_API_URL and _SERVER_ID and _BOT_ID and _API_TOKEN):
+        return
+    try:
+        import aiohttp
+        payload = {
+            'server_id': _SERVER_ID,
+            'bot_id':    _BOT_ID,
+            'status':    'online',
+            'ping_ms':   round(bot.latency * 1000) if bot.latency else None,
+            'uptime':    _uptime_str(bot.start_time),
+            'log_tail':  _log_tail(),
+        }
+        async with aiohttp.ClientSession() as session:
+            await session.post(
+                f'{_API_URL}/api/local-bot/heartbeat',
+                json=payload,
+                headers={'X-Bot-Token': _API_TOKEN},
+                timeout=aiohttp.ClientTimeout(total=10),
+            )
+    except Exception as e:
+        logger.debug(f'Heartbeat failed: {e}')
+
+
+async def _push_members(bot: commands.Bot):
+    if not (_API_URL and _SERVER_ID and _BOT_ID and _API_TOKEN):
+        return
+    if not bot.guild_id:
+        return
+    try:
+        import aiohttp
+        guild = bot.get_guild(int(bot.guild_id))
+        if not guild:
+            return
+        members = [
+            {
+                'id':           str(m.id),
+                'username':     m.name,
+                'display_name': m.display_name,
+                'avatar':       str(m.display_avatar.url),
+                'roles':        [r.name for r in m.roles if r.name != '@everyone'],
+                'joined_at':    m.joined_at.isoformat() if m.joined_at else None,
+                'bot':          m.bot,
+            }
+            for m in guild.members
+        ]
+        async with aiohttp.ClientSession() as session:
+            await session.post(
+                f'{_API_URL}/api/local-bot/members',
+                json={'server_id': _SERVER_ID, 'bot_id': _BOT_ID, 'members': members},
+                headers={'X-Bot-Token': _API_TOKEN},
+                timeout=aiohttp.ClientTimeout(total=30),
+            )
+    except Exception as e:
+        logger.debug(f'Member push failed: {e}')
+
+
+async def _heartbeat_loop(bot: commands.Bot):
+    await bot.wait_until_ready()
+    while not bot.is_closed():
+        await _post_heartbeat(bot)
+        await asyncio.sleep(30)
+
 
 # ============================================================================
 # BOT EVENTS
@@ -425,8 +518,11 @@ def setup_events(bot: commands.Bot):
         except Exception as e:
             logger.warning(f"⚠️  Could not assign bots role: {e}")
 
+        # Push member list to Forge on connect / reconnect
+        bot.loop.create_task(_push_members(bot))
+
         logger.info("\n✨ Bot is ready to use!\n")
-    
+
     @bot.event
     async def on_command_error(ctx, error):
         """
@@ -474,7 +570,14 @@ async def main():
     
     # 1. Load config.json
     config = load_config()
-    
+
+    # Initialize Forge API heartbeat credentials
+    global _API_URL, _SERVER_ID, _BOT_ID, _API_TOKEN
+    _API_URL   = _os.environ.get('FORGE_API_URL', config.get('api_url', '')).rstrip('/')
+    _SERVER_ID = config.get('server_id', '')
+    _BOT_ID    = config.get('bot_id', '') or (config['discord_bots'][0].get('id', '') if config.get('discord_bots') else '')
+    _API_TOKEN = config.get('api_token', '')
+
     # 2. Get bot token
     # Support --bot <name> argument so Flask can launch a specific bot
     # without hitting the interactive input() prompt.

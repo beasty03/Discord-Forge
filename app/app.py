@@ -4515,10 +4515,11 @@ def start_bot():
         single_config = dict(config)
         single_config['discord_bots'] = [bot_cfg]
         single_config['install_dir'] = server.get('install_dir', '')
-        # Ensure top-level guild_id exists for cogs that read config.json directly
+        single_config['server_id']   = server_id
+        single_config['bot_id']      = bot_id
+        # Ensure top-level guild_id for cogs and heartbeat token for status reporting
         if not single_config.get('guild_id'):
             single_config['guild_id'] = server.get('guild_id', '')
-            _, config_path_fix = os.path.split(server.get('config_path', ''))
             if server.get('config_path'):
                 try:
                     patched = dict(config)
@@ -4526,6 +4527,9 @@ def start_bot():
                     save_server_config(server['config_path'], patched)
                 except Exception:
                     pass
+        bot_cfg_extra, _ = _make_bot_config(server_id, bot_id, config, server)
+        if bot_cfg_extra:
+            single_config['api_token'] = bot_cfg_extra.get('api_token', '')
         ok, msg = _bd.start(server_id, bot_name, bot_token, single_config)
         if not ok:
             return jsonify({'error': msg}), 500
@@ -6354,6 +6358,13 @@ def restart_bot():
         single_config = dict(config)
         single_config['discord_bots'] = [bot_cfg]
         single_config['install_dir'] = server.get('install_dir', '')
+        single_config['server_id']   = server_id
+        single_config['bot_id']      = bot_id
+        if not single_config.get('guild_id'):
+            single_config['guild_id'] = server.get('guild_id', '')
+        bot_cfg_extra, _ = _make_bot_config(server_id, bot_id, config, server)
+        if bot_cfg_extra:
+            single_config['api_token'] = bot_cfg_extra.get('api_token', '')
         threading.Thread(
             target=_send_bot_log,
             args=(guild_id, bot_name, 'restarting', '', bot_token),
