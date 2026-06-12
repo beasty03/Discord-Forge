@@ -68,7 +68,6 @@ const ALL_NAV_ITEMS = [
   {id:"assets",       icon:"🖼️", label:"Assets"},
   {id:"agent",        icon:"🔌", label:"Agent"},
   {id:"inspector",    icon:"🔍", label:"Inspector"},
-  {id:"stats",        icon:"📈", label:"Stats"},
 ];
 
 // ── CSS ──────────────────────────────────────────────────
@@ -1904,7 +1903,7 @@ export default function App() {
     inspector:"Inspector", members:"Members", scripts:"Script Library", user:"Account",
     integrations:"Integrations", collaborators:"Collaborators",
     settings:"Settings", activity:"Activity Log",
-    assets:"Assets", agent:"Agent", stats:"Stats",
+    assets:"Assets", agent:"Agent",
   };
   const navItems=[
     {id:"dashboard", icon:"📊",label:"Dashboard"},
@@ -2055,7 +2054,6 @@ export default function App() {
           <div className="df-content">
             {loading && <div style={{padding:40,textAlign:"center",color:"var(--t2)",fontFamily:"var(--mono)"}}>Loading…</div>}
             {!loading && page==="dashboard" &&<DashboardPage server={server} live={live} events={events} bot={bot} onNavigate={setPage}/>}
-            {!loading && page==="stats"     &&<DashboardPage server={server} live={live} events={events} bot={bot} onNavigate={setPage}/>}
             {!loading && page==="server"    &&<ServerPage    server={server} onIconUpdate={iconUrl=>setServers(ss=>ss.map(s=>s.id===server.id?{...s,iconUrl}:s))}/>}
             {!loading && page==="bot"       &&<BotPage       bot={bot} server={server} onNav={setPage} timezone={profile?.timezone||'UTC'}/>}
             {!loading && page==="members"   &&<MembersPage   server={server} timezone={profile?.timezone||'UTC'}/>}
