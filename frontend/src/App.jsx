@@ -1485,8 +1485,8 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
   const saveTz=async(tz)=>{
     setTzInput(tz);setTzOpen(false);setTzSearch('');
     try{await api.setTimezone(tz);setProfile(p=>p?{...p,timezone:tz}:p);setTzMsg('Saved');}
-    catch{setTzMsg('Failed');}
-    setTimeout(()=>setTzMsg(null),2000);
+    catch(e){setTzMsg(e.message||'Failed');}
+    setTimeout(()=>setTzMsg(null),5000);
   };
 
   const uploadAvatar=async(e)=>{
