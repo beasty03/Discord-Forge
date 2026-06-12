@@ -297,7 +297,7 @@ def create_bot(config: dict, bot_name: str):
     bot.start_time = datetime.utcnow()
     bot.bot_name = bot_name
     bot.server_name = config.get('server_name', 'Unknown Server')
-    bot.guild_id = config.get('guild_id')
+    bot.guild_id = config.get('guild_id') or config.get('server', {}).get('guild_id')
     
     logger.info(f"✅ Bot initialized")
     logger.info(f"   Bot Name: {bot_name}")

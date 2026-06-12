@@ -103,8 +103,8 @@ def start(server_id: str, bot_name: str, bot_token: str, config: dict) -> tuple:
     volumes = {}
     env_extra = {}
     if host_repo:
-        volumes[host_repo] = {'bind': '/bot/server_data', 'mode': 'rw'}
-        env_extra['BOT_COGS_DIR'] = '/bot/server_data/cogs'
+        volumes[host_repo] = {'bind': '/bot/discord-server-setup', 'mode': 'rw'}
+        env_extra['BOT_COGS_DIR'] = '/bot/discord-server-setup/cogs'
 
     try:
         client.containers.run(
