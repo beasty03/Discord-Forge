@@ -1815,16 +1815,20 @@ export default function App() {
 
   const handleCreated=(form)=>{
     setWizardOpen(false);
-    api.servers().then(res=>{
+    Promise.all([api.servers(), api.bots()]).then(([res, botsRes])=>{
       if (!res) return;
       const normalized = (res.servers||[]).map((s,i)=>({
         id:s.server_id, name:s.server_name, icon:serverIcon(s.server_name,i),
         iconUrl:null, memberCount:0, online:0, region:"—", boostLevel:0, boosts:0, createdAt:"—", guild_id:s.guild_id,
       }));
       setServers(normalized);
-      // Navigate to the newly created server
       const created = normalized.find(s=>s.id===form.server_id) || normalized[normalized.length-1];
-      if (created) { setServerId(created.id); }
+      if (created) setServerId(created.id);
+      if (botsRes) {
+        setBotList(botsRes.bots || []);
+        const newBot = (botsRes.bots||[]).find(b=>b.server_id===form.server_id);
+        if (newBot) setBot(b=>({...b, name:newBot.bot_name, id:newBot.bot_id, status:newBot.status, serverId:newBot.server_id, ping:newBot.ping??b.ping, uptime:newBot.uptime??b.uptime, avatarUrl:newBot.avatar_url||''}));
+      }
     });
     setPage("dashboard");
   };
