@@ -312,9 +312,14 @@ def _sync_builtin_cogs(install_dir: str):
     for cog_name in os.listdir(template_cogs):
         src = os.path.join(template_cogs, cog_name)
         dst = os.path.join(user_cogs, cog_name)
-        if os.path.isdir(src) and not cog_name.startswith('_') and not os.path.exists(dst):
+        if os.path.isdir(src) and not cog_name.startswith('_'):
             try:
-                shutil.copytree(src, dst)
+                if not os.path.exists(dst):
+                    shutil.copytree(src, dst)
+                # Mark as built-in so it cannot be deleted
+                marker = os.path.join(dst, '.builtin')
+                if not os.path.exists(marker):
+                    open(marker, 'w').close()
             except Exception:
                 pass
 
@@ -7876,7 +7881,8 @@ def get_installed_cogs(server_id):
                         version = vf.read().strip()
                 except OSError:
                     pass
-            cogs.append({'name': d, 'version': version})
+            builtin = os.path.isfile(os.path.join(cogs_dir, d, '.builtin'))
+            cogs.append({'name': d, 'version': version, 'builtin': builtin})
     return jsonify({'cogs': cogs})
 
 
@@ -8271,9 +8277,6 @@ def remove_script():
     if not install_dir:
         return jsonify({'error': 'Installation directory not found'}), 404
 
-    if script_id == 'Database_management':
-        return jsonify({'error': 'Database_management is required and cannot be removed'}), 400
-
     cog_path = os.path.join(install_dir, 'discord-server-setup', 'cogs', script_id)
     if not os.path.isdir(cog_path):
         return jsonify({'error': 'Script not found'}), 404
@@ -8282,6 +8285,9 @@ def remove_script():
     cogs_dir = os.path.realpath(os.path.join(install_dir, 'discord-server-setup', 'cogs'))
     if not os.path.realpath(cog_path).startswith(cogs_dir + os.sep):
         return jsonify({'error': 'Invalid script path'}), 400
+
+    if os.path.isfile(os.path.join(cog_path, '.builtin')):
+        return jsonify({'error': f'"{script_id}" is a built-in script and cannot be removed'}), 400
 
     shutil.rmtree(cog_path)
 

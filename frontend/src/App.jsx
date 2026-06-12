@@ -910,10 +910,13 @@ function BotScriptsTab({server, bot, onNav}) {
               {c.version && <span className="df-badge df-bgr" style={{marginLeft:8}}>v{c.version}</span>}
               {isLoaded===true  && <span className="df-badge" style={{marginLeft:8,background:'var(--green)',color:'#fff'}}>loaded</span>}
               {isLoaded===false && <span className="df-badge" style={{marginLeft:8,background:'var(--red)',  color:'#fff'}}>failed</span>}
+              {c.builtin && <span className="df-badge" style={{marginLeft:8,background:'var(--bg3)',color:'var(--t2)',border:'1px solid var(--border)'}}>built-in</span>}
               <span style={{flex:1}}/>
-              <button className="df-btn df-btn-danger df-btn-sm" onClick={()=>remove(c.name)} disabled={busy===c.name}>
-                {busy===c.name?'Removing…':'Uninstall'}
-              </button>
+              {!c.builtin && (
+                <button className="df-btn df-btn-danger df-btn-sm" onClick={()=>remove(c.name)} disabled={busy===c.name}>
+                  {busy===c.name?'Removing…':'Uninstall'}
+                </button>
+              )}
             </div>
           );
         })}
