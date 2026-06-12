@@ -108,7 +108,7 @@ class Moderation(commands.Cog):
         except discord.Forbidden:
             pass
         await interaction.response.send_message(
-            f'⚠️ {member.mention} has been warned — **{reason}** '
+            f'⚠️ **{member.name}** has been warned — {reason} '
             f'({count} warning(s) total).'
         )
         await self._forge_post('warn', member, reason, warns_count=count)

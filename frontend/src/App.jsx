@@ -1184,6 +1184,8 @@ function MembersPage({server, timezone='UTC'}) {
   const [search,setSearch]=useState("");
   const [filter,setFilter]=useState("all");
   const [actionMsg,setActionMsg]=useState(null);
+  const [pendingAction,setPendingAction]=useState(null); // {type, label, icon}
+  const [reason,setReason]=useState("");
 
   useEffect(()=>{
     if (!server?.id) return;
@@ -1211,10 +1213,15 @@ function MembersPage({server, timezone='UTC'}) {
     });
   },[server?.id]);
 
-  const doAction=(type)=>{
-    if (!sel||!server?.id) return;
-    api.memberAction(server.id, type, sel.id).then(()=>{
+  const startAction=(type,label,icon)=>{ setPendingAction({type,label,icon}); setReason(''); };
+  const cancelAction=()=>{ setPendingAction(null); setReason(''); };
+  const confirmAction=()=>{
+    if (!sel||!server?.id||!pendingAction) return;
+    const {type}=pendingAction;
+    setPendingAction(null);
+    api.memberAction(server.id, type, sel.id, reason.trim()).then(()=>{
       setActionMsg(`${type} queued for ${sel.name}`);
+      setReason('');
       setTimeout(()=>setActionMsg(null),3000);
     }).catch(()=>setActionMsg('Action failed'));
   };
@@ -1289,11 +1296,34 @@ function MembersPage({server, timezone='UTC'}) {
               <div className="df-card">
                 <div className="df-card-title" style={{marginBottom:12}}>Actions</div>
                 {actionMsg&&<div style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--green)",marginBottom:8}}>{actionMsg}</div>}
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  <button className="df-btn df-btn-sm" style={{textAlign:"left"}} onClick={()=>doAction('warn')}>⚠️ Warn member</button>
-                  <button className="df-btn df-btn-sm" style={{textAlign:"left"}} onClick={()=>doAction('kick')}>🚪 Kick from server</button>
-                  <button className="df-btn df-btn-danger df-btn-sm" style={{textAlign:"left"}} onClick={()=>doAction('ban')}>🚨 Ban member</button>
-                </div>
+                {pendingAction ? (
+                  <div>
+                    <div style={{fontSize:12,color:"var(--t1)",marginBottom:8}}>
+                      {pendingAction.icon} <strong>{pendingAction.label}</strong> — {sel.name}
+                    </div>
+                    <input
+                      className="df-s-input"
+                      style={{width:"100%",marginBottom:8}}
+                      placeholder="Reason (optional)"
+                      value={reason}
+                      onChange={e=>setReason(e.target.value)}
+                      onKeyDown={e=>{ if(e.key==='Enter') confirmAction(); if(e.key==='Escape') cancelAction(); }}
+                      autoFocus
+                    />
+                    <div className="df-flex" style={{gap:6}}>
+                      <button className={`df-btn df-btn-sm ${pendingAction.type==='ban'?'df-btn-danger':pendingAction.type==='kick'?'df-btn-danger':''}`} onClick={confirmAction}>
+                        Confirm {pendingAction.label}
+                      </button>
+                      <button className="df-btn df-btn-sm" onClick={cancelAction}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    <button className="df-btn df-btn-sm" style={{textAlign:"left"}} onClick={()=>startAction('warn','Warn','⚠️')}>⚠️ Warn member</button>
+                    <button className="df-btn df-btn-sm" style={{textAlign:"left"}} onClick={()=>startAction('kick','Kick','🚪')}>🚪 Kick from server</button>
+                    <button className="df-btn df-btn-danger df-btn-sm" style={{textAlign:"left"}} onClick={()=>startAction('ban','Ban','🚨')}>🚨 Ban member</button>
+                  </div>
+                )}
               </div>
             )}
           </div>

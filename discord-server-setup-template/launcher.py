@@ -501,6 +501,24 @@ async def _execute_command(bot: commands.Bot, guild, cmd: dict):
                 await member.send(f'⚠️ You have received a warning in **{guild.name}**.\nReason: {reason}')
             except Exception:
                 pass
+            # Write to moderation.db so /warnings slash command shows dashboard warns
+            try:
+                import sqlite3 as _sq
+                from pathlib import Path as _P
+                _db = _P(__file__).parent / 'database' / 'moderation.db'
+                _db.parent.mkdir(parents=True, exist_ok=True)
+                with _sq.connect(str(_db)) as _conn:
+                    _conn.execute('''CREATE TABLE IF NOT EXISTS warnings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT NOT NULL, guild_id TEXT NOT NULL,
+                        reason TEXT, warned_by TEXT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+                    _conn.execute(
+                        'INSERT INTO warnings (user_id, guild_id, reason, warned_by) VALUES (?,?,?,?)',
+                        (str(member.id), str(guild.id), reason or 'No reason provided', 'Dashboard'),
+                    )
+            except Exception as _e:
+                logger.debug(f'Warning DB write failed: {_e}')
             success = True
         elif ctype == 'assign_role':
             if not member:
