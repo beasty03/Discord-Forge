@@ -1340,7 +1340,7 @@ function ScriptsPage({server}) {
       let installedNames=new Set();
       if (server?.id) {
         const inst=await api.installedCogs(server.id).catch(()=>null);
-        if (inst?.cogs) installedNames=new Set(inst.cogs.map(c=>c.name.toLowerCase()));
+        if (inst?.cogs) installedNames=new Set(inst.cogs.map(c=>c.name.replace(/_/g,' ').replace(/-/g,' ').toLowerCase()));
       }
       const mapped=res.scripts.map(s=>({
         id:         s.name,
