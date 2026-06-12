@@ -4369,6 +4369,7 @@ def list_bots():
                 'ping':              bot.get('local_ping_ms', 0),
                 'uptime':            bot.get('local_uptime', '—'),
                 'avatar_url':        bot_avatar_url,
+                'runner':            os.environ.get('BOT_RUNNER', 'subprocess'),
             })
         if config_dirty:
             save_server_config(server.get('config_path'), config)

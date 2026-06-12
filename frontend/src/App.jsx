@@ -928,7 +928,7 @@ function BotPage({bot, server, onNav}) {
     setBusy(false);
   };
 
-  const isLocal = db.botType==='local'||!db.botType;
+  const isLocal = db.runner !== 'docker';
   const online  = db.status==='online';
   const statusColor = online?'var(--green)':db.status==='error'?'var(--red)':'var(--t2)';
 
@@ -987,8 +987,8 @@ function BotPage({bot, server, onNav}) {
               <div>
                 <div className="df-card" style={{background:'var(--bg3)',border:'1px solid var(--border)',marginBottom:14,padding:'12px 14px'}}>
                   <div style={{fontSize:12,color:'var(--t1)',lineHeight:1.7}}>
-                    This bot runs locally on your machine.<br/>
-                    Start it via the bot_manager package — the dashboard shows live status reported every 30 seconds via heartbeat.
+                    This bot runs in subprocess mode.<br/>
+                    To control it from here, set <code style={{fontFamily:'var(--mono)',background:'var(--bg2)',padding:'1px 4px',borderRadius:3}}>BOT_RUNNER=docker</code> in your <code style={{fontFamily:'var(--mono)',background:'var(--bg2)',padding:'1px 4px',borderRadius:3}}>.env</code> and rebuild the bot image.
                   </div>
                 </div>
                 <div className="df-flex" style={{gap:8,flexWrap:'wrap'}}>
@@ -1037,10 +1037,10 @@ function BotPage({bot, server, onNav}) {
           {[
             ['Bot ID',    db.id||'—'],
             ['Name',      db.name||'—'],
-            ['Type',      isLocal?'Local (self-hosted)':'Cloud (managed)'],
+            ['Type',      isLocal?'Local (self-hosted)':'Docker (managed)'],
             ['Server',    server?.name||'—'],
             ['Guild ID',  server?.guild_id||'—'],
-            ['Bot Type',  db.botType||'local'],
+            ['Runner',    db.runner||'subprocess'],
           ].map(([k,v])=>(
             <div key={k} className="df-hrow">
               <span className="df-hname">{k}</span>
@@ -1749,7 +1749,7 @@ export default function App() {
               name:      firstBot.bot_name,
               id:        firstBot.bot_id,
               status:    firstBot.status,
-              botType:   firstBot.bot_type,
+              runner:    firstBot.runner,
               serverId:  firstBot.server_id,
               ping:      firstBot.ping   ?? b.ping,
               uptime:    firstBot.uptime ?? b.uptime,
@@ -1794,7 +1794,7 @@ export default function App() {
   useEffect(()=>{
     if (!botList.length) return;
     const match = botList.find(b=>b.server_id===server.id) || botList[0];
-    if (match) setBot(b=>({...b, name:match.bot_name, id:match.bot_id, status:match.status, botType:match.bot_type, serverId:match.server_id, ping:match.ping??b.ping, uptime:match.uptime??b.uptime, avatarUrl:match.avatar_url||b.avatarUrl||''}));
+    if (match) setBot(b=>({...b, name:match.bot_name, id:match.bot_id, status:match.status, runner:match.runner, serverId:match.server_id, ping:match.ping??b.ping, uptime:match.uptime??b.uptime, avatarUrl:match.avatar_url||b.avatarUrl||''}));
   }, [server.id, botList]);
 
   const PAGE_TITLES={
@@ -1828,7 +1828,7 @@ export default function App() {
       if (botsRes) {
         setBotList(botsRes.bots || []);
         const newBot = (botsRes.bots||[]).find(b=>b.server_id===form.server_id);
-        if (newBot) setBot(b=>({...b, name:newBot.bot_name, id:newBot.bot_id, status:newBot.status, serverId:newBot.server_id, ping:newBot.ping??b.ping, uptime:newBot.uptime??b.uptime, avatarUrl:newBot.avatar_url||''}));
+        if (newBot) setBot(b=>({...b, name:newBot.bot_name, id:newBot.bot_id, status:newBot.status, runner:newBot.runner, serverId:newBot.server_id, ping:newBot.ping??b.ping, uptime:newBot.uptime??b.uptime, avatarUrl:newBot.avatar_url||''}));
       }
     });
     setPage("dashboard");
