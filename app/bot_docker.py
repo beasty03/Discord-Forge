@@ -133,9 +133,9 @@ def start(server_id: str, bot_name: str, bot_token: str, config: dict) -> tuple:
 
 def stop(server_id: str, bot_name: str) -> tuple:
     """Stop a running bot container. Returns (ok, message)."""
-    client = _client()
-    name   = _container_name(server_id, bot_name)
+    name = _container_name(server_id, bot_name)
     try:
+        client = _client()
         c = client.containers.get(name)
         c.stop(timeout=10)
         return True, 'Stopped'
@@ -146,10 +146,9 @@ def stop(server_id: str, bot_name: str) -> tuple:
 def restart(server_id: str, bot_name: str, bot_token: str, config: dict) -> tuple:
     """Stop and re-create the bot container with fresh config. Returns (ok, message)."""
     stop(server_id, bot_name)
-    client = _client()
-    name   = _container_name(server_id, bot_name)
+    name = _container_name(server_id, bot_name)
     try:
-        client.containers.get(name).remove()
+        _client().containers.get(name).remove()
     except Exception:
         pass
     return start(server_id, bot_name, bot_token, config)
@@ -157,10 +156,9 @@ def restart(server_id: str, bot_name: str, bot_token: str, config: dict) -> tupl
 
 def remove(server_id: str, bot_name: str) -> tuple:
     """Stop and delete the bot container entirely. Returns (ok, message)."""
-    client = _client()
-    name   = _container_name(server_id, bot_name)
+    name = _container_name(server_id, bot_name)
     try:
-        c = client.containers.get(name)
+        c = _client().containers.get(name)
         c.stop(timeout=5)
         c.remove()
         return True, 'Removed'
