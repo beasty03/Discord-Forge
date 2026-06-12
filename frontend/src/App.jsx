@@ -1321,18 +1321,18 @@ function ScriptsPage({server}) {
       const dict=r?.updates||{};
       const list=Object.entries(dict)
         .filter(([,v])=>v.has_update)
-        .map(([name,v])=>({name, latestSha:v.latest_sha, message:v.latest_message}));
+        .map(([name,v])=>({name, latestSha:v.latest_sha, message:v.latest_message, folderPath:v.folder_path}));
       setUpdates(list);
     } catch{}
     setCheckBusy(false);
   };
 
-  const updateScript=async(scriptName)=>{
+  const updateScript=async(u)=>{
     try {
-      await api.scriptUpdate({server_id:server.id, script:scriptName});
-      setActionMsg(`Updated: ${scriptName}`);
+      await api.scriptUpdate({server_id:server.id, script_path:u.folderPath, commit_sha:u.latestSha});
+      setActionMsg(`Updated: ${u.name}`);
       setTimeout(()=>setActionMsg(null),3000);
-      setUpdates(u=>(u||[]).filter(x=>x.name!==scriptName));
+      setUpdates(prev=>(prev||[]).filter(x=>x.name!==u.name));
     } catch(e){setActionMsg(e.message||'Update failed');}
   };
 
@@ -1396,20 +1396,13 @@ function ScriptsPage({server}) {
       <div className="df-page-title">Script Library</div>
       <div className="df-page-sub">{scripts.filter(s=>s.installed).length} installed · {scripts.length} available{actionMsg&&<span style={{marginLeft:14,color:"var(--green)",fontFamily:"var(--mono)",fontSize:11}}>{actionMsg}</span>}</div>
 
-      {/* Update checker strip */}
-      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--r)",marginBottom:14,flexWrap:"wrap"}}>
+      {/* Update checker */}
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
         <button className="df-btn df-btn-sm" onClick={checkUpdates} disabled={checkBusy||!server?.id}>
           {checkBusy?"Checking…":"Check for Updates"}
         </button>
-        {updates===null && <span style={{fontSize:11,color:"var(--t2)",fontFamily:"var(--mono)"}}>Click to scan installed cogs for available updates</span>}
-        {updates!==null && updates.length===0 && <span style={{fontSize:11,color:"var(--green)",fontFamily:"var(--mono)"}}>✓ All cogs are up to date</span>}
-        {(updates||[]).map(u=>(
-          <div key={u.name} className="df-flex df-gap6" style={{background:"var(--bg3)",borderRadius:6,padding:"4px 10px",gap:8}}>
-            <span style={{fontSize:12,fontFamily:"var(--mono)",color:"var(--t0)"}}>{u.name}</span>
-            <span style={{fontSize:11,color:"var(--yellow)"}}>{u.installed_version||"?"} → {u.latest_version||"latest"}</span>
-            <button className="df-btn df-btn-accent df-btn-sm" style={{padding:"2px 8px"}} onClick={()=>updateScript(u.name)}>Update</button>
-          </div>
-        ))}
+        {updates===null && <span style={{fontSize:11,color:"var(--t2)",fontFamily:"var(--mono)"}}>Click to scan installed scripts for updates</span>}
+        {updates!==null && updates.length===0 && <span style={{fontSize:11,color:"var(--green)",fontFamily:"var(--mono)"}}>✓ All scripts are up to date</span>}
       </div>
 
       <div className="df-flex" style={{gap:8,marginBottom:14}}>
@@ -1453,6 +1446,12 @@ function ScriptsPage({server}) {
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
         {filtered.map(s=>(
           <div key={s.id} className={`df-script-card ${s.installed?"installed":""}`} onClick={()=>setSel(s)}>
+            {(()=>{const upd=(updates||[]).find(u=>u.name===s.folderName);return upd?(
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"rgba(250,166,26,.12)",border:"1px solid rgba(250,166,26,.3)",borderRadius:6,padding:"4px 10px",marginBottom:8,fontSize:11}}>
+                <span style={{color:"var(--yellow)"}}>⬆ Update available · {upd.latestSha}</span>
+                <button className="df-btn df-btn-accent df-btn-sm" style={{padding:"2px 8px",fontSize:11}} onClick={e=>{e.stopPropagation();updateScript(upd);}}>Update</button>
+              </div>
+            ):null;})()}
             <div className="df-flex" style={{marginBottom:8,gap:6}}>
               <span className="df-card-title" style={{flex:1}}>{s.name}</span>
               <span className={`df-badge ${catColor[s.cat]||"df-bgr"}`}>{s.cat}</span>

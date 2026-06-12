@@ -7931,10 +7931,11 @@ def check_script_updates():
             has_update = (installed_sha is None) or (not latest_sha.startswith(installed_sha)
                                                       and installed_sha != latest_short)
             updates[cog_name] = {
-                'has_update':    has_update,
-                'installed_sha': installed_sha,
-                'latest_sha':    latest_short,
+                'has_update':     has_update,
+                'installed_sha':  installed_sha,
+                'latest_sha':     latest_short,
                 'latest_message': commits[0]['commit']['message'].split('\n')[0][:80],
+                'folder_path':    folder_path,
             }
         except Exception:
             updates[cog_name] = {'has_update': False, 'reason': 'error'}
