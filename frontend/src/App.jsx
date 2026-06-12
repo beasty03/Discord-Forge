@@ -875,7 +875,7 @@ function ServerPage({server, onIconUpdate}) {
 
 // ── Bot ──────────────────────────────────────────────────
 
-function BotPage({bot, server}) {
+function BotPage({bot, server, onNav}) {
   const [tab,setTab]=useState("overview");
   const [busy,setBusy]=useState(false);
   const [logs,setLogs]=useState([]);
@@ -950,6 +950,7 @@ function BotPage({bot, server}) {
           background:online?'rgba(35,209,139,.12)':'rgba(90,90,90,.18)',
           color:statusColor,fontSize:13,padding:'5px 12px',
         }}>● {db.status||'unknown'}</span>
+        {onNav && <button className="df-btn df-btn-sm" onClick={()=>onNav('agent')} title="Open Agent page">🔌 Agent</button>}
       </div>
 
       {/* Stat strip */}
@@ -1954,7 +1955,7 @@ export default function App() {
             {!loading && page==="dashboard" &&<DashboardPage server={server} live={live} events={events} bot={bot} onNavigate={setPage}/>}
             {!loading && page==="stats"     &&<DashboardPage server={server} live={live} events={events} bot={bot} onNavigate={setPage}/>}
             {!loading && page==="server"    &&<ServerPage    server={server} onIconUpdate={iconUrl=>setServers(ss=>ss.map(s=>s.id===server.id?{...s,iconUrl}:s))}/>}
-            {!loading && page==="bot"       &&<BotPage       bot={bot} server={server}/>}
+            {!loading && page==="bot"       &&<BotPage       bot={bot} server={server} onNav={setPage}/>}
             {!loading && page==="members"   &&<MembersPage   server={server}/>}
             {!loading && page==="scripts"   &&<ScriptsPage   server={server}/>}
             {!loading && page==="inspector"    &&<InspectorHub    serverList={servers}/>}

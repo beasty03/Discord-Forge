@@ -9269,33 +9269,35 @@ def _agent_command_result(data):
 # ── Agent HTTP endpoints ──────────────────────────────────────────────────────
 
 @app.route('/api/agent/token', methods=['GET'])
+@login_required
 def api_agent_token():
     """Get (or generate) the current user's agent token."""
-    if 'username' not in session:
-        return jsonify({'error': 'Not logged in'}), 401
     users    = load_users()
-    username = session['username']
+    username = session['user_id']
     user     = users.get(username, {})
     token    = user.get('agent_token', '')
+    created_at = user.get('agent_token_created_at', '')
     if not token:
         token               = secrets.token_urlsafe(32)
-        user['agent_token'] = token
+        created_at          = datetime.now(timezone.utc).isoformat()
+        user['agent_token']            = token
+        user['agent_token_created_at'] = created_at
         users[username]     = user
         save_users(users)
-    return jsonify({'token': token})
+    return jsonify({'token': token, 'created_at': created_at})
 
 
 @app.route('/api/agent/token/regenerate', methods=['POST'])
+@login_required
 @csrf_protect
 def api_agent_token_regenerate():
     """Regenerate (rotate) the agent token — old agents will be disconnected."""
-    if 'username' not in session:
-        return jsonify({'error': 'Not logged in'}), 401
     users    = load_users()
-    username = session['username']
+    username = session['user_id']
     user     = users.get(username, {})
-    token               = secrets.token_urlsafe(32)
-    user['agent_token'] = token
+    token                          = secrets.token_urlsafe(32)
+    user['agent_token']            = token
+    user['agent_token_created_at'] = datetime.now(timezone.utc).isoformat()
     users[username]     = user
     save_users(users)
     # Kick any agent currently using the old token
