@@ -9,11 +9,16 @@ You run it on your own machine or server. Users register on your instance and ma
 ## Features
 
 - **Server wizard** — step-by-step builder for channels, categories, roles, and permissions
-- **Bot management** — add Discord bots, download a local runner package, track heartbeat and uptime
+- **Docker-per-bot runner** — each bot runs in its own isolated container; start, stop, and restart from the dashboard
+- **Live dashboard** — real-time ping, uptime, messages-today, cog health badge, and per-member message counts via 30-second heartbeat
+- **Script library** — browse, install, and uninstall cogs from GitHub-hosted repositories; loaded/failed badge per script
+- **Member management** — full member list with roles, message counts, and warning history; warn/kick/ban directly from the dashboard
+- **Moderation cog** — `/warn`, `/warnings`, `/clearwarnings`, `/kick`, `/ban` slash commands; warnings stored in SQLite and synced back to the dashboard
+- **Per-user timezone** — all timestamps across the UI displayed in the user's chosen timezone
 - **Collaborators** — invite friends to help manage servers with per-permission access
-- **Script library** — browse and apply community cog scripts to your bots
 - **Theme engine** — 20+ UI themes including animated overlays (all free)
 - **Discord OAuth** — link your Discord account for avatar and identity
+- **Activity log + webhooks** — every bot event, member sync, and moderation action is logged; Discord webhook notifications supported
 - **Password reset** via SMTP (optional)
 - **hCaptcha** support on register/login
 - **Admin portal** for instance management
@@ -28,7 +33,9 @@ You run it on your own machine or server. Users register on your instance and ma
 | Frontend | React 19 · Vite 8 |
 | Auth | Session-based · Discord OAuth2 · hCaptcha |
 | Storage | JSON flat files (no database required) |
-| Production | gevent WSGI · optional Docker |
+| Bot runner | Docker SDK — one container per bot |
+| Cog storage | SQLite per cog (warnings, casino, etc.) |
+| Production | gevent WSGI · Docker Compose |
 
 ---
 
@@ -99,9 +106,7 @@ $DuckDnsDomain = 'your-subdomain'   # subdomain only, no .duckdns.org
 
 ---
 
-## Docker (optional)
-
-If you prefer containers instead of running Python directly:
+## Docker (recommended)
 
 ```bash
 cp app/.env.example app/.env
@@ -111,6 +116,14 @@ docker compose up -d --build
 ```
 
 The `docker-compose.yml` mounts `./data` as a volume so user data persists across rebuilds.
+
+**After any change to `launcher.py` or the cogs, rebuild the bot image:**
+
+```bash
+docker build -t discordforge-bot ./discord-server-setup-template/
+```
+
+Each bot you start from the dashboard runs as a sibling container using this image. The Flask container communicates with them over the Docker socket.
 
 ---
 
@@ -160,42 +173,79 @@ npm run build   # outputs to app/static/dist/
 ```
 Discord-Forge/
 ├── app/                            # Flask backend
-│   ├── app.py                      # Main application
+│   ├── app.py                      # All API routes, heartbeat, moderation, member sync
+│   ├── bot_docker.py               # Docker SDK wrapper — spawns/stops bot containers
 │   ├── server.py                   # Production entry point (gevent + SocketIO)
-│   ├── bot_manager_direct.py       # Local bot runner bridge
 │   ├── pages/                      # Jinja2 HTML templates
 │   ├── static/
 │   │   ├── assets/                 # Static images
 │   │   └── dist/                   # Built React frontend (npm run build output)
-│   ├── stress-tests/               # Browser-based load and functional test pages
 │   ├── deploy/
 │   │   └── control.ps1             # Windows control panel
 │   ├── .env.example                # Environment variable template
 │   └── requirements.txt
 ├── frontend/                       # React + Vite source
 │   ├── src/
-│   │   ├── App.jsx                 # Main SPA shell
-│   │   ├── api.js                  # API client
-│   │   ├── pages/                  # Page components (auth, settings, collaborators, …)
+│   │   ├── App.jsx                 # Main SPA shell + all page components
+│   │   ├── api.js                  # Typed API client
+│   │   ├── utils.js                # fmtDate timezone-aware formatter
+│   │   ├── pages/                  # ActivityPage, AgentPage, SettingsPage, …
 │   │   └── themes/
-│   │       ├── library/            # Theme definitions (20+ themes)
+│   │       ├── library/            # 20+ theme definitions
 │   │       └── *.jsx               # Animated canvas overlays
-│   ├── public/                     # Static assets (favicon, icons)
+│   ├── public/
 │   └── vite.config.js
-├── agent/                          # Agent for remote bot management
-│   ├── agent.py
-│   └── requirements.txt
-├── discord-server-setup-template/  # Bot runner scripts deployed to user machines
-│   ├── Setup_server.py
-│   ├── Update_server.py
-│   ├── launcher.py
-│   ├── cogs/                       # Discord.py cog modules
-│   ├── setup_cogs/
+├── discord-server-setup-template/  # Source for the discordforge-bot Docker image
+│   ├── launcher.py                 # Bot runner: heartbeat, command polling, events
+│   ├── requirements.txt
+│   ├── cogs/
+│   │   ├── Database_management/    # Casino / shared currency cog
+│   │   └── moderation/             # Warn, kick, ban slash commands + SQLite storage
+│   ├── Setup_server.py             # Full Discord server setup from config.json
+│   ├── Update_server.py            # Diff-based server update
 │   ├── templates/                  # JSON server templates
 │   └── utils/
 ├── data/                           # Runtime user data (gitignored)
 ├── Dockerfile
 └── docker-compose.yml
+```
+
+---
+
+## Bot heartbeat
+
+Running bots POST to `/api/local-bot/heartbeat` every 30 seconds:
+
+```json
+{
+  "server_id": "...", "bot_id": "...", "status": "online",
+  "ping_ms": 42, "uptime": "2h 15m",
+  "messages_today": 137,
+  "member_msg_counts": { "123456789": 12, "987654321": 5 },
+  "cogs_loaded": 2,
+  "cog_extensions": ["cogs.moderation.moderation", "cogs.Database_management.database_manager"]
+}
+```
+
+Flask merges `member_msg_counts` into `members.json` so the Members page shows per-member message counts that survive bot restarts. The dashboard script tab shows a **loaded / failed** badge per cog based on `cog_extensions`.
+
+Bots also poll `/api/local-bot/commands` each cycle to execute queued dashboard actions (warn, kick, ban, assign/remove role) and report results back via `/api/local-bot/command-result`.
+
+---
+
+## Moderation
+
+**From Discord** (slash commands, immediate):
+```
+/warn @user reason  →  DMs user  →  stores in moderation.db  →  syncs warning count to dashboard
+/kick @user reason  →  kicks in Discord  →  logs to dashboard
+/ban @user reason   →  bans in Discord   →  logs to dashboard
+/warnings @user     →  shows warning history (ephemeral)
+```
+
+**From the dashboard** (queued, runs on next heartbeat poll ≤30s):
+```
+⚠️ Warn / 🚪 Kick / 🚨 Ban  →  commands.json  →  bot executes  →  members.json updated
 ```
 
 ---
