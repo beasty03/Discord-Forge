@@ -370,6 +370,7 @@ _API_TOKEN = ''
 _USER_TZ   = 'UTC'
 _messages_today      = 0
 _messages_today_date = None
+_member_msg_counts: dict = {}
 
 
 def _uptime_str(start_time: datetime) -> str:
@@ -399,9 +400,10 @@ async def _post_heartbeat(bot: commands.Bot):
             'ping_ms':        round(bot.latency * 1000) if bot.latency else None,
             'uptime':         _uptime_str(bot.start_time),
             'log_tail':       _log_tail(),
-            'messages_today':  _messages_today,
-            'cogs_loaded':     len(bot.cogs),
-            'cog_extensions':  list(bot.extensions.keys()),
+            'messages_today':     _messages_today,
+            'cogs_loaded':        len(bot.cogs),
+            'cog_extensions':     list(bot.extensions.keys()),
+            'member_msg_counts':  dict(_member_msg_counts),
         }
         async with aiohttp.ClientSession() as session:
             await session.post(
@@ -447,10 +449,102 @@ async def _push_members(bot: commands.Bot):
         logger.debug(f'Member push failed: {e}')
 
 
+async def _poll_commands(bot: commands.Bot):
+    if not (_API_URL and _SERVER_ID and _BOT_ID and _API_TOKEN):
+        return
+    try:
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            r = await session.get(
+                f'{_API_URL}/api/local-bot/commands',
+                headers={'X-Bot-Token': _API_TOKEN},
+                params={'server_id': _SERVER_ID, 'bot_id': _BOT_ID},
+                timeout=aiohttp.ClientTimeout(total=10),
+            )
+            if r.status != 200:
+                return
+            data = await r.json()
+    except Exception as e:
+        logger.debug(f'Command poll failed: {e}')
+        return
+    guild = bot.get_guild(int(bot.guild_id)) if bot.guild_id else None
+    for cmd in data.get('commands', []):
+        await _execute_command(bot, guild, cmd)
+
+
+async def _execute_command(bot: commands.Bot, guild, cmd: dict):
+    import aiohttp
+    cmd_id    = cmd.get('id', '')
+    ctype     = cmd.get('type', '')
+    user_id   = cmd.get('user_id', '')
+    reason    = cmd.get('reason') or 'Action via dashboard'
+    role_name = cmd.get('role_name', '')
+    success, err = False, ''
+    try:
+        if not guild:
+            raise ValueError('Guild not found')
+        member = guild.get_member(int(user_id)) if user_id else None
+        if ctype == 'kick':
+            if not member:
+                raise ValueError(f'Member {user_id} not in guild')
+            await member.kick(reason=reason)
+            success = True
+        elif ctype == 'ban':
+            if not member:
+                raise ValueError(f'Member {user_id} not in guild')
+            await member.ban(reason=reason, delete_message_days=0)
+            success = True
+        elif ctype == 'warn':
+            if not member:
+                raise ValueError(f'Member {user_id} not in guild')
+            try:
+                await member.send(f'⚠️ You have received a warning in **{guild.name}**.\nReason: {reason}')
+            except Exception:
+                pass
+            success = True
+        elif ctype == 'assign_role':
+            if not member:
+                raise ValueError(f'Member {user_id} not in guild')
+            role = discord.utils.get(guild.roles, name=role_name)
+            if not role:
+                raise ValueError(f'Role "{role_name}" not found')
+            await member.add_roles(role, reason=reason)
+            success = True
+        elif ctype == 'remove_role':
+            if not member:
+                raise ValueError(f'Member {user_id} not in guild')
+            role = discord.utils.get(guild.roles, name=role_name)
+            if not role:
+                raise ValueError(f'Role "{role_name}" not found')
+            await member.remove_roles(role, reason=reason)
+            success = True
+        else:
+            err = f'Unknown command type: {ctype}'
+    except Exception as e:
+        err = str(e)
+    try:
+        async with aiohttp.ClientSession() as session:
+            await session.post(
+                f'{_API_URL}/api/local-bot/command-result',
+                json={
+                    'server_id':  _SERVER_ID,
+                    'bot_id':     _BOT_ID,
+                    'command_id': cmd_id,
+                    'success':    success,
+                    'error':      err,
+                },
+                headers={'X-Bot-Token': _API_TOKEN},
+                timeout=aiohttp.ClientTimeout(total=10),
+            )
+    except Exception as e:
+        logger.debug(f'Command result post failed: {e}')
+
+
 async def _heartbeat_loop(bot: commands.Bot):
     await bot.wait_until_ready()
     while not bot.is_closed():
         await _post_heartbeat(bot)
+        await _poll_commands(bot)
         await asyncio.sleep(30)
 
 
@@ -556,7 +650,7 @@ def setup_events(bot: commands.Bot):
     
     @bot.event
     async def on_message(message):
-        global _messages_today, _messages_today_date
+        global _messages_today, _messages_today_date, _member_msg_counts
         if not message.author.bot:
             try:
                 from zoneinfo import ZoneInfo
@@ -566,7 +660,10 @@ def setup_events(bot: commands.Bot):
             if _messages_today_date != today:
                 _messages_today = 0
                 _messages_today_date = today
+                _member_msg_counts = {}
             _messages_today += 1
+            uid = str(message.author.id)
+            _member_msg_counts[uid] = _member_msg_counts.get(uid, 0) + 1
         await bot.process_commands(message)
 
     @bot.event
@@ -616,7 +713,12 @@ async def main():
     
     # 4. Create bot instance
     bot = create_bot(config, bot_name)
-    
+    # Expose Forge API credentials so cogs can call back to Forge
+    bot.forge_api_url   = _API_URL
+    bot.forge_server_id = _SERVER_ID
+    bot.forge_bot_id    = _BOT_ID
+    bot.forge_api_token = _API_TOKEN
+
     # 5. Setup event handlers
     setup_events(bot)
     

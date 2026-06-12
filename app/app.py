@@ -6495,6 +6495,15 @@ def local_bot_heartbeat():
                     if cog_extensions:
                         b['local_cog_extensions'] = list(cog_extensions)
                     save_server_config(cfg_path, cfg)
+                    member_msg_counts = data.get('member_msg_counts', {})
+                    if member_msg_counts:
+                        mf = os.path.join(USERS_DATA_DIR, owner, 'servers', server_id, 'members.json')
+                        mems = load_json(mf, [])
+                        for m in mems:
+                            uid = str(m.get('id') or m.get('user_id', ''))
+                            if uid in member_msg_counts:
+                                m['message_count'] = int(member_msg_counts[uid])
+                        save_json(mf, mems)
                     if log_tail:
                         logs_path = os.path.join(USERS_DATA_DIR,owner, 'servers',
                                                   server_id, f'bot_logs_{bot_id}.json')
@@ -6526,7 +6535,16 @@ def local_bot_members():
         return jsonify({'error': 'Unauthorized'}), 401
     members_path = os.path.join(USERS_DATA_DIR,owner, 'servers', server_id)
     os.makedirs(members_path, exist_ok=True)
-    save_json(os.path.join(members_path, 'members.json'), members)
+    members_file = os.path.join(members_path, 'members.json')
+    existing = {str(m.get('id') or m.get('user_id', '')): m for m in load_json(members_file, [])}
+    merged = []
+    for m in members:
+        uid = str(m.get('id') or m.get('user_id', ''))
+        prev = existing.get(uid, {})
+        m['warnings']     = prev.get('warnings', 0)
+        m['message_count'] = prev.get('message_count', 0)
+        merged.append(m)
+    save_json(members_file, merged)
     srv_name = (load_servers().get(server_id) or {}).get('server_name', server_id)
     count = len(members)
     append_event(owner, server_id, srv_name, 'member_sync',
@@ -6590,6 +6608,38 @@ def local_bot_script_zip():
                      download_name=f'{script_name}.zip')
 
 
+@app.route('/api/local-bot/moderation', methods=['POST'])
+def local_bot_moderation():
+    data        = request.get_json(silent=True) or {}
+    server_id   = data.get('server_id', '')
+    bot_id      = data.get('bot_id', '')
+    token       = request.headers.get('X-Bot-Token', '')
+    owner       = _validate_local_bot_token(server_id, bot_id, token)
+    if not owner:
+        return jsonify({'error': 'Unauthorized'}), 401
+    action_type = data.get('action_type', '')
+    user_id     = str(data.get('user_id', ''))
+    username    = data.get('username', '')
+    reason      = data.get('reason', '')
+    warns_count = data.get('warns_count')
+    if action_type == 'warn' and user_id:
+        mf   = os.path.join(USERS_DATA_DIR, owner, 'servers', server_id, 'members.json')
+        mems = load_json(mf, [])
+        for m in mems:
+            if str(m.get('id') or m.get('user_id', '')) == user_id:
+                if warns_count is not None:
+                    m['warnings'] = int(warns_count)
+                else:
+                    m['warnings'] = m.get('warnings', 0) + 1
+                break
+        save_json(mf, mems)
+    srv_name = (load_servers().get(server_id) or {}).get('server_name', server_id)
+    display  = username or user_id
+    append_event(owner, server_id, srv_name, 'command',
+                 f'{action_type.title()} on {display} via slash command — {reason}')
+    return jsonify({'ok': True})
+
+
 @app.route('/api/local-bot/commands', methods=['GET'])
 def local_bot_get_commands():
     server_id = request.args.get('server_id', '')
@@ -6641,6 +6691,16 @@ def local_bot_command_result():
             matched_cmd = c
             break
     save_json(cmds_path, cmds)
+    if matched_cmd and matched_cmd.get('type') == 'warn' and data.get('success'):
+        uid = str(matched_cmd.get('user_id', ''))
+        if uid:
+            mf = os.path.join(USERS_DATA_DIR, owner, 'servers', server_id, 'members.json')
+            mems = load_json(mf, [])
+            for m in mems:
+                if str(m.get('id') or m.get('user_id', '')) == uid:
+                    m['warnings'] = m.get('warnings', 0) + 1
+                    break
+            save_json(mf, mems)
     if matched_cmd:
         srv_name = (load_servers().get(server_id) or {}).get('server_name', server_id)
         status = 'succeeded' if data.get('success') else f'failed: {data.get("error","")[:60]}'
@@ -6716,7 +6776,7 @@ def member_action(server_id):
         return jsonify({'error': 'Not found or insufficient permissions'}), 404
     data = request.get_json(silent=True) or {}
     action_type = data.get('type', '')
-    if action_type not in ('kick', 'ban', 'assign_role', 'remove_role'):
+    if action_type not in ('warn', 'kick', 'ban', 'assign_role', 'remove_role'):
         return jsonify({'error': 'Invalid action'}), 400
     cmd = {
         'id': str(uuid.uuid4()),

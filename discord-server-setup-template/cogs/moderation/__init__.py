@@ -1,0 +1,1 @@
+from .moderation import setup
