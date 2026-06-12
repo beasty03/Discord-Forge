@@ -1521,10 +1521,7 @@ def account_profile():
 def set_account_timezone():
     data = request.get_json(silent=True) or {}
     tz   = str(data.get('timezone', '')).strip()
-    try:
-        from zoneinfo import ZoneInfo
-        ZoneInfo(tz)
-    except Exception:
+    if not tz or len(tz) > 64 or not all(c.isalnum() or c in '/_+-' for c in tz):
         return jsonify({'error': 'Invalid timezone'}), 400
     users = load_users()
     users[session['user_id']]['timezone'] = tz
