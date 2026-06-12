@@ -48,16 +48,6 @@ const MEMBERS = [
   {id:"m12",name:"NightWarden",  tag:"BOT", status:"online", roles:["NightWarden"],        avatar:"🤖", joined:"2021-03-12", warns:0, msgs:0, isBot:true},
 ];
 
-const SCRIPTS = [
-  {id:"sc1",name:"Auto-Role on Join",  cat:"Automation",desc:"Assigns a default role to every new member on join.",    installs:2841,stars:4.8,installed:true, tags:["roles","onboarding"]},
-  {id:"sc2",name:"Welcome Message",    cat:"Engagement", desc:"Sends a rich embed welcome card to a designated channel.",installs:5120,stars:4.9,installed:true, tags:["welcome","embeds"]},
-  {id:"sc3",name:"Anti-Raid Lockdown", cat:"Security",   desc:"Detects mass-joins and temporarily locks all channels.",  installs:1230,stars:4.7,installed:false,tags:["security","automod"]},
-  {id:"sc4",name:"Ticket System",      cat:"Support",    desc:"Creates private support threads via slash command.",      installs:3890,stars:4.6,installed:true, tags:["tickets","threads"]},
-  {id:"sc5",name:"XP & Levelling",     cat:"Engagement", desc:"Tracks message activity and awards XP with level roles.", installs:7210,stars:4.9,installed:false,tags:["xp","levels","roles"]},
-  {id:"sc6",name:"Voice Activity Log", cat:"Logging",    desc:"Logs join/leave/move events in voice channels.",          installs:2010,stars:4.3,installed:true, tags:["voice","logging"]},
-  {id:"sc7",name:"Reaction Roles",     cat:"Automation", desc:"Assign roles by reacting to a pinned message.",           installs:9320,stars:5.0,installed:false,tags:["roles","reactions"]},
-  {id:"sc8",name:"Poll Command",       cat:"Utility",    desc:"Creates formatted polls with emoji reactions.",           installs:3760,stars:4.7,installed:true, tags:["polls","utility"]},
-];
 
 const EVENTS = [
   {ts:"00:02",level:"warn", src:"AutoMod",msg:"Triggered filter: spam — user shadowbyte#4421 in #general"},
@@ -1308,7 +1298,7 @@ function ScriptsPage({server}) {
   const [sel,setSel]=useState(null);
   const [search,setSearch]=useState("");
   const [cat,setCat]=useState("all");
-  const [scripts,setScripts]=useState(SCRIPTS);
+  const [scripts,setScripts]=useState([]);
   const [actionMsg,setActionMsg]=useState(null);
   const [updates,setUpdates]=useState(null);   // null | [] from check-scripts
   const [checkBusy,setCheckBusy]=useState(false);
