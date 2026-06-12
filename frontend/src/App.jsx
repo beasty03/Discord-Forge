@@ -16,7 +16,7 @@ import InvitePage        from "./pages/InvitePage.jsx";
 import { api, setCSRF } from "./api.js";
 
 // BOT placeholder — replaced by /api/bots/list data at runtime
-const BOT_DEFAULT = { name:"—", id:"—", prefix:"!", version:"—", uptime:"—", ping:0, guilds:0, commands:0, shards:[], recentCmds:[] };
+const BOT_DEFAULT = { name:"—", id:"—", prefix:"!", version:"—", uptime:"—", ping:0, guilds:0, commands:0, shards:[], recentCmds:[], messages_today:0, cogs_loaded:0, installed_count:0 };
 
 const CHANNELS = [
   {id:"c1",name:"general",       type:"text", category:"Community",nsfw:false,slowmode:0, perms:"everyone",topic:"Main chat"},
@@ -343,7 +343,7 @@ function DashboardPage({server, live, events, bot, onNavigate}) {
   const health=[
     {name:"API Latency",val:(bot.ping||"—")+"ms",pct:Math.min(100,100-(bot.ping||0)/2),c:"var(--green)"},
     {name:"Bot Uptime", val:bot.uptime||"—",      pct:99, c:"var(--cyan)"},
-    {name:"Memory",     val:"—",                  pct:50, c:"var(--accent2)"},
+    {name:"Scripts",    val:bot.cogs_loaded>0?`${bot.cogs_loaded}/${bot.installed_count||'?'} loaded`:'—', pct:bot.installed_count>0?Math.round(bot.cogs_loaded/bot.installed_count*100):0, c:bot.cogs_loaded>0&&bot.cogs_loaded===bot.installed_count?"var(--green)":"var(--yellow)"},
     {name:"WS Conn.",   val:live?.bot_in_guild?"in guild":"—",pct:live?.bot_in_guild?100:0,c:"var(--green)"},
     {name:"AutoMod",    val:"active",              pct:100,c:"var(--green)"},
     {name:"Drift",      val:live?.drift_status||"—",pct:live?.drift_status==="sync"?100:live?.drift_status==="minor"?60:20,c:live?.drift_status==="sync"?"var(--green)":live?.drift_status==="minor"?"var(--yellow)":"var(--red)"},
@@ -356,7 +356,7 @@ function DashboardPage({server, live, events, bot, onNavigate}) {
         {[
           {icon:"👥",val:server.memberCount.toLocaleString(),lbl:"Members",   delta:"click to view",up:true, cls:"blue",   nav:"members"},
           {icon:"🟢",val:server.online,                      lbl:"Online",    delta:"live",up:true, cls:"green"},
-          {icon:"💬",val:live?.messages_today??'—',          lbl:"Msgs Today",delta:"live",up:true, cls:"cyan"},
+          {icon:"💬",val:bot.messages_today>0?bot.messages_today.toLocaleString():'—', lbl:"Msgs Today",delta:"live",up:true, cls:"cyan"},
           {icon:"⚡",val:(bot.ping||"—")+"ms",               lbl:"Bot Ping",  delta:"stable",up:true, cls:"yellow"},
           {icon:"🚀",val:`Lv ${server.boostLevel}`,          lbl:"Boost Tier",delta:`${server.boosts} boosts`,up:true,cls:"purple"},
         ].map((s,i)=>(
@@ -1829,14 +1829,17 @@ export default function App() {
           if (firstBot) {
             setBot(b => ({
               ...b,
-              name:      firstBot.bot_name,
-              id:        firstBot.bot_id,
-              status:    firstBot.status,
-              runner:    firstBot.runner,
-              serverId:  firstBot.server_id,
-              ping:      firstBot.ping   ?? b.ping,
-              uptime:    firstBot.uptime ?? b.uptime,
-              avatarUrl: firstBot.avatar_url || '',
+              name:           firstBot.bot_name,
+              id:             firstBot.bot_id,
+              status:         firstBot.status,
+              runner:         firstBot.runner,
+              serverId:       firstBot.server_id,
+              ping:           firstBot.ping           ?? b.ping,
+              uptime:         firstBot.uptime         ?? b.uptime,
+              avatarUrl:      firstBot.avatar_url     || '',
+              messages_today: firstBot.messages_today ?? b.messages_today ?? 0,
+              cogs_loaded:    firstBot.cogs_loaded    ?? b.cogs_loaded    ?? 0,
+              installed_count:firstBot.installed_count?? b.installed_count?? 0,
             }));
           }
         }
@@ -1877,7 +1880,7 @@ export default function App() {
   useEffect(()=>{
     if (!botList.length) return;
     const match = botList.find(b=>b.server_id===server.id) || botList[0];
-    if (match) setBot(b=>({...b, name:match.bot_name, id:match.bot_id, status:match.status, runner:match.runner, serverId:match.server_id, ping:match.ping??b.ping, uptime:match.uptime??b.uptime, avatarUrl:match.avatar_url||b.avatarUrl||''}));
+    if (match) setBot(b=>({...b, name:match.bot_name, id:match.bot_id, status:match.status, runner:match.runner, serverId:match.server_id, ping:match.ping??b.ping, uptime:match.uptime??b.uptime, avatarUrl:match.avatar_url||b.avatarUrl||'', messages_today:match.messages_today??b.messages_today??0, cogs_loaded:match.cogs_loaded??b.cogs_loaded??0, installed_count:match.installed_count??b.installed_count??0}));
   }, [server.id, botList]);
 
   const PAGE_TITLES={
@@ -1911,7 +1914,7 @@ export default function App() {
       if (botsRes) {
         setBotList(botsRes.bots || []);
         const newBot = (botsRes.bots||[]).find(b=>b.server_id===form.server_id);
-        if (newBot) setBot(b=>({...b, name:newBot.bot_name, id:newBot.bot_id, status:newBot.status, runner:newBot.runner, serverId:newBot.server_id, ping:newBot.ping??b.ping, uptime:newBot.uptime??b.uptime, avatarUrl:newBot.avatar_url||''}));
+        if (newBot) setBot(b=>({...b, name:newBot.bot_name, id:newBot.bot_id, status:newBot.status, runner:newBot.runner, serverId:newBot.server_id, ping:newBot.ping??b.ping, uptime:newBot.uptime??b.uptime, avatarUrl:newBot.avatar_url||'', messages_today:newBot.messages_today??b.messages_today??0, cogs_loaded:newBot.cogs_loaded??b.cogs_loaded??0, installed_count:newBot.installed_count??b.installed_count??0}));
       }
     });
     setPage("dashboard");

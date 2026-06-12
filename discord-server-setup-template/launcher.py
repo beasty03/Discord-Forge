@@ -367,6 +367,8 @@ _API_URL   = ''
 _SERVER_ID = ''
 _BOT_ID    = ''
 _API_TOKEN = ''
+_messages_today      = 0
+_messages_today_date = None
 
 
 def _uptime_str(start_time: datetime) -> str:
@@ -390,12 +392,14 @@ async def _post_heartbeat(bot: commands.Bot):
     try:
         import aiohttp
         payload = {
-            'server_id': _SERVER_ID,
-            'bot_id':    _BOT_ID,
-            'status':    'online',
-            'ping_ms':   round(bot.latency * 1000) if bot.latency else None,
-            'uptime':    _uptime_str(bot.start_time),
-            'log_tail':  _log_tail(),
+            'server_id':      _SERVER_ID,
+            'bot_id':         _BOT_ID,
+            'status':         'online',
+            'ping_ms':        round(bot.latency * 1000) if bot.latency else None,
+            'uptime':         _uptime_str(bot.start_time),
+            'log_tail':       _log_tail(),
+            'messages_today': _messages_today,
+            'cogs_loaded':    len(bot.cogs),
         }
         async with aiohttp.ClientSession() as session:
             await session.post(
@@ -548,6 +552,17 @@ def setup_events(bot: commands.Bot):
         
         await ctx.send("❌ An error occurred while executing this command.")
     
+    @bot.event
+    async def on_message(message):
+        global _messages_today, _messages_today_date
+        if not message.author.bot:
+            today = datetime.utcnow().date()
+            if _messages_today_date != today:
+                _messages_today = 0
+                _messages_today_date = today
+            _messages_today += 1
+        await bot.process_commands(message)
+
     @bot.event
     async def on_error(event, *args, **kwargs):
         """

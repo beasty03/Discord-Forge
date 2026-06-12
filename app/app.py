@@ -4387,6 +4387,9 @@ def list_bots():
                 'local_last_seen':   bot.get('local_last_seen', None),
                 'ping':              bot.get('local_ping_ms', 0),
                 'uptime':            bot.get('local_uptime', '—'),
+                'messages_today':    bot.get('local_messages_today', 0),
+                'cogs_loaded':       bot.get('local_cogs_loaded', 0),
+                'installed_count':   len(installed_scripts),
                 'avatar_url':        bot_avatar_url,
                 'runner':            os.environ.get('BOT_RUNNER', 'subprocess'),
             })
@@ -6446,13 +6449,15 @@ def _validate_local_bot_token(server_id, bot_id, token):
 
 @app.route('/api/local-bot/heartbeat', methods=['POST'])
 def local_bot_heartbeat():
-    data      = request.get_json(silent=True) or {}
-    server_id = data.get('server_id', '')
-    bot_id    = data.get('bot_id', '')
-    status    = data.get('status', 'online')
-    log_tail  = data.get('log_tail', [])
-    ping_ms   = data.get('ping_ms')
-    uptime    = data.get('uptime')
+    data           = request.get_json(silent=True) or {}
+    server_id      = data.get('server_id', '')
+    bot_id         = data.get('bot_id', '')
+    status         = data.get('status', 'online')
+    log_tail       = data.get('log_tail', [])
+    ping_ms        = data.get('ping_ms')
+    uptime         = data.get('uptime')
+    messages_today = data.get('messages_today')
+    cogs_loaded    = data.get('cogs_loaded')
     token     = request.headers.get('X-Bot-Token', '')
     owner     = _validate_local_bot_token(server_id, bot_id, token)
     if not owner:
@@ -6481,6 +6486,10 @@ def local_bot_heartbeat():
                         b['local_ping_ms'] = int(ping_ms)
                     if uptime is not None:
                         b['local_uptime'] = str(uptime)
+                    if messages_today is not None:
+                        b['local_messages_today'] = int(messages_today)
+                    if cogs_loaded is not None:
+                        b['local_cogs_loaded'] = int(cogs_loaded)
                     save_server_config(cfg_path, cfg)
                     if log_tail:
                         logs_path = os.path.join(USERS_DATA_DIR,owner, 'servers',
