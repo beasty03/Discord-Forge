@@ -4385,6 +4385,7 @@ def list_bots():
                 'uptime':            bot.get('local_uptime', '—'),
                 'messages_today':    bot.get('local_messages_today', 0),
                 'cogs_loaded':       bot.get('local_cogs_loaded', 0),
+                'cog_extensions':    bot.get('local_cog_extensions', []),
                 'installed_count':   len(installed_scripts),
                 'avatar_url':        bot_avatar_url,
                 'runner':            os.environ.get('BOT_RUNNER', 'subprocess'),
@@ -4547,6 +4548,8 @@ def start_bot():
         bot_cfg_extra, _ = _make_bot_config(server_id, bot_id, config, server)
         if bot_cfg_extra:
             single_config['api_token'] = bot_cfg_extra.get('api_token', '')
+        _u = load_users().get(session['user_id'], {})
+        single_config['timezone'] = _u.get('timezone', 'UTC')
         ok, msg = _bd.start(server_id, bot_name, bot_token, single_config)
         if not ok:
             return jsonify({'error': msg}), 500
@@ -6382,6 +6385,8 @@ def restart_bot():
         bot_cfg_extra, _ = _make_bot_config(server_id, bot_id, config, server)
         if bot_cfg_extra:
             single_config['api_token'] = bot_cfg_extra.get('api_token', '')
+        _u = load_users().get(session['user_id'], {})
+        single_config['timezone'] = _u.get('timezone', 'UTC')
         threading.Thread(
             target=_send_bot_log,
             args=(guild_id, bot_name, 'restarting', '', bot_token),
@@ -6452,8 +6457,9 @@ def local_bot_heartbeat():
     log_tail       = data.get('log_tail', [])
     ping_ms        = data.get('ping_ms')
     uptime         = data.get('uptime')
-    messages_today = data.get('messages_today')
-    cogs_loaded    = data.get('cogs_loaded')
+    messages_today  = data.get('messages_today')
+    cogs_loaded     = data.get('cogs_loaded')
+    cog_extensions  = data.get('cog_extensions', [])
     token     = request.headers.get('X-Bot-Token', '')
     owner     = _validate_local_bot_token(server_id, bot_id, token)
     if not owner:
@@ -6486,6 +6492,8 @@ def local_bot_heartbeat():
                         b['local_messages_today'] = int(messages_today)
                     if cogs_loaded is not None:
                         b['local_cogs_loaded'] = int(cogs_loaded)
+                    if cog_extensions:
+                        b['local_cog_extensions'] = list(cog_extensions)
                     save_server_config(cfg_path, cfg)
                     if log_tail:
                         logs_path = os.path.join(USERS_DATA_DIR,owner, 'servers',

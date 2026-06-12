@@ -16,7 +16,7 @@ import InvitePage        from "./pages/InvitePage.jsx";
 import { api, setCSRF } from "./api.js";
 
 // BOT placeholder — replaced by /api/bots/list data at runtime
-const BOT_DEFAULT = { name:"—", id:"—", prefix:"!", version:"—", uptime:"—", ping:0, guilds:0, commands:0, shards:[], recentCmds:[], messages_today:0, cogs_loaded:0, installed_count:0 };
+const BOT_DEFAULT = { name:"—", id:"—", prefix:"!", version:"—", uptime:"—", ping:0, guilds:0, commands:0, shards:[], recentCmds:[], messages_today:0, cogs_loaded:0, installed_count:0, cog_extensions:[] };
 
 const CHANNELS = [
   {id:"c1",name:"general",       type:"text", category:"Community",nsfw:false,slowmode:0, perms:"everyone",topic:"Main chat"},
@@ -869,6 +869,7 @@ function BotScriptsTab({server, bot, onNav}) {
   const [cogs,    setCogs]    = useState(null);
   const [busy,    setBusy]    = useState(null); // cog name being removed
   const [msg,     setMsg]     = useState(null);
+  const loadedFolders = new Set((bot.cog_extensions||[]).map(e=>e.split('.')[1]).filter(Boolean));
 
   const flash = (text, ok=true) => { setMsg({text,ok}); setTimeout(()=>setMsg(null),3000); };
 
@@ -901,15 +902,21 @@ function BotScriptsTab({server, bot, onNav}) {
             No scripts installed.{onNav&&<> <span style={{cursor:'pointer',color:'var(--accent)',textDecoration:'underline'}} onClick={()=>onNav('scripts')}>Browse the library</span> to add some.</>}
           </div>
         )}
-        {(cogs||[]).map(c=>(
-          <div key={c.name} className="df-hrow">
-            <span className="df-hname" style={{fontFamily:'var(--mono)'}}>{c.name}</span>
-            {c.version && <span className="df-badge df-bgr" style={{marginRight:'auto',marginLeft:8}}>v{c.version}</span>}
-            <button className="df-btn df-btn-danger df-btn-sm" onClick={()=>remove(c.name)} disabled={busy===c.name}>
-              {busy===c.name?'Removing…':'Uninstall'}
-            </button>
-          </div>
-        ))}
+        {(cogs||[]).map(c=>{
+          const isLoaded = loadedFolders.size > 0 ? loadedFolders.has(c.name) : null;
+          return (
+            <div key={c.name} className="df-hrow">
+              <span className="df-hname" style={{fontFamily:'var(--mono)'}}>{c.name}</span>
+              {c.version && <span className="df-badge df-bgr" style={{marginLeft:8}}>v{c.version}</span>}
+              {isLoaded===true  && <span className="df-badge" style={{marginLeft:8,background:'var(--green)',color:'#fff'}}>loaded</span>}
+              {isLoaded===false && <span className="df-badge" style={{marginLeft:8,background:'var(--red)',  color:'#fff'}}>failed</span>}
+              <span style={{flex:1}}/>
+              <button className="df-btn df-btn-danger df-btn-sm" onClick={()=>remove(c.name)} disabled={busy===c.name}>
+                {busy===c.name?'Removing…':'Uninstall'}
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -937,9 +944,10 @@ function BotPage({bot, server, onNav, timezone='UTC'}) {
 
   const db = liveBot ? {
     ...bot,
-    status: liveBot.status ?? bot.status,
-    ping:   liveBot.ping   ?? bot.ping,
-    uptime: liveBot.uptime ?? bot.uptime,
+    status:         liveBot.status         ?? bot.status,
+    ping:           liveBot.ping           ?? bot.ping,
+    uptime:         liveBot.uptime         ?? bot.uptime,
+    cog_extensions: liveBot.cog_extensions ?? bot.cog_extensions ?? [],
   } : bot;
 
   useEffect(()=>{
@@ -1060,7 +1068,7 @@ function BotPage({bot, server, onNav, timezone='UTC'}) {
               ['Status',     <span style={{color:statusColor,fontWeight:700}}>{db.status||'unknown'}</span>],
               ['Ping',       db.ping>0?db.ping+'ms':'—'],
               ['Uptime',     db.uptime||'—'],
-              ['Last seen',  liveBot?.local_last_seen ? fmtDate(liveBot.local_last_seen, timezone, {timeOnly:true}) : '—'],
+              ['Last seen',  online ? <span style={{color:'var(--green)',fontWeight:600}}>online</span> : liveBot?.local_last_seen ? fmtDate(liveBot.local_last_seen, timezone, {timeOnly:true}) : '—'],
             ].map(([k,v])=>(
               <div key={k} className="df-hrow">
                 <span className="df-hname">{k}</span>
@@ -1852,9 +1860,10 @@ export default function App() {
               ping:           firstBot.ping           ?? b.ping,
               uptime:         firstBot.uptime         ?? b.uptime,
               avatarUrl:      firstBot.avatar_url     || '',
-              messages_today: firstBot.messages_today ?? b.messages_today ?? 0,
-              cogs_loaded:    firstBot.cogs_loaded    ?? b.cogs_loaded    ?? 0,
-              installed_count:firstBot.installed_count?? b.installed_count?? 0,
+              messages_today: firstBot.messages_today  ?? b.messages_today  ?? 0,
+              cogs_loaded:    firstBot.cogs_loaded     ?? b.cogs_loaded     ?? 0,
+              installed_count:firstBot.installed_count ?? b.installed_count ?? 0,
+              cog_extensions: firstBot.cog_extensions  ?? b.cog_extensions  ?? [],
             }));
           }
         }
@@ -1895,7 +1904,7 @@ export default function App() {
   useEffect(()=>{
     if (!botList.length) return;
     const match = botList.find(b=>b.server_id===server.id) || botList[0];
-    if (match) setBot(b=>({...b, name:match.bot_name, id:match.bot_id, status:match.status, runner:match.runner, serverId:match.server_id, ping:match.ping??b.ping, uptime:match.uptime??b.uptime, avatarUrl:match.avatar_url||b.avatarUrl||'', messages_today:match.messages_today??b.messages_today??0, cogs_loaded:match.cogs_loaded??b.cogs_loaded??0, installed_count:match.installed_count??b.installed_count??0}));
+    if (match) setBot(b=>({...b, name:match.bot_name, id:match.bot_id, status:match.status, runner:match.runner, serverId:match.server_id, ping:match.ping??b.ping, uptime:match.uptime??b.uptime, avatarUrl:match.avatar_url||b.avatarUrl||'', messages_today:match.messages_today??b.messages_today??0, cogs_loaded:match.cogs_loaded??b.cogs_loaded??0, installed_count:match.installed_count??b.installed_count??0, cog_extensions:match.cog_extensions??b.cog_extensions??[]}));
   }, [server.id, botList]);
 
   const PAGE_TITLES={
@@ -1929,7 +1938,7 @@ export default function App() {
       if (botsRes) {
         setBotList(botsRes.bots || []);
         const newBot = (botsRes.bots||[]).find(b=>b.server_id===form.server_id);
-        if (newBot) setBot(b=>({...b, name:newBot.bot_name, id:newBot.bot_id, status:newBot.status, runner:newBot.runner, serverId:newBot.server_id, ping:newBot.ping??b.ping, uptime:newBot.uptime??b.uptime, avatarUrl:newBot.avatar_url||'', messages_today:newBot.messages_today??b.messages_today??0, cogs_loaded:newBot.cogs_loaded??b.cogs_loaded??0, installed_count:newBot.installed_count??b.installed_count??0}));
+        if (newBot) setBot(b=>({...b, name:newBot.bot_name, id:newBot.bot_id, status:newBot.status, runner:newBot.runner, serverId:newBot.server_id, ping:newBot.ping??b.ping, uptime:newBot.uptime??b.uptime, avatarUrl:newBot.avatar_url||'', messages_today:newBot.messages_today??b.messages_today??0, cogs_loaded:newBot.cogs_loaded??b.cogs_loaded??0, installed_count:newBot.installed_count??b.installed_count??0, cog_extensions:newBot.cog_extensions??b.cog_extensions??[]}));
       }
     });
     setPage("dashboard");

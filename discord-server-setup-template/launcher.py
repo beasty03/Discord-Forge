@@ -367,6 +367,7 @@ _API_URL   = ''
 _SERVER_ID = ''
 _BOT_ID    = ''
 _API_TOKEN = ''
+_USER_TZ   = 'UTC'
 _messages_today      = 0
 _messages_today_date = None
 
@@ -398,8 +399,9 @@ async def _post_heartbeat(bot: commands.Bot):
             'ping_ms':        round(bot.latency * 1000) if bot.latency else None,
             'uptime':         _uptime_str(bot.start_time),
             'log_tail':       _log_tail(),
-            'messages_today': _messages_today,
-            'cogs_loaded':    len(bot.cogs),
+            'messages_today':  _messages_today,
+            'cogs_loaded':     len(bot.cogs),
+            'cog_extensions':  list(bot.extensions.keys()),
         }
         async with aiohttp.ClientSession() as session:
             await session.post(
@@ -556,7 +558,11 @@ def setup_events(bot: commands.Bot):
     async def on_message(message):
         global _messages_today, _messages_today_date
         if not message.author.bot:
-            today = datetime.utcnow().date()
+            try:
+                from zoneinfo import ZoneInfo
+                today = datetime.now(ZoneInfo(_USER_TZ)).date()
+            except Exception:
+                today = datetime.utcnow().date()
             if _messages_today_date != today:
                 _messages_today = 0
                 _messages_today_date = today
@@ -587,11 +593,12 @@ async def main():
     config = load_config()
 
     # Initialize Forge API heartbeat credentials
-    global _API_URL, _SERVER_ID, _BOT_ID, _API_TOKEN
+    global _API_URL, _SERVER_ID, _BOT_ID, _API_TOKEN, _USER_TZ
     _API_URL   = _os.environ.get('FORGE_API_URL', config.get('api_url', '')).rstrip('/')
     _SERVER_ID = config.get('server_id', '')
     _BOT_ID    = config.get('bot_id', '') or (config['discord_bots'][0].get('id', '') if config.get('discord_bots') else '')
     _API_TOKEN = config.get('api_token', '')
+    _USER_TZ   = config.get('timezone', 'UTC')
 
     # 2. Get bot token
     # Support --bot <name> argument so Flask can launch a specific bot
