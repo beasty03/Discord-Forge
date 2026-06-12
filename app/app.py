@@ -883,6 +883,7 @@ def build_server_config(server_name, icon_path, guild_id, repo_dir, config_path,
 
     return {
         'bot_token': bot_token,
+        'guild_id':  guild_id,
         'server': {
             'name': server_name,
             'icon': os.path.abspath(icon_path) if icon_path else None,
@@ -4514,6 +4515,17 @@ def start_bot():
         single_config = dict(config)
         single_config['discord_bots'] = [bot_cfg]
         single_config['install_dir'] = server.get('install_dir', '')
+        # Ensure top-level guild_id exists for cogs that read config.json directly
+        if not single_config.get('guild_id'):
+            single_config['guild_id'] = server.get('guild_id', '')
+            _, config_path_fix = os.path.split(server.get('config_path', ''))
+            if server.get('config_path'):
+                try:
+                    patched = dict(config)
+                    patched['guild_id'] = server.get('guild_id', '')
+                    save_server_config(server['config_path'], patched)
+                except Exception:
+                    pass
         ok, msg = _bd.start(server_id, bot_name, bot_token, single_config)
         if not ok:
             return jsonify({'error': msg}), 500
