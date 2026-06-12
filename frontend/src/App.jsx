@@ -1317,8 +1317,12 @@ function ScriptsPage({server}) {
     if(!server?.id) return;
     setCheckBusy(true); setUpdates(null);
     try {
-      const r=await api.checkScripts(server.id).catch(()=>null);
-      setUpdates(r?.updates||r?.scripts||[]);
+      const r=await api.scriptVersions(server.id).catch(()=>null);
+      const dict=r?.updates||{};
+      const list=Object.entries(dict)
+        .filter(([,v])=>v.has_update)
+        .map(([name,v])=>({name, latestSha:v.latest_sha, message:v.latest_message}));
+      setUpdates(list);
     } catch{}
     setCheckBusy(false);
   };
@@ -1344,6 +1348,7 @@ function ScriptsPage({server}) {
       }
       const mapped=res.scripts.map(s=>({
         id:         s.name,
+        folderName: s.folder_name||s.name,
         path:       s.folder_path||s.path||s.name,
         githubUrl:  s.github_url||`https://github.com/beasty03/discord-server-bot-scripts/tree/main/${s.folder_path||s.path||s.name}`,
         name:       s.name.replace(/_/g,' ').replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
@@ -1373,7 +1378,7 @@ function ScriptsPage({server}) {
     if (!s||!server?.id) return;
     try {
       if (s.installed) {
-        await api.removeCog(server.id, s.id);
+        await api.removeCog(server.id, s.folderName||s.path.split('/').pop()||s.id);
       } else {
         await api.installCog(server.id, s.path||s.id);
       }

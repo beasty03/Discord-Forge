@@ -35,7 +35,7 @@ export const api = {
   availableScripts: ()    => apiFetch('/api/bots/available-scripts'),
   installedCogs:    (sid) => apiFetch(`/api/bots/installed-cogs/${sid}`),
   checkScripts:     (sid) => apiFetch(`/api/bots/check-scripts/${sid}`),
-  scriptVersions:   ()    => apiFetch('/api/scripts/versions'),
+  scriptVersions:   (sid) => apiFetch('/api/scripts/check-updates', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({server_id:sid})}),
   scriptUpdate:     (body)=> apiFetch('/api/scripts/update', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}),
 
   // Account
