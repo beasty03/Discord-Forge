@@ -1477,8 +1477,17 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
   const [overIdx,setOverIdx]=useState(null);
   const [tzInput,setTzInput]=useState(profile?.timezone||'UTC');
   const [tzMsg,setTzMsg]=useState(null);
-  useEffect(()=>{ setTzInput(profile?.timezone||'UTC'); },[profile?.timezone]);
-  const TZ_LIST = Intl.supportedValuesOf?.('timeZone') ?? ['UTC'];
+  const [tzSearch,setTzSearch]=useState('');
+  const [tzOpen,setTzOpen]=useState(false);
+  useEffect(()=>{ if(profile?.timezone) setTzInput(profile.timezone); },[profile?.timezone]);
+  const TZ_LIST=Intl.supportedValuesOf?.('timeZone')??['UTC','Europe/London','Europe/Amsterdam','Europe/Brussels','Europe/Berlin','Europe/Paris','Europe/Rome','Europe/Madrid','Europe/Warsaw','Europe/Moscow','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Sao_Paulo','America/Toronto','America/Mexico_City','Asia/Dubai','Asia/Kolkata','Asia/Bangkok','Asia/Singapore','Asia/Tokyo','Asia/Shanghai','Asia/Seoul','Australia/Sydney','Australia/Melbourne','Pacific/Auckland','Pacific/Honolulu','Africa/Cairo','Africa/Johannesburg'];
+  const filteredTz=tzSearch?TZ_LIST.filter(z=>z.toLowerCase().includes(tzSearch.toLowerCase())).slice(0,80):TZ_LIST.slice(0,80);
+  const saveTz=async(tz)=>{
+    setTzInput(tz);setTzOpen(false);setTzSearch('');
+    try{await api.setTimezone(tz);setProfile(p=>p?{...p,timezone:tz}:p);setTzMsg('Saved');}
+    catch{setTzMsg('Failed');}
+    setTimeout(()=>setTzMsg(null),2000);
+  };
 
   const uploadAvatar=async(e)=>{
     const file=e.target.files?.[0];
@@ -1562,25 +1571,32 @@ function UserPage({quickAccess,setQuickAccess,profile,setProfile,theme,applyThem
                   <div className="df-s-hint">Timestamps displayed throughout the app</div>
                 </div>
                 <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
-                  <input
-                    className="df-s-input"
-                    list="df-tz-list"
-                    value={tzInput}
-                    style={{width:220,fontSize:12}}
-                    onChange={e=>setTzInput(e.target.value)}
-                    onBlur={async()=>{
-                      if (!TZ_LIST.includes(tzInput)) { setTzInput(profile?.timezone||'UTC'); return; }
-                      if (tzInput===(profile?.timezone||'UTC')) return;
-                      try {
-                        await api.setTimezone(tzInput);
-                        setProfile(p=>p?{...p,timezone:tzInput}:p);
-                        setTzMsg('Saved');
-                      } catch { setTzMsg('Failed'); }
-                      setTimeout(()=>setTzMsg(null),2000);
-                    }}
-                    placeholder="e.g. Europe/Amsterdam"
-                  />
-                  <datalist id="df-tz-list">{TZ_LIST.map(tz=><option key={tz} value={tz}/>)}</datalist>
+                  <div style={{position:'relative',width:220}}>
+                    <input
+                      className="df-s-input"
+                      value={tzOpen?tzSearch:tzInput}
+                      placeholder={tzInput}
+                      style={{width:'100%',fontSize:12}}
+                      onFocus={()=>{setTzOpen(true);setTzSearch('');}}
+                      onChange={e=>setTzSearch(e.target.value)}
+                      onBlur={()=>setTimeout(()=>setTzOpen(false),150)}
+                    />
+                    {tzOpen&&(
+                      <div style={{position:'absolute',top:'100%',left:0,right:0,background:'var(--bg2)',border:'1px solid var(--border2)',borderRadius:'var(--r)',maxHeight:160,overflowY:'auto',zIndex:200,boxShadow:'0 4px 16px rgba(0,0,0,.4)'}}>
+                        {filteredTz.length===0
+                          ?<div style={{padding:'8px 10px',fontSize:11,color:'var(--t2)',fontFamily:'var(--mono)'}}>No match</div>
+                          :filteredTz.map(tz=>(
+                            <div key={tz}
+                              style={{padding:'5px 10px',fontSize:12,fontFamily:'var(--mono)',cursor:'pointer',background:tz===tzInput?'var(--accent3)':''}}
+                              onMouseDown={()=>saveTz(tz)}
+                              onMouseEnter={e=>{if(tz!==tzInput)e.currentTarget.style.background='var(--bg3)';}}
+                              onMouseLeave={e=>{if(tz!==tzInput)e.currentTarget.style.background='';}}
+                            >{tz}</div>
+                          ))
+                        }
+                      </div>
+                    )}
+                  </div>
                   {tzMsg&&<span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--green)'}}>{tzMsg}</span>}
                 </div>
               </div>
