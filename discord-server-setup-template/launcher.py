@@ -53,8 +53,13 @@ SCRIPT_DIR = Path(__file__).parent
 CONFIG_FILE = SCRIPT_DIR / "config.json"
 
 import os as _os
+import sys as _sys
 _env_cogs = _os.environ.get('BOT_COGS_DIR', '').strip()
 COGS_DIR = Path(_env_cogs) if _env_cogs else SCRIPT_DIR / "cogs"
+if _env_cogs:
+    _cogs_parent = str(Path(_env_cogs).parent)
+    if _cogs_parent not in _sys.path:
+        _sys.path.insert(0, _cogs_parent)
 
 # Default settings
 COMMAND_PREFIX = "!"
